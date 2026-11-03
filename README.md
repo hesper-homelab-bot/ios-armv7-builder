@@ -139,6 +139,34 @@ Also verified after those fixes: `list-windows`, `list-panes`,
 
 Not working yet:
 
+* **A client that finishes its command never exits.** This is the root
+  cause of the `exit` hang, and it is now traced precisely. With verbose logs
+  on both sides:
+
+  ```
+  server  PROBE command_done flags=0x18048000 attached=0   <- appends the done callback
+  server  PROBE check_exit   flags=0x18048000 exit=0       <- CLIENT_EXIT not set yet
+  server  PROBE evloop BEFORE wait
+          ................. 11.6 s of nothing ................
+  server  PROBE evloop AFTER wait                          <- only when the client was killed
+  ```
+
+  `cmdq_append()` only adds an item to the queue; it does not wake the event
+  base. `server_loop()` drains the queues *before* `server_client_loop()`, and
+  it is `server_client_loop()` that appends `server_client_command_done`. That
+  callback is therefore never run, `CLIENT_EXIT` is never set and `MSG_EXIT`
+  is never sent — the server sleeps in `select()` with a non-empty queue.
+
+  This is why the *first* client (the one that starts the server) hangs while
+  every later client exits normally: a later client's message is the external
+  event that wakes the loop. Anything that keeps the loop ticking hides the
+  bug, which is also why an interactive `attach` appears to work until you
+  type `exit`.
+
+  Fixing it properly means making the queue drain again after
+  `server_client_loop()`, or writing a byte to a wakeup pipe from
+  `cmdq_append()`.
+
 * **Exiting an attached session hangs.** `attach` works and the pane's shell is
   usable, but typing `exit` (the shell prints `logout`) leaves the client
   alive and the terminal stuck. The client stays in state `S` with an
