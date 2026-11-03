@@ -25,10 +25,40 @@ fix_tmux_sources() {
     # it is compiled out via HAVE_PROC_PIDINFO, so drop the include.
     sed -i 's|^#include <sys/sysctl.h>$|/* sys/sysctl.h unavailable in cross sysroot */|' \
         "$d/osdep-darwin.c"
-    # NOTE: tmux deliberately forces the select backend on Darwin
-    # (EVENT_NOKQUEUE/EVENT_NOPOLL) because kqueue and poll are unreliable for
-    # non-socket descriptors there.  Leave that alone: re-enabling kqueue made
-    # the server spin at 100% CPU in testing.
+    # Do NOT force the select backend.  Stock tmux sets EVENT_NOKQUEUE and
+    # EVENT_NOPOLL on Darwin, but on iOS 10 select() loses wakeups: a peer's
+    # pending data does not make EV_READ fire, so a client's MSG_COMMAND is
+    # read only by luck and MSG_EXIT is never seen - the client hangs forever.
+    # kqueue behaves correctly (verified both with a minimal libevent program
+    # on the device and in tmux itself); only poll is left disabled.
+    sed -i '/setenv("EVENT_NOKQUEUE"/d' "$d/osdep-darwin.c"
+
+    # libevent never reports EV_WRITE on this target, on either backend.  tmux
+    # queues a message in proc_send() and relies on the event loop to flush it,
+    # so MSG_EXIT in particular is never written and the peer waits forever.
+    # Flush synchronously instead; anything that does not fit stays queued.
+    python3 - "$d/proc.c" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+old = """\tretval = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, fd, vp, len);
+\tif (retval != 1)
+\t\treturn (-1);
+
+\tproc_update_event(peer);"""
+new = """\tretval = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, fd, vp, len);
+\tif (retval != 1)
+\t\treturn (-1);
+
+\t/* Flush now: EV_WRITE is never reported on this target. */
+\tif (msgbuf_write(&ibuf->w) <= 0 && errno != EAGAIN)
+\t\tlog_debug("msgbuf_write: %s", strerror(errno));
+
+\tproc_update_event(peer);"""
+if "EV_WRITE is never reported" not in s:
+    assert old in s, "proc_send pattern not found"
+    open(p, "w").write(s.replace(old, new, 1))
+PYEOF
 }
 
 fix_tmux_makefile() {
