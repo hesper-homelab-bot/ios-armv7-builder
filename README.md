@@ -134,18 +134,30 @@ iPad 4 (iPad3,4, `armv7`, iOS 10.3.3, jailbroken) with a clean build:
 | socket | `/private/var/tmp/tmux-501/default` created |
 | output of `build.sh` | valid `Mach-O armv7`, `NOUNDEFS\|TWOLEVEL\|PIE`, links libSystem + libncursesw |
 
+Also verified after those fixes: `list-windows`, `list-panes`,
+`display-message`, `split-window`, `capture-pane` and interactive `attach`.
+
 Not working yet:
 
-* `send-keys` into an existing pane has no effect;
-* query commands such as `ls`, `list-windows` and `capture-pane` exit 0 but
-  print nothing.
+* **Exiting an attached session hangs.** `attach` works and the pane's shell is
+  usable, but typing `exit` (the shell prints `logout`) leaves the client
+  alive and the terminal stuck. The client stays in state `S` with an
+  unreaped zombie child while the server sleeps; neither process notices the
+  pane is gone.
+  `SIGCHLD` handling itself is *not* the cause — a minimal test program on the
+  device shows `sizeof(struct sigaction) == 12`, the handler firing and
+  `waitpid` working. The suspicion is therefore tmux's
+  session-destroyed → client-exit path (`server_loop`'s `exit-empty` /
+  `exit-unattached` checks, and whoever is supposed to clear the client's
+  session).
 
-Both look like the same remaining issue on the **client's** side — output that
-should be written to its stdout never arrives — rather than anything in the
-server. `attach`/interactive use should therefore not be expected to work yet.
+* `send-keys ... Enter` types the text into the pane but does not submit it
+  (the pane echoes the line but never runs it). Interactive typing from a real
+  terminal does work, so this seems specific to how the `Enter` key is
+  delivered through the pty.
 
-Use `-d` plus `run-shell`/`capture-pane`-free workflows, and read results from
-files, until that is fixed.
+Until those are fixed, prefer `new-session -d` plus `run-shell`, and read
+results from files.
 
 ### The bug that took the longest: `closefrom`
 
