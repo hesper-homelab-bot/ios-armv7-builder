@@ -87,9 +87,9 @@ struct proc_fdinfo {
 
 #define PROC_PIDLISTFDS		1
 #define PROC_PIDLISTFD_SIZE	((int)sizeof(struct proc_fdinfo))
-#define PROC_PIDT_SHORTBSDINFO  3
+#define PROC_PIDT_SHORTBSDINFO  13
 #define PROC_PIDVNODEPATHINFO   9
-#define PROC_PIDTBSDINFO        1
+#define PROC_PIDTBSDINFO        4
 
 int proc_pidinfo(int pid, int flavor, uint64_t arg, void *buffer, int buffersize);
 int proc_pidpath(int pid, void *buffer, uint32_t buffersize);

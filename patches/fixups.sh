@@ -30,15 +30,56 @@ fix_tmux_sources() {
     sed -i 's|^#include <sys/sysctl.h>$|/* sys/sysctl.h unavailable in cross sysroot */|' \
         "$d/osdep-darwin.c"
 
-    # Force the poll backend.  Upstream sets EVENT_NOKQUEUE *and* EVENT_NOPOLL
-    # (-> select) on Darwin.  On iOS 10:
+    # Force the poll backend, whichever way the upstream source of the day
+    # chokes the environment.  On iOS 10:
     #   - kqueue breaks the moment a pty master joins the event base: a
     #     minimal libevent program on the device stops reporting the listen
     #     socket entirely once a tty fd is registered (accept never fires).
-    #   - poll passed every check, including pty handling.
-    # Keep EVENT_NOPOLL and remove only the kqueue disable so libevent
-    # chooses poll.
-    sed -i '/setenv("EVENT_NOKQUEUE", "1", 1);/d' "$d/osdep-darwin.c"
+    #   - select misbehaved as well; poll passed every check, including pty
+    #     handling.
+    # libevent reads these variables when the base is created, so set both
+    # and unset them afterwards so pane children do not inherit them.
+    python3 - "$d/osdep-darwin.c" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+
+marker = "osdep_event_init(void)\n{"
+i = s.find(marker)
+if i < 0:
+    raise SystemExit("osdep_event_init not found")
+# back up to the start of the "struct event_base *" line
+start = s.rfind("struct event_base *", 0, i)
+# forward to the end of the function: first line that is exactly "}"
+end = s.find("\n}\n", i)
+if start < 0 or end < 0:
+    raise SystemExit("osdep_event_init bounds not found")
+end += len("\n}\n")
+
+new_fn = (
+    "struct event_base *\n"
+    "osdep_event_init(void)\n"
+    "{\n"
+    "\tstruct event_base\t*base;\n"
+    "\n"
+    "\t/*\n"
+    "\t * Force the poll backend on this target: kqueue breaks as soon as\n"
+    "\t * a tty joins the event base and select's wakeups are unreliable.\n"
+    "\t */\n"
+    "\tsetenv(\"EVENT_NOKQUEUE\", \"1\", 1);\n"
+    "\tsetenv(\"EVENT_NOPOLL\", \"1\", 1);\n"
+    "\n"
+    "\tbase = event_init();\n"
+    "\n"
+    "\tunsetenv(\"EVENT_NOKQUEUE\");\n"
+    "\tunsetenv(\"EVENT_NOPOLL\");\n"
+    "\n"
+    "\treturn (base);\n"
+    "}\n"
+)
+
+open(p, "w").write(s[:start] + new_fn + s[end:])
+PYEOF
 }
 
 fix_tmux_makefile() {

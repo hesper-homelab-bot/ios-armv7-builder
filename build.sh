@@ -227,6 +227,10 @@ build_libevent() {
     make -j"$(nproc)" >/dev/null
     mkdir -p "$PREFIX/lib" "$PREFIX/include/event2"
     cp .libs/libevent*.a "$PREFIX/lib/"
+    # tmux >= 3.8 uses the legacy <event.h> API, so install the wrapper
+    # headers too (they only pull in the event2/ ones above).
+    cp include/event.h include/evdns.h include/evhttp.h include/evrpc.h \
+       include/evutil.h "$PREFIX/include/"
     cp include/event2/*.h "$PREFIX/include/event2/"
     echo "    libs: $(ls "$PREFIX/lib" | tr '\n' ' ')"
 }
@@ -238,7 +242,7 @@ configure_tmux() {
     fix_tmux_sources "$TMUX_SRC"
     make distclean >/dev/null 2>&1 || true
     ./configure --host=$ARCH-apple-darwin --build="$(cc -dumpmachine)" \
-        --prefix="$PREFIX" --disable-utf8proc \
+        --prefix="$PREFIX" --disable-utf8proc --disable-jemalloc \
         LIBEVENT_CFLAGS="-I$PREFIX/include" LIBEVENT_LIBS="-L$PREFIX/lib -levent" \
         LIBEVENT_CORE_CFLAGS="-I$PREFIX/include" LIBEVENT_CORE_LIBS="-L$PREFIX/lib -levent" \
         NCURSES_CFLAGS="-I$SYSROOT/usr/include -I$SYSROOT/usr/include/ncursesw" \

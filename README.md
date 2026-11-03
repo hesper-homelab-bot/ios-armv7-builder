@@ -126,7 +126,7 @@ Verified on an iPad 4 (iPad3,4, `armv7`, iOS 10.3.3, jailbroken), from a clean
 
 | check | result |
 |---|---|
-| `./tmux -V` | `tmux 3.5a` |
+| `./tmux -V` | `tmux 3.5a` and `tmux 3.8` both build and pass |
 | `new-session -d "<cmd>; exec sleep 900"` | exits 0 immediately, pane command runs |
 | `ls`, `list-windows`, `list-panes`, `display-message` | correct output |
 | `run-shell "<cmd>"` | runs |
