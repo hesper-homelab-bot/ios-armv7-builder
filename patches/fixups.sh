@@ -33,6 +33,40 @@ fix_tmux_sources() {
     # on the device and in tmux itself); only poll is left disabled.
     sed -i '/setenv("EVENT_NOKQUEUE"/d' "$d/osdep-darwin.c"
 
+    # kqueue is edge-triggered (libevent uses EV_CLEAR), so taking a single
+    # connection per callback can strand the rest of the backlog with no further
+    # edge to report it.  Accept until EAGAIN.
+    python3 - "$d/server.c" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+old = """\tnewfd = accept(fd, (struct sockaddr *) &sa, &slen);
+\tif (newfd == -1) {
+\t\tif (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
+\t\t\treturn;"""
+new = """\tfor (;;) {
+\t\tslen = sizeof sa;
+\t\tnewfd = accept(fd, (struct sockaddr *) &sa, &slen);
+\t\tif (newfd == -1)
+\t\t\tbreak;
+\t\tif (server_exit) {
+\t\t\tclose(newfd);
+\t\t\tcontinue;
+\t\t}
+\t\tc = server_client_create(newfd);
+\t\tif (!server_acl_join(c)) {
+\t\t\tc->exit_message = xstrdup("access not allowed");
+\t\t\tc->flags |= CLIENT_EXIT;
+\t\t}
+\t}
+\tif (1) {
+\t\tif (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
+\t\t\treturn;"""
+if "for (;;) {\n\t\tslen = sizeof sa;" not in s:
+    assert old in s, "server_accept pattern not found"
+    open(p, "w").write(s.replace(old, new, 1))
+PYEOF
+
     # libevent never reports EV_WRITE on this target, on either backend.  tmux
     # queues a message in proc_send() and relies on the event loop to flush it,
     # so MSG_EXIT in particular is never written and the peer waits forever.

@@ -171,12 +171,39 @@ new-session rc : 0            <- returned immediately instead of being killed
 pane ran       : H1
 ```
 
+### Current trade-off (pick your poison)
+
+The two backends fail in opposite ways, and neither is complete:
+
+| | client that starts the server | later clients (`ls`, `list-windows`) |
+|---|---|---|
+| **select** (stock tmux) | hangs forever | work |
+| **kqueue** (this build) | returns immediately | connect but are never served |
+
+kqueue is what the shipped binary uses, because the hang on the first client is
+the more damaging of the two — it is what makes `new-session` and typing `exit`
+appear to freeze. Query commands against a running server are the outstanding
+problem.
+
+Both faults smell like the same underlying defect: **libevent never reports
+`EV_WRITE` on this target** (verified on both backends), and its readiness
+notifications are unreliable in general. Making `proc_send()` flush
+synchronously papers over the `EV_WRITE` half, and the values in
+`sysroot-overlay/usr/include/sys/event.h`, `bits/socket.h` and `bits/errno.h`
+have all been checked against Darwin, so the next suspect is libevent's own
+`kqueue.c`/`select.c` under this ABI rather than another missing constant.
+
+Concretely, for a later client the server logs no `new client` at all: the
+connection is established (the client logs `add peer` and sends its command) but
+the listening socket's `EV_READ` never fires again. Accepting in a loop until
+`EAGAIN` (`fixups.sh`) does not change it, which points at event registration
+rather than at the backlog.
+
 ### Not working yet
 
-Commands issued against an **already-running** server — `ls`, `list-windows`,
-`run-shell` — connect but return nothing, so the second client still hangs.
-That is the next thing to chase; the probes described above (log both sides,
-and compare against a minimal libevent program) are the fastest way in.
+* commands against an already-running server (`ls`, `list-windows`, `run-shell`)
+  return nothing, so the second client still hangs;
+* `send-keys ... Enter` types text into a pane but does not submit it.
 ## Repository layout
 
 ```
