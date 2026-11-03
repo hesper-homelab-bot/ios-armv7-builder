@@ -151,21 +151,48 @@ Not working yet:
   server  PROBE evloop AFTER wait                          <- only when the client was killed
   ```
 
-  `cmdq_append()` only adds an item to the queue; it does not wake the event
-  base. `server_loop()` drains the queues *before* `server_client_loop()`, and
-  it is `server_client_loop()` that appends `server_client_command_done`. That
-  callback is therefore never run, `CLIENT_EXIT` is never set and `MSG_EXIT`
-  is never sent — the server sleeps in `select()` with a non-empty queue.
+  The chain is now traced to the wire. On the client side:
+
+  ```
+  sending message 200 to peer 0x3ab000        <- MSG_COMMAND leaves the client
+  client loop enter
+  ```
+
+  and on the server side the last thing it ever reads is the identify batch:
+
+  ```
+  peer 0x188000 message 105   (x9)
+  peer 0x188000 message 106
+  ... then 15 s of nothing until the client is killed ...
+  lost client 0x150c2200
+  ```
+
+  So `MSG_COMMAND` sits unread in the socket buffer: the server's `EV_READ`
+  event is never reported. `proc_update_event()` does re-arm `EV_READ` on every
+  callback, and a standalone test shows `sendmsg`/`recvmsg` with `SCM_RIGHTS`
+  working on the device, so the loss is inside libevent's **select** backend,
+  not in tmux's own I/O code.
 
   This is why the *first* client (the one that starts the server) hangs while
   every later client exits normally: a later client's message is the external
-  event that wakes the loop. Anything that keeps the loop ticking hides the
-  bug, which is also why an interactive `attach` appears to work until you
-  type `exit`.
+  event that happens to wake the loop. It is also why an interactive `attach`
+  looks fine until you type `exit`.
 
-  Fixing it properly means making the queue drain again after
-  `server_client_loop()`, or writing a byte to a wakeup pipe from
-  `cmdq_append()`.
+  Things that were tried and did **not** help:
+
+  * draining the queues again after `server_client_loop()` (the callback is
+    appended, but the event never fires in the first place);
+  * switching to the **kqueue** backend. `struct kevent` in the sysroot already
+    carries XNU's `ext[4]` member, but with kqueue the server did not run the
+    pane command at all, so `select` remains the better of the two.
+
+  The next thing to try is libevent's `EVENT_NOEPOLL`-style diagnostics or a
+  small wakeup pipe written to from `cmdq_append()`.
+
+* **The device gets very dirty while testing.** After many iterations the iPad
+  held 17 `tmux` processes, 14 zombies and 24 stale sockets with only ~90 MB of
+  RAM free, and results became unreliable. Reboot (or at least clear
+  `/private/var/tmp/tmux-501`) between serious runs.
 
 * **Exiting an attached session hangs.** `attach` works and the pane's shell is
   usable, but typing `exit` (the shell prints `logout`) leaves the client
