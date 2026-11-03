@@ -1,0 +1,109 @@
+/* Patched for iOS 10.3 armv7 (hand-rolled sysroot, ld64) */
+#ifndef EVENT_CONFIG_H
+#define EVENT_CONFIG_H
+
+#define EVENT__HAVE_STDINT_H 1
+#define EVENT__HAVE_INTTYPES_H 1
+#define EVENT__HAVE_SYS_TYPES_H 1
+
+#define EVENT__SIZEOF_SHORT 2
+#define EVENT__SIZEOF_INT 4
+#define EVENT__SIZEOF_LONG 4
+#define EVENT__SIZEOF_LONG_LONG 8
+#define EVENT__SIZEOF_VOID_P 4
+#define EVENT__SIZEOF_SIZE_T 4
+#define EVENT__SIZEOF_OFF_T 4
+#define EVENT__SIZEOF_PTRDIFF_T 4
+#define EVENT__SIZEOF_INT32_T 4
+#define EVENT__SIZEOF_INT64_T 8
+
+#define EVENT__HAVE_UINT8_T 1
+#define EVENT__HAVE_UINT16_T 1
+#define EVENT__HAVE_UINT32_T 1
+#define EVENT__HAVE_UINT64_T 1
+#define EVENT__HAVE_INT8_T 1
+#define EVENT__HAVE_INT16_T 1
+#define EVENT__HAVE_INT32_T 1
+#define EVENT__HAVE_INT64_T 1
+#define EVENT__HAVE_UINTPTR_T 1
+#define EVENT__HAVE_INTPTR_T 1
+
+#define ev_uint8_t uint8_t
+#define ev_uint16_t uint16_t
+#define ev_uint32_t uint32_t
+#define ev_uint64_t uint64_t
+#define ev_int8_t int8_t
+#define ev_int16_t int16_t
+#define ev_int32_t int32_t
+#define ev_int64_t int64_t
+#define ev_uintptr_t uintptr_t
+#define ev_intptr_t intptr_t
+
+#define EVENT__HAVE_SOCKLEN_T 1
+#define EVENT__HAVE_SA_FAMILY_T 1
+#define EVENT__HAVE_STRUCT_SOCKADDR_STORAGE 1
+#define EVENT__HAVE_STRUCT_IN6_ADDR 1
+#define EVENT__HAVE_STRUCT_SOCKADDR_IN6 1
+
+#define EVENT__HAVE_GETTIMEOFDAY 1
+#define EVENT__HAVE_CLOCK_GETTIME 1
+#define EVENT__HAVE_SOCKET 1
+#define EVENT__HAVE_GETADDRINFO 1
+#define EVENT__HAVE_GETNAMEINFO 1
+#define EVENT__HAVE_INET_NTOP 1
+#define EVENT__HAVE_INET_PTON 1
+#define EVENT__HAVE_VASPRINTF 1
+#define EVENT__HAVE_VA_COPY 1
+#define EVENT__HAVE___VA_COPY 1
+
+#define EVENT__HAVE_PTHREADS 1
+#define EVENT__HAVE_PTHREAD_MUTEXATTR_SETTYPE 1
+#define EVENT__HAVE_PTHREAD_RWLOCK 1
+
+#define EVENT__HAVE_SYS_TIME_H 1
+#define EVENT__HAVE_SYS_SOCKET_H 1
+#define EVENT__HAVE_SYS_STAT_H 1
+#define EVENT__HAVE_SYS_UIO_H 1
+#define EVENT__HAVE_SYS_IOCTL_H 1
+#define EVENT__HAVE_SYS_MMAN_H 1
+#define EVENT__HAVE_SYS_SENDFILE_H 1
+#define EVENT__HAVE_SYS_SELECT_H 1
+#define EVENT__HAVE_UNISTD_H 1
+#define EVENT__HAVE_STDARG_H 1
+#define EVENT__HAVE_FCNTL_H 1
+#define EVENT__HAVE_NETINET_IN_H 1
+#define EVENT__HAVE_NETINET_IN6_H 1
+#define EVENT__HAVE_ARPA_INET_H 1
+#define EVENT__HAVE_NETDB_H 1
+
+/* #undef EVENT__HAVE_EVPORT */
+/* #undef EVENT__HAVE_EPOLL */
+/* #undef EVENT__HAVE_KQUEUE */
+/* #undef EVENT__HAVE_DEVPOLL */
+#define EVENT__HAVE_SELECT 1
+#define EVENT__HAVE_POLL 1
+/* #undef EVENT__HAVE_WORKING_KQUEUE */
+
+#undef EVENT__ENABLE_DEBUG_MODE
+#undef EVENT__DISABLE_DEBUG_MODE
+#undef EVENT__DISABLE_THREAD_SUPPORT
+#undef EVENT__DISABLE_MM_REPLACEMENT
+#undef EVENT__HAVE_OPENSSL
+#undef EVENT__HAVE_WINSOCK2_H
+#undef EVENT__HAVE_WINDOWS_H
+#undef EVENT__HAVE_WSPAPI_H
+#undef EVENT__HAVE_IOCP
+
+#define EVENT__IS_LITTLE_ENDIAN 1
+#ifndef SIZE_MAX
+#define SIZE_MAX 4294967295U
+#endif
+#define EVENT__VERSION "2.1.12-stable"
+#define EVENT__NUMERIC_VERSION 0x02010c00
+
+#define EVENT2_EXPORT_SYMBOL __attribute__((visibility("default")))
+#define EVENT2_EXPORT_SYMBOL_NONBLOCKING EVENT2_EXPORT_SYMBOL
+#define LIBEVENT_VERSION_NUMBER 0x02010c00
+#define LIBEVENT_VERSION "2.1.12-stable"
+
+#endif /* EVENT_CONFIG_H */

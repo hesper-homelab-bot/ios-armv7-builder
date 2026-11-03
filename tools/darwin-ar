@@ -1,0 +1,13 @@
+#!/bin/sh
+# ld64 can only read Darwin-format archives; GNU ar produces ones it rejects
+# with "archive has no table of contents".  llvm-ar speaks both.
+AR="${LLVM_AR:-}"
+if [ -z "$AR" ]; then
+    for c in llvm-ar llvm-ar-21 llvm-ar-20 llvm-ar-19 llvm-ar-18 \
+             /usr/lib/llvm-*/bin/llvm-ar; do
+        command -v "$c" >/dev/null 2>&1 && AR="$c" && break
+        [ -x "$c" ] && AR="$c" && break
+    done
+fi
+[ -n "$AR" ] || { echo "darwin-ar: llvm-ar not found; set LLVM_AR" >&2; exit 127; }
+exec "$AR" --format=darwin "$@"

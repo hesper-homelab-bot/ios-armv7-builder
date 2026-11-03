@@ -1,0 +1,70 @@
+#ifndef _SYS_EVENT_H_
+#define _SYS_EVENT_H_
+/* Darwin kqueue interface, for the iOS armv7 cross build. */
+#include <sys/types.h>
+#include <stdint.h>
+
+struct kevent {
+	uintptr_t ident;
+	int16_t   filter;
+	uint16_t  flags;
+	uint32_t  fflags;
+	intptr_t  data;
+	void     *udata;
+	uint64_t  ext[4];	/* XNU >= 3248 (macOS 10.12 / iOS 10) */
+};
+
+#define EV_SET(kevp, a, b, c, d, e, f) do {		\
+	struct kevent *__kevp = (kevp);			\
+	__kevp->ident  = (uintptr_t)(a);		\
+	__kevp->filter = (int16_t)(b);			\
+	__kevp->flags  = (uint16_t)(c);			\
+	__kevp->fflags = (uint32_t)(d);			\
+	__kevp->data   = (intptr_t)(e);			\
+	__kevp->udata  = (void *)(f);			\
+} while (0)
+
+#define EVFILT_READ	(-1)
+#define EVFILT_WRITE	(-2)
+#define EVFILT_AIO	(-3)
+#define EVFILT_VNODE	(-4)
+#define EVFILT_PROC	(-5)
+#define EVFILT_SIGNAL	(-6)
+#define EVFILT_TIMER	(-7)
+#define EVFILT_MACHPORT	(-8)
+#define EVFILT_FS	(-9)
+#define EVFILT_USER	(-10)
+#define EVFILT_SYSCOUNT	17
+
+#define EV_ADD		0x0001
+#define EV_DELETE	0x0002
+#define EV_ENABLE	0x0004
+#define EV_DISABLE	0x0008
+#define EV_ONESHOT	0x0010
+#define EV_CLEAR	0x0020
+#define EV_RECEIPT	0x0040
+#define EV_DISPATCH	0x0080
+#define EV_UDATA_SPECIFIC 0x0100
+#define EV_FLAG1	0x2000
+#define EV_ERROR	0x4000
+#define EV_EOF		0x8000
+#define EV_SYSFLAGS	0xF000
+
+#define NOTE_LOWAT	0x0001
+#define NOTE_DELETE	0x0001
+#define NOTE_WRITE	0x0002
+#define NOTE_EXTEND	0x0004
+#define NOTE_ATTRIB	0x0008
+#define NOTE_LINK	0x0010
+#define NOTE_RENAME	0x0020
+#define NOTE_REVOKE	0x0040
+#define NOTE_EXIT	0x80000000
+#define NOTE_FORK	0x40000000
+#define NOTE_EXEC	0x20000000
+#define NOTE_TRACK	0x00000001
+
+int kqueue(void);
+int kevent(int kq, const struct kevent *changelist, int nchanges,
+    struct kevent *eventlist, int nevents, const struct timespec *timeout);
+
+#endif
