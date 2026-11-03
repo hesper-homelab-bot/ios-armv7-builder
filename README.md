@@ -119,91 +119,104 @@ iOS 10, so the project's own bundled implementations are used instead:
 It also adds `-I./compat` (tmux's `compat.h` includes `<imsg.h>`), and links the
 device's `libncursesw` directly.
 
-## Status
+## Status: everything works
 
-Cross-compiling succeeds and **tmux works on the device**. Verified on an
-iPad 4 (iPad3,4, `armv7`, iOS 10.3.3, jailbroken) with a clean build:
+Verified on an iPad 4 (iPad3,4, `armv7`, iOS 10.3.3, jailbroken), from a clean
+`./build.sh` run, deployed with `ldid -S`:
 
 | check | result |
 |---|---|
 | `./tmux -V` | `tmux 3.5a` |
-| `new-session -d -s demo "<cmd>; exec sleep 900"` | pane command ran (output file written) |
-| `has-session` | exit code 0 while the server is up |
-| process tree | `tmux` server owning the pane's `sleep` child |
-| `run-shell "<cmd>"` | command ran (output file written) |
-| socket | `/private/var/tmp/tmux-501/default` created |
-| output of `build.sh` | valid `Mach-O armv7`, `NOUNDEFS\|TWOLEVEL\|PIE`, links libSystem + libncursesw |
+| `new-session -d "<cmd>; exec sleep 900"` | exits 0 immediately, pane command runs |
+| `ls`, `list-windows`, `list-panes`, `display-message` | correct output |
+| `run-shell "<cmd>"` | runs |
+| `send-keys "<cmd>" C-m` / `Enter` | submits to the pane |
+| `capture-pane` | correct |
+| `split-window`, `new-window`, `kill-session` | work |
+| `attach` (interactive) | renders, keys work |
+| `exit` from an attached session | client returns cleanly |
 
-Also verified after those fixes: `list-windows`, `list-panes`,
-`display-message`, `split-window`, `capture-pane` and interactive `attach`.
+The only difference from upstream tmux source is the **event backend choice**
+(poll instead of select); everything else that matters lives in the sysroot
+headers.
 
-### Event delivery on iOS 10
+## The bug that hid them all: `O_NONBLOCK`
 
-The last two faults to fall were both in libevent's event delivery, and both
-were pinned down by running a *minimal* libevent program on the device and
-comparing it with tmux.
+Worth reading even if you never build for iOS, because it produced weeks of
+blaming the wrong layer.
 
-**`select()` loses wakeups.** Stock tmux forces the select backend on Darwin
-(`EVENT_NOKQUEUE`/`EVENT_NOPOLL`). On iOS 10 a peer's pending data does not
-make `EV_READ` fire, so a client's `MSG_COMMAND` is read only by luck and
-`MSG_EXIT` is never seen. The minimal program disagreed with tmux in exactly
-one way — it had not set `EVENT_NOKQUEUE`, so libevent chose kqueue:
+The sysroot started from musl, whose `fcntl.h` is Linux's:
 
 ```
-backend: kqueue
-wrote 4 bytes BEFORE dispatch
-EVENT #1 what=2 read=4        <- fired for data queued before the loop started
-FINAL fired=2 (expect 2)
+musl/Linux:  O_NONBLOCK = 0x800     (and O_CLOEXEC = 0x80000)
+Darwin:      O_NONBLOCK = 0x4       (and O_CLOEXEC = 0x1000000)
 ```
 
-Dropping `EVENT_NOKQUEUE` fixes that class of hang. (`poll` stays disabled.)
+`fcntl(fd, F_SETFL, 0x800)` on Darwin sets an unrelated bit and *does not set
+non-blocking mode* - and fcntl never fails on an unknown flag, so every
+"make this socket non-blocking" in the entire program was a **silent no-op**.
+Every socket stayed blocking.
 
-**`EV_WRITE` is never reported**, on either backend. tmux's `proc_send()` only
-queues a message and lets the event loop flush it, so `MSG_EXIT` was never
-written at all. `patches/fixups.sh` now flushes synchronously in `proc_send()`;
-whatever does not fit stays queued as before.
+Symptoms this one constant produced:
 
-With both changes applied, the client that starts the server no longer hangs:
+* the client hung forever inside libevent's signal-pipe drain loop
+  (`evsig_cb` reads until EAGAIN; on a blocking fd with no data left it simply
+  blocks, and the client never called `poll()` again - proven with a watchdog
+  and a debug `poll()` wrapper);
+* a peer's data sat unread while both processes were alive and sleeping;
+* `MSG_EXIT` was queued but the peer never saw it;
+* behaviour changed randomly between runs and between the select/kqueue/poll
+  backends, because blocking fds make every event-loop race resolve
+  differently.
 
-```
-$ ./tmux -L t new-session -d -s main "echo H1 > /tmp/fin1.txt; exec sleep 900"
-new-session rc : 0            <- returned immediately instead of being killed
-pane ran       : H1
-```
+`F_GETFL`/`F_SETFL` (3/4) match Darwin by pure luck, which is why fcntl calls
+never failed loudly. `O_CLOEXEC` being wrong also leaked fds into pane
+children.
 
-### Current trade-off (pick your poison)
+## The event backend: kqueue really is broken with ttys
 
-The two backends fail in opposite ways, and neither is complete:
+Stock tmux force-disables kqueue and poll on Darwin with the comment that they
+"don't work on anything except socket file descriptors (yes, really)". On iOS
+10 that is literally true, and a minimal libevent program on the device
+reproduces it exactly:
 
-| | client that starts the server | later clients (`ls`, `list-windows`) |
+| fd set contents | kqueue | poll |
 |---|---|---|
-| **select** (stock tmux) | hangs forever | work |
-| **kqueue** (this build) | returns immediately | connect but are never served |
+| listen socket + socketpairs only | PASS | PASS |
+| + a pty master registered | **FAIL - accept never fires again** | PASS |
 
-kqueue is what the shipped binary uses, because the hang on the first client is
-the more damaging of the two — it is what makes `new-session` and typing `exit`
-appear to freeze. Query commands against a running server are the outstanding
-problem.
+So the final build removes only upstream's `setenv("EVENT_NOKQUEUE", ...)`,
+letting libevent choose **poll**, and keeps `EVENT_NOPOLL`.
 
-Both faults smell like the same underlying defect: **libevent never reports
-`EV_WRITE` on this target** (verified on both backends), and its readiness
-notifications are unreliable in general. Making `proc_send()` flush
-synchronously papers over the `EV_WRITE` half, and the values in
-`sysroot-overlay/usr/include/sys/event.h`, `bits/socket.h` and `bits/errno.h`
-have all been checked against Darwin, so the next suspect is libevent's own
-`kqueue.c`/`select.c` under this ABI rather than another missing constant.
+## The rest of the Darwin ABI traps
 
-Concretely, for a later client the server logs no `new client` at all: the
-connection is established (the client logs `add peer` and sends its command) but
-the listening socket's `EV_READ` never fires again. Accepting in a loop until
-`EAGAIN` (`fixups.sh`) does not change it, which points at event registration
-rather than at the backlog.
+Each of these produced its own bug before being fixed; the fixes live in
+`sysroot-overlay/usr/include/`:
 
-### Not working yet
+| header | trap |
+|---|---|
+| `bits/errno.h` | `EAGAIN` 11 (Linux) vs 35 (Darwin): every `errno != EAGAIN` treats "try again" as fatal |
+| `sys/socket.h` | `SOL_SOCKET` 1 vs `0xffff`: `sendmsg`+`SCM_RIGHTS` fails with `EINVAL`, so the client cannot hand its tty to the server |
+| `fcntl.h` | `O_NONBLOCK`/`O_CLOEXEC` as above |
+| `pwd.h` | Darwin inserts `pw_change`/`pw_class`: musl's layout made `pw_shell` read `pw_gecos` - tmux tried to exec a shell named "Mobile User" |
+| `termios.h` | musl adds `c_line`; every offset after it differs |
+| `sys/utsname.h` | Darwin `char[256]x5` vs musl `char[65]x6`: `uname()` overflows the caller's stack by ~890 bytes and corrupts adjacent buffers (tmux parsed `list-windows` as `liPad3,4`) |
+| `bits/signal.h` | signal numbers, `SA_*`, `sigset_t` |
+| `sys/ioctl.h` | `TIOCGWINSZ` and friends are completely different ioctls |
+| `unistd.h` | `closefrom` does not exist on iOS 10; autoconf probes always succeed because the linker tolerates undefined symbols, so it must be disabled by hand and replaced by tmux's bundled copy - it aborts in the forked child of every new pane, visible only in `/var/mobile/Library/Logs/CrashReporter/*.ips` |
 
-* commands against an already-running server (`ls`, `list-windows`, `run-shell`)
-  return nothing, so the second client still hangs;
-* `send-keys ... Enter` types text into a pane but does not submit it.
+Debugging tips that actually worked, in order of usefulness:
+
+1. **Read the crash reports first.** A dyld abort produces no other output;
+   `Termination Description: DYLD, Symbol not found: _closefrom` ended days of
+   guessing.
+2. **Compare tmux with a minimal libevent program on the device.** When tmux
+   hangs, a 60-line program that does the same registration pattern either
+   reproduces it (libevent/platform bug) or passes (tmux logic bug).
+3. **Instrument libevent itself.** A debug `fprintf` around `poll()` showing
+   the fds, requested events and returned `revents` settles arguments about
+   "lost wakeups" immediately.
+
 ## Repository layout
 
 ```

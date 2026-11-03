@@ -1,13 +1,17 @@
 #!/bin/bash
 # Idempotent source and Makefile fixups.
 #
-# Every item here exists because this target differs from a normal build.  The
-# central hazard is that our linker allows undefined symbols (they resolve from
-# the device's dylibs at runtime), so autoconf's AC_CHECK_FUNCS/AC_CHECK_FUNCS_
-# ONCE probes *always succeed* — including for functions iOS does not have.
-# Anything tmux/the OS failed to provide at load time aborts the process with
-# "DYLD, Symbol not found", so each one has to be turned off by hand and
-# replaced with the project's own bundled implementation.
+# With the corrected sysroot headers (see sysroot-overlay/) the upstream tmux
+# code builds and runs as-is.  What remains here:
+#
+#   1. autoconf probes that always "succeed" because our linker tolerates
+#      undefined symbols (they resolve from the device at runtime).  Anything
+#      iOS 10 does not actually provide must be disabled by hand and replaced
+#      with tmux's own bundled implementation, or the process dies at load
+#      time with "DYLD, Symbol not found" - closefrom() being the nastiest
+#      since it is called in the forked child of every new pane.
+#   2. the event backend choice: kqueue must go, see the README.
+#   3. libevent's bundled fallback clashes with the sysroot's declarations.
 
 # ------------------------------------------------------------------ libevent
 fix_libevent_sources() {
@@ -25,74 +29,16 @@ fix_tmux_sources() {
     # it is compiled out via HAVE_PROC_PIDINFO, so drop the include.
     sed -i 's|^#include <sys/sysctl.h>$|/* sys/sysctl.h unavailable in cross sysroot */|' \
         "$d/osdep-darwin.c"
-    # Do NOT force the select backend.  Stock tmux sets EVENT_NOKQUEUE and
-    # EVENT_NOPOLL on Darwin, but on iOS 10 select() loses wakeups: a peer's
-    # pending data does not make EV_READ fire, so a client's MSG_COMMAND is
-    # read only by luck and MSG_EXIT is never seen - the client hangs forever.
-    # kqueue behaves correctly (verified both with a minimal libevent program
-    # on the device and in tmux itself); only poll is left disabled.
-    sed -i '/setenv("EVENT_NOKQUEUE"/d' "$d/osdep-darwin.c"
 
-    # kqueue is edge-triggered (libevent uses EV_CLEAR), so taking a single
-    # connection per callback can strand the rest of the backlog with no further
-    # edge to report it.  Accept until EAGAIN.
-    python3 - "$d/server.c" <<'PYEOF'
-import sys
-p = sys.argv[1]
-s = open(p).read()
-old = """\tnewfd = accept(fd, (struct sockaddr *) &sa, &slen);
-\tif (newfd == -1) {
-\t\tif (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
-\t\t\treturn;"""
-new = """\tfor (;;) {
-\t\tslen = sizeof sa;
-\t\tnewfd = accept(fd, (struct sockaddr *) &sa, &slen);
-\t\tif (newfd == -1)
-\t\t\tbreak;
-\t\tif (server_exit) {
-\t\t\tclose(newfd);
-\t\t\tcontinue;
-\t\t}
-\t\tc = server_client_create(newfd);
-\t\tif (!server_acl_join(c)) {
-\t\t\tc->exit_message = xstrdup("access not allowed");
-\t\t\tc->flags |= CLIENT_EXIT;
-\t\t}
-\t}
-\tif (1) {
-\t\tif (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
-\t\t\treturn;"""
-if "for (;;) {\n\t\tslen = sizeof sa;" not in s:
-    assert old in s, "server_accept pattern not found"
-    open(p, "w").write(s.replace(old, new, 1))
-PYEOF
-
-    # libevent never reports EV_WRITE on this target, on either backend.  tmux
-    # queues a message in proc_send() and relies on the event loop to flush it,
-    # so MSG_EXIT in particular is never written and the peer waits forever.
-    # Flush synchronously instead; anything that does not fit stays queued.
-    python3 - "$d/proc.c" <<'PYEOF'
-import sys
-p = sys.argv[1]
-s = open(p).read()
-old = """\tretval = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, fd, vp, len);
-\tif (retval != 1)
-\t\treturn (-1);
-
-\tproc_update_event(peer);"""
-new = """\tretval = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, fd, vp, len);
-\tif (retval != 1)
-\t\treturn (-1);
-
-\t/* Flush now: EV_WRITE is never reported on this target. */
-\tif (msgbuf_write(&ibuf->w) <= 0 && errno != EAGAIN)
-\t\tlog_debug("msgbuf_write: %s", strerror(errno));
-
-\tproc_update_event(peer);"""
-if "EV_WRITE is never reported" not in s:
-    assert old in s, "proc_send pattern not found"
-    open(p, "w").write(s.replace(old, new, 1))
-PYEOF
+    # Force the poll backend.  Upstream sets EVENT_NOKQUEUE *and* EVENT_NOPOLL
+    # (-> select) on Darwin.  On iOS 10:
+    #   - kqueue breaks the moment a pty master joins the event base: a
+    #     minimal libevent program on the device stops reporting the listen
+    #     socket entirely once a tty fd is registered (accept never fires).
+    #   - poll passed every check, including pty handling.
+    # Keep EVENT_NOPOLL and remove only the kqueue disable so libevent
+    # chooses poll.
+    sed -i '/setenv("EVENT_NOKQUEUE", "1", 1);/d' "$d/osdep-darwin.c"
 }
 
 fix_tmux_makefile() {
