@@ -156,8 +156,23 @@ Not working yet:
   terminal does work, so this seems specific to how the `Enter` key is
   delivered through the pty.
 
+* **Starting a server against the default socket is unreliable.** When
+  `/private/var/tmp/tmux-<uid>/default` is left in a bad state, the client
+  prints `no server running` and then hangs instead of removing the stale
+  socket and starting a new server. Naming the socket sidesteps it entirely:
+
+  ```sh
+  ./tmux -L work new-session -d -s main
+  ./tmux -L work ls
+  ```
+
+  This is what makes the difference between the two runs recorded above
+  (`default` failed, `-L acc` passed every check). A reboot clears the wedged
+  state; the `(tmux)` entries `ps` shows in parentheses are zombies owned by
+  `root` and are harmless.
+
 Until those are fixed, prefer `new-session -d` plus `run-shell`, and read
-results from files.
+results from files. Always pass `-L <name>`.
 
 ### The bug that took the longest: `closefrom`
 
