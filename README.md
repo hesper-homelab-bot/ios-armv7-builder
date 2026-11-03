@@ -137,145 +137,46 @@ iPad 4 (iPad3,4, `armv7`, iOS 10.3.3, jailbroken) with a clean build:
 Also verified after those fixes: `list-windows`, `list-panes`,
 `display-message`, `split-window`, `capture-pane` and interactive `attach`.
 
-Not working yet:
+### Event delivery on iOS 10
 
-* **A client that finishes its command never exits.** This is the root
-  cause of the `exit` hang, and it is now traced precisely. With verbose logs
-  on both sides:
+The last two faults to fall were both in libevent's event delivery, and both
+were pinned down by running a *minimal* libevent program on the device and
+comparing it with tmux.
 
-  ```
-  server  PROBE command_done flags=0x18048000 attached=0   <- appends the done callback
-  server  PROBE check_exit   flags=0x18048000 exit=0       <- CLIENT_EXIT not set yet
-  server  PROBE evloop BEFORE wait
-          ................. 11.6 s of nothing ................
-  server  PROBE evloop AFTER wait                          <- only when the client was killed
-  ```
-
-  The chain is now traced to the wire. On the client side:
-
-  ```
-  sending message 200 to peer 0x3ab000        <- MSG_COMMAND leaves the client
-  client loop enter
-  ```
-
-  and on the server side the last thing it ever reads is the identify batch:
-
-  ```
-  peer 0x188000 message 105   (x9)
-  peer 0x188000 message 106
-  ... then 15 s of nothing until the client is killed ...
-  lost client 0x150c2200
-  ```
-
-  So `MSG_COMMAND` sits unread in the socket buffer: the server's `EV_READ`
-  event is never reported. `proc_update_event()` does re-arm `EV_READ` on every
-  callback, and a standalone test shows `sendmsg`/`recvmsg` with `SCM_RIGHTS`
-  working on the device, so the loss is inside libevent's **select** backend,
-  not in tmux's own I/O code.
-
-  This is why the *first* client (the one that starts the server) hangs while
-  every later client exits normally: a later client's message is the external
-  event that happens to wake the loop. It is also why an interactive `attach`
-  looks fine until you type `exit`.
-
-  Things that were tried and did **not** help:
-
-  * draining the queues again after `server_client_loop()` (the callback is
-    appended, but the event never fires in the first place);
-  * switching to the **kqueue** backend. `struct kevent` in the sysroot already
-    carries XNU's `ext[4]` member, but with kqueue the server did not run the
-    pane command at all, so `select` remains the better of the two.
-
-  The next thing to try is libevent's `EVENT_NOEPOLL`-style diagnostics or a
-  small wakeup pipe written to from `cmdq_append()`.
-
-* **The device gets very dirty while testing.** After many iterations the iPad
-  held 17 `tmux` processes, 14 zombies and 24 stale sockets with only ~90 MB of
-  RAM free, and results became unreliable. Reboot (or at least clear
-  `/private/var/tmp/tmux-501`) between serious runs.
-
-* **Exiting an attached session hangs.** `attach` works and the pane's shell is
-  usable, but typing `exit` (the shell prints `logout`) leaves the client
-  alive and the terminal stuck. The client stays in state `S` with an
-  unreaped zombie child while the server sleeps; neither process notices the
-  pane is gone.
-  `SIGCHLD` handling itself is *not* the cause — a minimal test program on the
-  device shows `sizeof(struct sigaction) == 12`, the handler firing and
-  `waitpid` working. The suspicion is therefore tmux's
-  session-destroyed → client-exit path (`server_loop`'s `exit-empty` /
-  `exit-unattached` checks, and whoever is supposed to clear the client's
-  session).
-
-* `send-keys ... Enter` types the text into the pane but does not submit it
-  (the pane echoes the line but never runs it). Interactive typing from a real
-  terminal does work, so this seems specific to how the `Enter` key is
-  delivered through the pty.
-
-* **Starting a server against the default socket is unreliable.** When
-  `/private/var/tmp/tmux-<uid>/default` is left in a bad state, the client
-  prints `no server running` and then hangs instead of removing the stale
-  socket and starting a new server. Naming the socket sidesteps it entirely:
-
-  ```sh
-  ./tmux -L work new-session -d -s main
-  ./tmux -L work ls
-  ```
-
-  This is what makes the difference between the two runs recorded above
-  (`default` failed, `-L acc` passed every check). A reboot clears the wedged
-  state; the `(tmux)` entries `ps` shows in parentheses are zombies owned by
-  `root` and are harmless.
-
-Until those are fixed, prefer `new-session -d` plus `run-shell`, and read
-results from files. Always pass `-L <name>`.
-
-### The bug that took the longest: `closefrom`
-
-Worth recording, because it is the archetype of this whole exercise. With an
-undefined-symbol-tolerant linker, `AC_CHECK_FUNCS(closefrom)` succeeds — the
-symbol resolves at *link* time regardless. `closefrom()` does not exist on
-iOS 10, and tmux calls it in the **forked child** right after `forkpty()`.
-The result was maddening:
-
-* the server started and looked healthy in its log
-  (`spawn_pane: shell=/bin/sh`, all key bindings built);
-* the session was created and then immediately destroyed
-  (`hook=pane-exited`);
-* every new pane died silently — no stderr, because the child's stderr goes to
-  the pty it just failed to reach.
-
-Only the crash report named it:
+**`select()` loses wakeups.** Stock tmux forces the select backend on Darwin
+(`EVENT_NOKQUEUE`/`EVENT_NOPOLL`). On iOS 10 a peer's pending data does not
+make `EV_READ` fire, so a client's `MSG_COMMAND` is read only by luck and
+`MSG_EXIT` is never seen. The minimal program disagreed with tmux in exactly
+one way — it had not set `EVENT_NOKQUEUE`, so libevent chose kqueue:
 
 ```
-Exception Type:  EXC_CRASH (SIGABRT)
-Termination Description: DYLD, Symbol not found: _closefrom
-    Referenced from: /private/var/mobile/./tmux
-    Expected in: dyld shared cache
+backend: kqueue
+wrote 4 bytes BEFORE dispatch
+EVENT #1 what=2 read=4        <- fired for data queued before the loop started
+FINAL fired=2 (expect 2)
 ```
 
-If something aborts with no output, **read
-`/var/mobile/Library/Logs/CrashReporter/*.ips` first** — it is the only channel
-that survives a dyld failure.
+Dropping `EVENT_NOKQUEUE` fixes that class of hang. (`poll` stays disabled.)
 
-### Other differences from a normal build
+**`EV_WRITE` is never reported**, on either backend. tmux's `proc_send()` only
+queues a message and lets the event loop flush it, so `MSG_EXIT` was never
+written at all. `patches/fixups.sh` now flushes synchronously in `proc_send()`;
+whatever does not fit stays queued as before.
 
-* **`errno` values.** musl's are Linux's. `EAGAIN` is 11 there and **35** on
-  Darwin, so tmux's `errno != EAGAIN` tests treated every "try again" as fatal,
-  and the client aborted the connection mid-handshake.
-* **`SOL_SOCKET`.** Linux 1, Darwin **0xffff**. tmux hands its tty to the
-  server with `sendmsg()` + `SCM_RIGHTS`; the wrong level made the kernel
-  answer `EINVAL` and the client gave up.
-* **`struct passwd`.** Darwin inserts `pw_change`/`pw_class`, so musl's layout
-  made `pw_shell` read `pw_gecos` — tmux tried to execute a shell named
-  "Mobile User".
-* **`struct termios`.** musl adds `c_line`; the offsets of `c_cc`, `c_ispeed`
-  and every flag differ.
-* **Signal numbers and `SA_*`/`SIG_BLOCK`.** A mismatched `SIGCHLD` (Darwin 20)
-  makes the client fire its child handler on unrelated events.
-* Content of `sys/stat.h`, `sys/socket.h`, `sys/ioctl.h`, `bits/socket.h`,
-  `bits/errno.h`, `bits/signal.h`, `errno.h`, `stdio.h`, `netdb.h`, `pwd.h`,
-  `unistd.h` — see the overlay table above.
+With both changes applied, the client that starts the server no longer hangs:
 
+```
+$ ./tmux -L t new-session -d -s main "echo H1 > /tmp/fin1.txt; exec sleep 900"
+new-session rc : 0            <- returned immediately instead of being killed
+pane ran       : H1
+```
+
+### Not working yet
+
+Commands issued against an **already-running** server — `ls`, `list-windows`,
+`run-shell` — connect but return nothing, so the second client still hangs.
+That is the next thing to chase; the probes described above (log both sides,
+and compare against a minimal libevent program) are the fastest way in.
 ## Repository layout
 
 ```
