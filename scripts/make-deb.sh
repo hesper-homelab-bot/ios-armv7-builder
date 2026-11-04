@@ -18,8 +18,7 @@ SIGNED_BIN="${SIGNED_BIN:-}"
 MAINTAINER="${MAINTAINER:-Hesper <hesperup@users.noreply.github.com>}"
 OUT="$here/out"
 
-[ -f "$OUT/tmux-$TMUX_VERSION-$ARCH" ] || ART="$OUT/tmux-$TMUX_VERSION-armv7"
-ART="${ART:-$OUT/tmux-$TMUX_VERSION-armv7}"
+ART="$OUT/tmux-$TMUX_VERSION-armv7"
 [ -f "$ART" ] || { echo "missing built binary: $ART (run build.sh first)" >&2; exit 1; }
 
 if [ -z "$SIGNED_BIN" ]; then
