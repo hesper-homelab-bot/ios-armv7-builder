@@ -49,42 +49,15 @@ struct in_addr {
 };
 
 struct sockaddr_in {
-    sa_family_t sin_family;
-    in_port_t sin_port;
-    struct in_addr sin_addr;
-    char sin_zero[8];
+	unsigned char	sin_len;	/* Darwin: total length (16) */
+	sa_family_t	sin_family;
+	in_port_t	sin_port;
+	struct in_addr	sin_addr;
+	char		sin_zero[8];
 };
 
-#define IPV6_JOIN_GROUP     12
-#define IPV6_LEAVE_GROUP    13
-#define IPV6_MULTICAST_HOPS 18
-#define IPV6_MULTICAST_IF   17
-#define IPV6_MULTICAST_LOOP 19
-#define IPV6_UNICAST_HOPS   16
-#define IPV6_V6ONLY         26
 
-#define IPV6_CHECKSUM       7
-#define IPV6_DONTFRAG       62
-#define IPV6_HOPLIMIT       21
-#define IPV6_HOPOPTS        0
-#define IPV6_NEXTHOP        10
-#define IPV6_PATHMTU        11
-#define IPV6_PKTINFO        12
-#define IPV6_RECVDSTOPTS    9
-#define IPV6_RECVHOPLIMIT   10
-#define IPV6_RECVHOPOPTS    8
-#define IPV6_RECVPKTINFO    11
-#define IPV6_RECVRTHDR      13
-#define IPV6_RECVTCLASS     14
-#define IPV6_RTHDR          15
-#define IPV6_RTHDRDSTOPTS   16
-#define IPV6_RTHDRTYPE      17
-#define IPV6_RECVRTHDR      13
-#define IPV6_TCLASS         14
-#define IPV6_UNICAST_HOPS   16
 
-#define IPV6_RTHDR_LOOSE    0
-#define IPV6_RTHDR_STRICT   1
 
 #define INADDR_ANY          ((in_addr_t)0x00000000)
 #define INADDR_BROADCAST    ((in_addr_t)0xffffffff)

@@ -1,3 +1,50 @@
+Package: curl4
+Version: 8.16.0-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/c/curl4/curl4_8.16.0-1_iphoneos-arm.deb
+Size: 2158362
+MD5sum: 9357f8b8015f17341a96a652be61b242
+SHA1: b34e62920c7c722f909d78393b91588dfaa94a8b
+SHA256: 8cc47b1dbe0c53c04ca889ccbb2f8cc3f3c035395b63a2d6f136c0b5ca8e02b0
+Section: Networking
+Priority: optional
+Homepage: https://curl.se
+Description: curl with HTTPS for armv7 iOS 10+ (static OpenSSL 4)
+ curl 8.16.0 for armv7 iOS 10.x, statically linked against OpenSSL 4.0.3.
+ Installs to /var/mobile/tools/curl, so it does not replace any system
+ binary.
+ .
+ Set SSL_CERT_FILE=/etc/ssl/cert.pem to verify HTTPS certificates, or put
+ it in /var/mobile/tools/env.sh.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: curl 8
+
+Package: openssl4
+Version: 4.0.3-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/o/openssl4/openssl4_4.0.3-1_iphoneos-arm.deb
+Size: 2280872
+MD5sum: 2821cd64268ea6bd192a7aa610ad375c
+SHA1: 13cee5fc9c385692756b40e617709fe442b50915
+SHA256: 80be98b655ee60cd29e5090de5d51a5be1273d232ea80acd4db15adcf5478180
+Section: Security
+Priority: optional
+Homepage: https://www.openssl.org
+Description: OpenSSL 4 command line tool (armv7 iOS 10+)
+ OpenSSL 4.0.3 built for armv7 iOS 10.x.  Installs an isolated copy under
+ /var/mobile/openssl4 so it never shadows the system libraries that sshd
+ and the rest of iOS depend on.
+ .
+ Provides: openssl
+ Replaces: openssl
+ Conflicts: openssl
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: OpenSSL 4
+
 Package: tmux
 Version: 3.8-1
 Architecture: iphoneos-arm

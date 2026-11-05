@@ -414,10 +414,11 @@ __REDIR(recvmmsg, __recvmmsg_time64);
 #endif
 
 /* ===== DARWIN_OVERRIDES: Darwin socket constants =====
- * musl's numbers are Linux's.  The fatal one is SOL_SOCKET: Linux says 1,
- * Darwin says 0xffff, so a sendmsg() carrying an SCM_RIGHTS control message
- * (how tmux passes a tty fd to its server) fails with EINVAL.
- */
+ * iOS 10 has NO SOCK_NONBLOCK/SOCK_CLOEXEC type flags (probed: every
+ * candidate bit except 0x1 is rejected with EINVAL).  Undefine musl's so
+ * callers fall back to fcntl(F_SETFL, O_NONBLOCK) which works. */
+#undef SOCK_NONBLOCK
+#undef SOCK_CLOEXEC
 #undef SOL_SOCKET
 #define SOL_SOCKET	0xffff
 #undef SOL_LOCAL
@@ -529,5 +530,6 @@ __REDIR(recvmmsg, __recvmmsg_time64);
 #define SCM_RIGHTS	0x01
 #undef SCM_TIMESTAMP
 #define SCM_TIMESTAMP	0x02
+#define IP_TOS          3       /* Darwin (BSD): IP options byte */
 /* ===== end DARWIN_OVERRIDES ===== */
 #endif
