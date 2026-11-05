@@ -53,6 +53,10 @@ struct stat {
 #define st_atim st_atimespec
 #define st_mtim st_mtimespec
 #define st_ctim st_ctimespec
+/* gnulib's stat-time.h uses the bare st_*tim names once it sees the
+   *_TV_NSEC probes succeed; without st_birthtim it fails to compile with
+   "no member named 'st_birthtim' in 'struct stat'". */
+#define st_birthtim st_birthtimespec
 
 int stat(const char *__restrict, struct stat *__restrict);
 int fstat(int, struct stat *);

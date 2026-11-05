@@ -78,8 +78,25 @@ size_t wcstombs (char *__restrict, const wchar_t *__restrict, size_t);
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
-size_t __ctype_get_mb_cur_max(void);
-#define MB_CUR_MAX (__ctype_get_mb_cur_max())
+/* MB_CUR_MAX: musl routes this through a function, __ctype_get_mb_cur_max(),
+   which is a glibc internal.  Darwin has no such function -- it exports a
+   plain int variable instead:
+   
+       extern int __mb_cur_max;         -- measured on the device: 1
+   
+   Verified on an iPad 4 (iOS 10.3.3) by resolving both names: the function
+   form aborts with
+       dyld: lazy symbol binding failed: Symbol not found:
+             ___ctype_get_mb_cur_max
+   while reading __mb_cur_max as data returns 1 and keeps working after
+   setlocale().  Calling the data symbol as a function instead bus-errors,
+   which is how the difference was pinned down.
+   
+   Any program calling MB_CUR_MAX therefore died at first use, not at link
+   time -- the link test cannot see it because the kit links with
+   -undefined dynamic_lookup. */
+extern int __mb_cur_max;
+#define MB_CUR_MAX (__mb_cur_max)
 
 #define RAND_MAX (0x7fffffff)
 

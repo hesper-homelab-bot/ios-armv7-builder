@@ -39,9 +39,19 @@ extern const struct in6_addr in6addr_loopback;
 
 #define IN6_IS_ADDR_LOOPBACK(a) \
     ((*(const uint32_t *)(a) == 0) && \
-     (**(const uint32_t *)((const char *)(a)+4) == 0) && \
+     (*(const uint32_t *)((const char *)(a)+4) == 0) && \
      (*(const uint32_t *)((const char *)(a)+8) == 0) && \
      (*(const uint32_t *)((const char *)(a)+12) == ntohl(1)))
+
+/* POSIX requires IN6_ARE_ADDR_EQUAL, but musl only ships the IN6_IS_ADDR_*
+   predicates above.  wget's host.c calls it (comparing two v6 addresses) and
+   fails to compile with "call to undeclared function".  Byte comparison is
+   what every implementation does. */
+#ifndef IN6_ARE_ADDR_EQUAL
+#define IN6_ARE_ADDR_EQUAL(a, b) \
+    (__builtin_memcmp((const void *)(a), (const void *)(b), \
+                      sizeof(struct in6_addr)) == 0)
+#endif
 
 #define IN6_IS_ADDR_MULTICAST(a) (((const uint8_t *)(a))[0] == 0xff)
 #define IN6_IS_ADDR_LINKLOCAL(a) \
