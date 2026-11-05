@@ -12,11 +12,17 @@ What is inside:
 
 | path | what it is |
 |---|---|
-| `sysroot-overlay/` | 30 headers that turn musl's Linux-ABI headers into Darwin-ABI ones — the heart of this repo |
+| `sysroot-overlay/` | 35 headers that turn musl's Linux-ABI headers into Darwin-ABI ones — the heart of this repo |
 | `tools/` | `clang`→`ld64` compiler wrapper and llvm-ar Darwin-archive helpers |
 | `tmux/` | flagship build: full **tmux** (3.5a and 3.8 verified on an iPad 4) |
+| `openssl/` | **OpenSSL 4.0.3** (`version`, `rand`, AES/SHA all pass on device) |
+| `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
+
+Upstream still supports 32-bit iOS: OpenSSL's `Configurations/15-ios.conf`
+keeps the `ios-cross` target (`asm_arch armv4`) and curl has no 64-bit
+assumption. Both build and run on an iPad 4 / iOS 10.3.3.
 
 ## Quick start
 
@@ -28,6 +34,10 @@ export LD64_LIBS=/path/to/x-libdispatch/lib:/path/to/x-tapi/lib
 ./scripts/make-deb.sh                                  # sign + package
 ./scripts/make-repo.sh                                 # regenerate the APT repo
 git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
+
+(cd openssl && ./build.sh)      # OpenSSL 4.0.3 -> out/openssl-4.0.3-armv7
+(cd curl    && ./build.sh)      # curl 8.16.0    -> out/curl-8.16.0-armv7
+./curl/make-deb.sh              # package both as openssl4 / curl4
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
@@ -47,11 +57,39 @@ Add it in Cydia/Sileo, or on the command line as root:
 ```sh
 echo "deb https://hesper-homelab-bot.github.io/ios-armv7-builder/repo stable main" \
     > /etc/apt/sources.list.d/ios-tools.list
-apt-get update && apt-get install tmux
+apt-get update
+apt-get install tmux              # /usr/bin/tmux
+apt-get install openssl4 curl4    # /var/mobile/openssl4, /var/mobile/tools
+```
+
+`openssl4` and `curl4` deliberately install under `/var/mobile` and never
+shadow `/usr/lib/libcrypto.dylib` or `/usr/bin/curl`: the system copies are
+what `sshd` and the rest of iOS are linked against, and replacing them
+bricks remote access. Removing the packages (`rm -rf /var/mobile/openssl4`)
+leaves the device exactly as it was.
+
+curl needs a CA bundle for HTTPS:
+
+```sh
+export SSL_CERT_FILE=/etc/ssl/cert.pem
+curl -sS https://github.com            # 200, TLS 1.2
 ```
 
 Releases are also on the
 [Releases page](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases).
+
+## Verified on an iPad 4 (iOS 10.3.3, armv7)
+
+| program | result |
+|---|---|
+| tmux 3.8 | sessions, panes, detach/reattach, `list-windows` |
+| OpenSSL 4.0.3 | `version`, `rand -hex`, `dgst -sha256`, AES-256-CBC round-trip, `speed` ≈36 MB/s AES / ≈37 MB/s SHA-256 (pure C, no asm) |
+| curl 8.16.0 | `https://` to github.com / curl.se / cloudflare.com / apple.com / baidu.com — all HTTP 200, TLS 1.2 handshake ≈6 s, redirects and POST verified |
+
+TLS 1.3 is compiled in but every public test host refused it from this
+device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
+enabled (no nghttp2). `--disable-threaded-resolver` is used because
+`pthread_cleanup_push`/`pop` are macro machinery on Darwin.
 
 ## Why this is not just `./configure && make`
 
@@ -121,6 +159,34 @@ Each of these produced its own bug before being fixed; the fixes live in
 | `sys/ioctl.h` | `TIOCGWINSZ` and friends are completely different ioctls |
 | `unistd.h` | `closefrom` does not exist on iOS 10; autoconf probes always succeed because the linker tolerates undefined symbols, so it must be disabled by hand and replaced by the project's bundled copy — it aborts in the forked child of every new pane, visible only in `/var/mobile/Library/Logs/CrashReporter/*.ips` |
 
+Later additions, found while porting OpenSSL 4 and curl 8:
+
+| header | trap |
+|---|---|
+| `pthread.h` | musl's `pthread_once_t` is a 4-byte `int`; Darwin's is a 12-byte `{long __sig; char __opaque[8]}` with `_PTHREAD_ONCE_SIG_init = 0x71B7236C`. Every `CRYPTO_ONCE`/`pthread_once` therefore corrupts memory and aborts inside `os_once` with `BUG IN CLIENT OF LIBPLATFORM: Unlock of an os_once_t not owned by current thread`. Also carries the 32-bit `pthread_mutex_t` (44), `cond` (28), `rwlock` (128) and `attr` (40) layouts, and Darwin's `PTHREAD_CREATE_DETACHED = 2` (Linux says 1). `bits/alltypes.h` must surrender its 14 `__NEED_pthread_*` typedef blocks, and `sys/types.h`/`signal.h`/`mqueue.h` their `__NEED_pthread_*` defines, or the two definitions collide |
+| `netinet/in.h`, `sys/socket.h` | **No `sa_len`/`sin_len`.** Darwin's `struct sockaddr` is `{u_char sa_len; sa_family_t sa_family; ...}` with the length first; musl omits it and its `sa_family_t` is 16-bit. Without the leading byte, `inet_ntop()` reads a 16-bit family from offset 0, gets `0x0210`, and fails with `EAFNOSUPPORT` — curl reports `connect to port 0 failed: Address family not supported by protocol family`. Sizes that must come out right: `sockaddr` 16, `sockaddr_in` 16, `sockaddr_in6` 28, `sockaddr_storage` 128 |
+| `sys/socket.h` | `SOCK_NONBLOCK`/`SOCK_CLOEXEC` **do not exist on iOS 10.** musl hands out `0x80000`; curling ORs `SOCK_NONBLOCK` into the socket type, the kernel answers `EINVAL`, and every connection dies in ~1 ms with "Failed initialization". Probing every candidate bit showed only the low two bits are even meaningful (`0x2`/`0x4` are `SOCK_DGRAM`/`SOCK_RAW`; `0x8`…`0x40` are rejected). The overlay `#undef`s both so callers fall back to `fcntl(F_SETFL, O_NONBLOCK)`, which works because `O_NONBLOCK` is already corrected |
+| `netdb.h` | `h_errno` is a Darwin global that musl does not declare |
+| `netinet/in6.h` | `struct in6_pktinfo` plus Darwin's option values: `IPV6_PKTINFO` 46 and `IPV6_RECVPKTINFO` 61, **not** the Linux 50/49. `netinet/in.h` must not also define the Linux `IPV6_*` block, or those values win by being included second |
+| `TargetConditionals.h`, `libkern/OSByteOrder.h` | Apple-only headers OpenSSL includes unconditionally; clean-room stubs |
+
+**`libSystem` is missing compiler-rt's generic atomics.** clang lowers OpenSSL's
+`CRYPTO_atomic_*` on armv7 to `__atomic_load`, `__atomic_store`,
+`__atomic_compare_exchange` and `__atomic_is_lock_free`, none of which iOS 10
+exports. clang also refuses to let C code define them (`cannot redeclare builtin
+function`, even with `-fno-builtin-<name>`), so `openssl/atomic_compat.c`
+implements them under internal names with a libgcc-style lock table and
+`openssl/atomic_alias.s` provides the public symbols as Mach-O long-branch
+stubs (`ldr pc, [pc, #-4]`).
+
+**Autoconf link tests always succeed here.** Because the kit links with
+`-undefined dynamic_lookup`, a `checking for eventfd... yes` is worthless: the
+symbol is simply left undefined and dyld aborts at first use
+(`dyld: lazy symbol binding failed: Symbol not found: _eventfd`). Every Linux-only
+function a project probes for — `eventfd`, `pipe2`, `accept4`, `recvmmsg`,
+`sendmmsg`, `getpass_r`, `gsasl_init` — has to be switched off by hand after
+`configure` runs.
+
 Debugging tips that actually worked, in order of usefulness:
 
 1. **Read the crash reports first.** A dyld abort produces no other output;
@@ -132,6 +198,18 @@ Debugging tips that actually worked, in order of usefulness:
 3. **Instrument the platform libraries.** A debug `fprintf` around `poll()`
    showing the fds, requested events and returned `revents` settles arguments
    about "lost wakeups" immediately.
+4. **Bisect with a throwaway program against the same headers.** When curl
+   failed to connect in 1 ms but `ssh` from the same device worked, a 30-line
+   `socket()`/`connect()` program passed and a `getaddrinfo()` one passed too —
+   which proved the kernel and resolver were fine and pushed the search into
+   curl's own socket setup. Probe the *candidate constant* directly: looping
+   `socket(AF_INET, SOCK_STREAM | bit, 0)` over single bits found that iOS 10
+   accepts none of them.
+5. **Never trust a host-signed binary.** `ldid -S` on the build machine
+   intermittently yields a binary the device kills with `Killed: 9` (rc 137)
+   and *no crash report at all*, even though the md5 matches. Re-signing the
+   same bytes on the device with its own `ldid -S` makes it run. The packaging
+   scripts therefore sign twice.
 
 ## Credits and licence
 

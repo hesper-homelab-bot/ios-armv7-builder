@@ -151,6 +151,11 @@ int	pthread_key_delete(pthread_key_t);
 void   *pthread_getspecific(pthread_key_t);
 int	pthread_setspecific(pthread_key_t, const void *);
 
+/* ---- cancellation ---- */
+int	pthread_setcancelstate(int, int *);
+int	pthread_setcanceltype(int, int *);
+void	pthread_testcancel(void);
+
 /* ---- attributes ---- */
 int	pthread_attr_init(pthread_attr_t *);
 int	pthread_attr_destroy(pthread_attr_t *);
