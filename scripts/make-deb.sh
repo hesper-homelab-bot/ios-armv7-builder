@@ -22,15 +22,22 @@ ART="$OUT/tmux-$TMUX_VERSION-armv7"
 [ -f "$ART" ] || { echo "missing built binary: $ART (run build.sh first)" >&2; exit 1; }
 
 if [ -z "$SIGNED_BIN" ]; then
-    [ -n "$DEVICE" ] || { echo "set DEVICE (ssh host) or SIGNED_BIN" >&2; exit 1; }
-    echo "==> signing on $DEVICE with its ldid"
-    scp -o BatchMode=yes "$ART" "$DEVICE:/var/mobile/.tmux-sign.tmp" >/dev/null
-    ssh -o BatchMode=yes "$DEVICE" \
-        'chmod +x /var/mobile/.tmux-sign.tmp && ldid -S /var/mobile/.tmux-sign.tmp' \
-        >/dev/null 2>&1
     SIGNED_BIN="$OUT/.tmux-$TMUX_VERSION-signed"
-    scp -o BatchMode=yes "$DEVICE:/var/mobile/.tmux-sign.tmp" "$SIGNED_BIN" >/dev/null
-    ssh -o BatchMode=yes "$DEVICE" 'rm -f /var/mobile/.tmux-sign.tmp' >/dev/null
+    if command -v ldid >/dev/null 2>&1; then
+        echo "==> signing with host ldid"
+        cp "$ART" "$SIGNED_BIN"
+        ldid -S "$SIGNED_BIN"
+    else
+        # fallback: use the device's own ldid over ssh
+        [ -n "$DEVICE" ] || { echo "no host ldid; set DEVICE (ssh host)" >&2; exit 1; }
+        echo "==> signing on $DEVICE with its ldid"
+        scp -o BatchMode=yes "$ART" "$DEVICE:/var/mobile/.tmux-sign.tmp" >/dev/null
+        ssh -o BatchMode=yes "$DEVICE" \
+            'chmod +x /var/mobile/.tmux-sign.tmp && ldid -S /var/mobile/.tmux-sign.tmp' \
+            >/dev/null 2>&1
+        scp -o BatchMode=yes "$DEVICE:/var/mobile/.tmux-sign.tmp" "$SIGNED_BIN" >/dev/null
+        ssh -o BatchMode=yes "$DEVICE" 'rm -f /var/mobile/.tmux-sign.tmp' >/dev/null
+    fi
 fi
 
 work="$(mktemp -d)"
