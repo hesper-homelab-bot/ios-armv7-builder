@@ -12,7 +12,7 @@ What is inside:
 
 | path | what it is |
 |---|---|
-| `sysroot-overlay/` | 35 headers that turn musl's Linux-ABI headers into Darwin-ABI ones — the heart of this repo |
+| `sysroot-overlay/` | 37 headers that turn musl's Linux-ABI headers into Darwin-ABI ones — the heart of this repo |
 | `tools/` | `clang`→`ld64` compiler wrapper and llvm-ar Darwin-archive helpers |
 | `tmux/` | flagship build: full **tmux** (3.5a and 3.8 verified on an iPad 4) |
 | `openssl/` | **OpenSSL 4.0.3** (`version`, `rand`, AES/SHA all pass on device) |
@@ -169,6 +169,35 @@ Later additions, found while porting OpenSSL 4 and curl 8:
 | `netdb.h` | `h_errno` is a Darwin global that musl does not declare |
 | `netinet/in6.h` | `struct in6_pktinfo` plus Darwin's option values: `IPV6_PKTINFO` 46 and `IPV6_RECVPKTINFO` 61, **not** the Linux 50/49. `netinet/in.h` must not also define the Linux `IPV6_*` block, or those values win by being included second |
 | `TargetConditionals.h`, `libkern/OSByteOrder.h` | Apple-only headers OpenSSL includes unconditionally; clean-room stubs |
+
+A third round, found while porting GNU wget 1.25.0.  One entry is not a new
+trap but a correction to the row above, and it is the most instructive of the
+lot:
+
+**The `sa_len` fix in the `sys/socket.h` row above was never actually made.**
+`netinet/in.h` got `sin_len`, but `sys/socket.h`'s `struct sockaddr` still
+starts at `sa_family`, so the README described a fix the tree did not contain
+(`git log -S'sa_len'` shows the symbol was never committed there until it was
+added for wget).  Nothing noticed because curl passes the `sockaddr` that
+`getaddrinfo()` returns straight back to `connect()` — the *system* fills the
+memory in, so a wrong header still byte-counts 16 and works.  wget's own
+socket layer inspects the struct, so it fails at once: `getaddrinfo()`
+resolves correctly and then every address fails `connect()` with
+`EAFNOSUPPORT`.  The lesson generalises: a header that is wrong in a way that
+only matters to code that *touches* the field will pass every test you already
+have, and the size is not a safety net because musl's and Darwin's
+`sockaddr` are both 16 bytes with different layouts.
+
+| header | trap |
+|---|---|
+| `sys/socket.h` | `sa_len` missing from `sockaddr`, and `ss_len` from `sockaddr_storage` (which also used musl's padding and came out 136 bytes instead of 128) — see the paragraph above |
+| `stdlib.h` | `MB_CUR_MAX` was `__ctype_get_mb_cur_max()`, a **glibc** internal.  Darwin exports a plain `int` variable, `__mb_cur_max`.  Measured on the device: the function form aborts with `dyld: lazy symbol binding failed: Symbol not found: ___ctype_get_mb_cur_max`; the data form returns 1 and survives `setlocale()`.  Calling the data symbol *as a function* bus-errors, which is how the two were told apart.  Any program using `MB_CUR_MAX` died at first use, not at link time |
+| `unistd.h` | six declared-but-absent functions are declared here after being confirmed on the device one at a time: `getpgrp`, `setpgrp`, `fdatasync`, `sbrk`, `ualarm`, `fpathconf` and `issetugid` (wget 1.25 needs `getpgrp`, gnulib needs `issetugid`) |
+| `sys/stat.h` | no `st_birthtim` alias for `st_birthtimespec`, so gnulib's `stat-time.h` fails with `no member named 'st_birthtim' in 'struct stat'` |
+| `netinet/in6.h` | musl omits `IN6_ARE_ADDR_EQUAL` outright.  Also fixed a typo in `IN6_IS_ADDR_LOOPBACK`: a stray second dereference meant the second word was never compared, so the macro accepted **every** IPv6 address as a loopback |
+| `unistd.h` (again) | Darwin's `pathconf` selectors are not Linux's — `_PC_NAME_MAX` is **4**, not 3.  Established by binary-search over `open()`: the filesystem rejects a 256-character path component with `ENAMETOOLONG`, and selector 4 is the one that returns 255.  A jailbroken device has no `/usr/include`, so this constant has to be measured, not copied from a header you do not have |
+| `xlocale.h` | Apple deleted it years ago (its contents moved into `<locale.h>`); gnulib's `localcharset.c` still includes it for `MB_CUR_MAX_L` whenever it defines `DARWIN7` |
+| `spawn.h` | Darwin represents `posix_spawnattr_t` and `posix_spawn_file_actions_t` as **4-byte opaque pointers**, not musl's 80- and 72-byte by-value structs.  Measured on the device: `posix_spawnattr_init()` writes 4 bytes into an `0xAA`-filled buffer and leaves the rest untouched |
 
 **`libSystem` is missing compiler-rt's generic atomics.** clang lowers OpenSSL's
 `CRYPTO_atomic_*` on armv7 to `__atomic_load`, `__atomic_store`,
