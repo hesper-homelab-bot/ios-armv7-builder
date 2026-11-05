@@ -67,6 +67,22 @@ apt-get update && apt-get install tmux
 Releases are also downloadable directly from the
 [Releases page](https://github.com/hesper-homelab-bot/ios-tmux-builder/releases).
 
+### Bonus: `tweak/nocablewarn`
+
+A tiny MobileSubstrate tweak that suppresses the "可能不支持此配件 / This
+accessory may not be supported" alert SpringBoard shows for non-MFi charging
+cables.  It hooks `-[SBUIController
+setIsConnectedToUnsupportedChargingAccessory:]` and forces the flag to NO —
+note this only silences the alert; whether the device charges from an
+unauthenticated cable is decided by the Tristar chip in hardware.  Verified
+against the device's own AppleSmartBattery node: the A/B test (tweak
+installed vs removed, `ioreg -w0 -l -n AppleSmartBattery`) shows identical
+`ExternalConnected` behaviour, so the tweak is cosmetic by design.
+
+The hook class is hard-coded because `objc_copyClassList` aborted the ObjC
+runtime on this device when called from a tweak constructor; the owner class
+was found statically with `llvm-otool -o SpringBoard`.
+
 ### Manual
 
 The binary must be signed, or iOS kills it on launch:
