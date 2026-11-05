@@ -127,3 +127,9 @@ void endservent(void);
 #endif
 
 #endif
+
+/* Darwin: h_errno is a plain global in libSystem (legacy resolver API).
+   Guarded so a threading layer can still override it with a macro. */
+#if !defined(h_errno)
+extern int h_errno;
+#endif

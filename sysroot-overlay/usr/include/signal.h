@@ -19,12 +19,11 @@ extern "C" {
 #define __NEED_pid_t
 #define __NEED_uid_t
 #define __NEED_struct_timespec
-#define __NEED_pthread_t
-#define __NEED_pthread_attr_t
 #define __NEED_time_t
 #define __NEED_clock_t
 #define __NEED_sigset_t
 
+#include <pthread.h>
 #include <bits/alltypes.h>
 
 #define SIG_BLOCK     0
