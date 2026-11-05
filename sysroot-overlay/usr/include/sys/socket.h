@@ -366,15 +366,38 @@ struct linger {
 #define SCM_RIGHTS      0x01
 #define SCM_CREDENTIALS 0x02
 
+/*
+ * Darwin puts the length first: `struct sockaddr` starts with `sa_len`, an
+ * `unsigned char` giving the total size including that byte itself.
+ *
+ * musl omits it, which shifts every following field one byte to the left and
+ * makes 16 into 17 bytes.  On the device this is silent but fatal: the kernel
+ * returns an `EINVAL`-family error or, if the family is read from the wrong
+ * offset, `connect()` fails with `EAFNOSUPPORT` ("Address family not
+ * supported by protocol family") for every resolved address -- exactly what
+ * wget printed (DEBUG showed DNS working, then connect() failing).
+ *
+ * Sizes that must come out right: sockaddr 16, sockaddr_in 16, sockaddr_in6
+ * 28, sockaddr_storage 128.  The companion fix lives in
+ * netinet/in.h (sin_len) and netinet/in6.h (sin6_len), which already had it;
+ * this file was the one that had drifted.
+ */
 struct sockaddr {
-	sa_family_t sa_family;
-	char sa_data[14];
+	unsigned char	sa_len;		/* Darwin: total length */
+	sa_family_t	sa_family;
+	char		sa_data[14];
 };
 
+#define _SS_SIZE		128
+#define _SS_PAD1SIZE	(_SS_SIZE - sizeof(unsigned char) - sizeof(sa_family_t) - sizeof(int))
+#define _SS_PAD2SIZE	(_SS_SIZE - sizeof(unsigned char) - sizeof(sa_family_t) - _SS_PAD1SIZE - sizeof(int))
+
 struct sockaddr_storage {
-	sa_family_t ss_family;
-	char __ss_padding[128-sizeof(long)-sizeof(sa_family_t)];
-	unsigned long __ss_align;
+	unsigned char	ss_len;		/* Darwin: length byte, as in sockaddr */
+	sa_family_t	ss_family;
+	char		__ss_pad1[_SS_PAD1SIZE];	/* 6 bytes  */
+	int		__ss_align;
+	char		__ss_pad2[_SS_PAD2SIZE];	/* 112 bytes */
 };
 
 int socket (int, int, int);
