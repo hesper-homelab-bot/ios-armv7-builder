@@ -1,0 +1,12 @@
+Package: com.hesper.nocablewarn
+Name: No Cable Warn
+Version: 1.0-2
+Section: Tweaks
+Priority: optional
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: mobilesubstrate
+Description: Suppress the unsupported-charging-accessory alert on iOS 10
+ Hooks SpringBoard so the flag behind the "This accessory may not be
+ supported" (可能不支持此配件) alert never gets set. Charging itself is
+ unaffected (that is hardware-level).
