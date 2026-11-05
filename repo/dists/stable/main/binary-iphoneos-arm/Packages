@@ -1,0 +1,25 @@
+Package: tmux
+Version: 3.8-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/t/tmux/tmux_3.8-1_iphoneos-arm.deb
+Size: 639590
+MD5sum: d9adc0c22eb5cfd43cd4617a41d3f92c
+SHA1: 931c01bea4a218a0dbbcae17d207047a80093a6c
+SHA256: efebf9acb1c50ec2dbf2f622ae7cebc8ee5d6c1347df0830ae9c78af698f5db3
+Section: Terminal Utilities
+Priority: optional
+Homepage: https://github.com/tmux/tmux
+Description: Terminal multiplexer - windows, panes, detachable sessions
+ tmux is a terminal multiplexer: switch between several programs in one
+ terminal, detach sessions (they keep running in the background) and
+ reattach later, share sessions across SSH logins, and split windows into
+ panes.
+ .
+ Cross-compiled from upstream source for armv7 iOS 10.x (no Xcode, no iOS
+ SDK). Requires iOS 10.3 or later on an armv7 (32-bit) device.
+Author: Nicholas Marriott <nicholas.marriott@gmail.com>
+Depiction: https://github.com/hesper-homelab-bot/ios-tmux-builder
+Name: tmux
+

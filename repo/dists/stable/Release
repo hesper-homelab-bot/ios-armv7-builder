@@ -1,0 +1,22 @@
+Origin: hesper-homelab-bot
+Label: hesper-homelab-bot iOS Tools
+Suite: stable
+Version: 1.0
+Codename: stable
+Architectures: iphoneos-arm
+Components: main
+Description: Cross-compiled tools for armv7 iOS 10.x - built on Linux, no Xcode
+Date: Thu, 05 Nov 2026 00:57:26 -0000
+
+MD5Sum:
+ 95589b570d1c93dcc12e31eb409be56a     1023 main/binary-iphoneos-arm/Packages
+ b3e67fea6ecfa6456ef80897dc01b330      668 main/binary-iphoneos-arm/Packages.gz
+ 092076811f0f6b26ebaa8b802a36c033      719 main/binary-iphoneos-arm/Packages.bz2
+SHA1:
+ 0d726770a1020cd8929a67442fc117d734b79726     1023 main/binary-iphoneos-arm/Packages
+ 1eec2a71741ef7bdb257221831587473f82df8e3      668 main/binary-iphoneos-arm/Packages.gz
+ 6bc1a0b3358b5103265b63f38dc37e0134526095      719 main/binary-iphoneos-arm/Packages.bz2
+SHA256:
+ 605c54d3c465cfb0416f89b8a0d6d590e4f210aff3a33bf931c492a39cd7da5a     1023 main/binary-iphoneos-arm/Packages
+ 6cdbfe17e5d3b8c8b6eaf1b923dbc10e81d252244854ab8956b8dafb9fcacd1b      668 main/binary-iphoneos-arm/Packages.gz
+ 40d58900c5b126b09c11172de7d738f271f92ad0084970689b1c2c0c4fdaa606      719 main/binary-iphoneos-arm/Packages.bz2
