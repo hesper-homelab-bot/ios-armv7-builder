@@ -17,7 +17,8 @@
 # ============================================================================
 set -euo pipefail
 
-here="$(cd "$(dirname "$0")" && pwd)"
+here="$(cd "$(dirname "$0")" && pwd)"      # tmux/
+root="$(cd "$here/.." && pwd)"                 # repo root
 
 # --------------------------------------------------------------- configuration
 TMUX_VERSION="${TMUX_VERSION:-latest}"
@@ -32,8 +33,8 @@ ARCH="${ARCH:-armv7}"
 MUSL_ARCH="${MUSL_ARCH:-arm}"
 DEVICE="${DEVICE:-}"                      # ssh host; empty = ask for a dir
 
-WORK="${WORK:-$here/tmp}"
-OUT="${OUT:-$here/out}"
+WORK="${WORK:-$root/tmp}"
+OUT="${OUT:-$root/out}"
 SYSROOT="$WORK/sysroot"
 PREFIX="$WORK/install"
 STUBDIR="$WORK/stubs"
@@ -167,7 +168,7 @@ make_sysroot() {
         >> "$SYSROOT/usr/include/bits/syscall.h"
 
     # everything we had to correct for the Darwin ABI wins over the above
-    cp -r "$here/sysroot-overlay/usr/include/." "$SYSROOT/usr/include/"
+    cp -r "$root/sysroot-overlay/usr/include/." "$SYSROOT/usr/include/"
     echo "    headers: $(find "$SYSROOT/usr/include" -name '*.h' | wc -l)"
 }
 
@@ -199,9 +200,9 @@ export_cc() {
     export IOS_PREFIX="$PREFIX"
     export IOS_LD_LIBRARY_PATH="$LD64_LIBS"
     export LLVM_AR
-    export CC="$here/tools/cc-wrapper.sh"
-    export AR="$here/tools/darwin-ar"
-    export RANLIB="$here/tools/darwin-ranlib"
+    export CC="$root/tools/cc-wrapper.sh"
+    export AR="$root/tools/darwin-ar"
+    export RANLIB="$root/tools/darwin-ranlib"
     export CPPFLAGS="-I$SYSROOT/usr/include -I$PREFIX/include"
     export CFLAGS="-O2 $CPPFLAGS"
     export LDFLAGS="-L$PREFIX/lib"
