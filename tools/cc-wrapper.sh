@@ -37,12 +37,14 @@ while [ $# -gt 0 ]; do
     -static) ;;
     -pie) LDARGS+=("-pie") ;;
     -L*) LDARGS+=("$1") ;;
-    -lSystem|-lc|-lm|-lpthread|-lutil|-lresolv|-ldl|-lrt|-lintl|-lpanel|-lform|-ltinfo)
+    -lSystem|-lc|-lm|-lpthread|-lutil|-lresolv|-ldl|-lrt|-lintl|\
+-lpanel|-lform|-ltinfo|-lncurses|-lncursesw|-lz)
         ;;                                     # all inside libSystem on Darwin
     -levent|-levent_core|-levent_extra)
-        # libevent is the one library we build ourselves and link statically
+        # libevent static archive lives in the build prefix
         LDARGS+=("-L${IOS_PREFIX:-/nonexistent}/lib" "$1") ;;
-    -l*) ;;                                    # resolved at runtime
+    -l*) LDARGS+=("$1") ;;                     # ld64 resolves via the -L paths
+                                               # (e.g. -lssl -lcrypto with -L.)
     -framework) shift ;;
     -isysroot*) ;;
     -I*|-isystem*) CFLAGS+=("$1") ;;
