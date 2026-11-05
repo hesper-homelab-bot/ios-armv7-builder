@@ -57,7 +57,7 @@ Architecture: iphoneos-arm
 Maintainer: $MAINTAINER
 Author: Nicholas Marriott <nicholas.marriott@gmail.com>
 Homepage: https://github.com/tmux/tmux
-Depiction: https://github.com/hesper-homelab-bot/ios-tmux-builder
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Depends: firmware (>= 10.3)
 Description: Terminal multiplexer - windows, panes, detachable sessions
  tmux is a terminal multiplexer: switch between several programs in one

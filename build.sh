@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-#  ios-tmux-builder — build tmux for a jailbroken 32-bit iOS device (armv7),
+#  ios-armv7-builder — build tmux for a jailbroken 32-bit iOS device (armv7),
 #  on a Linux host, with no Xcode and no iOS SDK.
 #
 #  Result: a Mach-O armv7 executable (LC_VERSION_MIN_IPHONEOS 10.3) that links
