@@ -198,6 +198,121 @@ OpenSSH's `sftp` directory listings were broken by a wrong `struct dirent`
 in the shared sysroot overlay until `9cabef1` — see the `OpenSSH 10.6p2`
 section for the two-byte root cause and how it was measured.
 
+## Dropbear and sftp: who provides the server, and who does not
+
+**Dropbear provides no sftp-server.** This is easy to get wrong — it looks like
+a package we simply failed to compile — but the source says otherwise, in
+`src/default_options.h` right next to the two macros that govern it:
+
+```c
+#define DROPBEAR_SFTPSERVER 1
+#define SFTPSERVER_PATH "/usr/libexec/sftp-server"
+```
+
+and `default_options_guard.h` spells out the intent:
+
+> If you want to enable running an sftp server (such as the one included with
+> OpenSSH), set the path below and set `DROPBEAR_SFTPSERVER`. **The sftp-server
+> program is not provided by Dropbear itself.**
+
+`find -name '*sftp*'` over the whole 2026.94 tree returns nothing. Dropbear
+only gives the *path* its `svr-chansession.c` execs when a client asks for the
+`sftp` subsystem. That default path is OpenSSH's, and on this device it belongs
+to the `openssh` dpkg package (`dpkg -S /usr/libexec/sftp-server` → `openssh`),
+which is why dropbear's sftp cannot survive removing openssh:
+
+| transfer path | execs | survives `dpkg -r openssh`? |
+|---|---|---|
+| `db-scp` | `/var/mobile/tools/db-dbclient` — ours | **yes** |
+| dropbear sftp subsystem | `/usr/libexec/sftp-server` — openssh's | **no** |
+
+`db-scp` is fine because `build.sh` rewrites `DROPBEAR_PATH_SSH_PROGRAM` to our
+own dbclient. Nothing rewrites `SFTPSERVER_PATH`.
+
+### `WITH_DB_SFTPSERVER=1`: a from-scratch server, for testing only
+
+`sftp-server/` holds a hand-written SFTP protocol version 3 server in plain C
+over POSIX calls, so that dropbear's sftp can be self-contained without
+depending on either openssh's binary or anything else from this repo. It is
+built and shipped **only** when `build.sh` and `make-deb.sh` are given
+`WITH_DB_SFTPSERVER=1`; the default — and what the package installs — does not
+include it, leaving sftp on the openssh path and scp self-contained.
+
+> **This sftp-server is for testing and evaluation only. It is not recommended
+> for production use.** It is an unaudited implementation of a network
+> file-access protocol — path traversal, symlink resolution and permission
+> boundaries are exactly the parts that are hard to get right and that are
+> hardest to test. The fact that it is useful for proving the toolchain and for
+> local experiments is not the same as it being safe to expose to untrusted
+> users, and it is off by default for that reason. Do not enable it on a daemon
+> reachable by anyone you do not trust.
+
+Verified with the opt-in build: protocol version 3, `ls -la` correct on regular
+files, symlinks, a 240-byte filename and subdirectories; `get`/`put` round-trip
+on 150 KB byte-identical (md5 compared). That is enough to show it works, and
+deliberately not presented as more than that.
+
+One implementation note worth keeping: `build.sh` rewrites `SFTPSERVER_PATH`
+**in both directions**. The source tree is reused between builds (`DB_SRC`
+points at a persistent directory, not a freshly extracted tarball), so without
+an explicit restore a previous `WITH_DB_SFTPSERVER=1` run would leave the path
+pointing at a file the default package does not install, and the failure would
+only show up on the device as a subsystem that execs nothing.
+
+## Signing: what "Killed: 9" actually meant
+
+Every `make-deb.sh` here used to carry the same warning — *host ldid
+occasionally produces a binary the device kills with "Killed: 9" and no crash
+report; signing on the device always works* — and so reported to sign twice.
+That warning is wrong, and it is worth recording how it was disproved because
+it cost real effort for years.
+
+First, the two claims contradict each other in this repo's own history.
+`e3fd62b` ("sign with a host ldid when available") states the host-signed
+binary was *verified to run on the device* and closes the pipeline host-side.
+A later commit added the "Killed: 9" comment, and it was then copied verbatim
+into curl's, dropbear's and openssh's packaging.
+
+Second, on the device today `curl`, `wget` and every `db-*` binary are signed
+only on the host and have never been re-signed there — their mtimes are still
+the install times — and all of them run.
+
+Third, a controlled experiment settles it. Same binary, one variable:
+
+| state | result |
+|---|---|
+| unsigned | exit **137** (SIGKILL), `Killed: 9`, stdout and stderr both **empty** |
+| same binary, host `ldid -S` | runs, exits normally |
+| same binary, signed on device | runs, exits normally |
+
+The symptom is real; the diagnosis was not. The mechanism is in the old
+`sign()`:
+
+```sh
+sign() {
+    local src="$1" dst="$2"
+    cp "$src" "$dst"
+    ldid -S "$dst" 2>/dev/null || true      # <-- this
+}
+```
+
+`|| true` swallows the failure. When `ldid` is missing from `PATH`, or fails,
+the binary that reaches the package is **completely unsigned**, and an unsigned
+Mach-O is killed by the kernel during `exec` — before `main()`, hence no
+output and no crash report. It looked intermittent ("occasionally") because it
+depended on that one invocation succeeding, and it looked host-specific because
+the device-side step was run by a human who would have noticed a missing
+`ldid`, while the host-side failure was silent.
+
+So host signing works, and re-signing on the device buys nothing. The correct
+fix is to make the failure loud rather than to work around it — check `ldid` is
+available and verify the artifact carries a signature, instead of `|| true`.
+Note also that `out/` artifacts straight from `build.sh` are *unsigned* by
+design; signing happens on the copies `make-deb.sh` stages.
+
+(`ldid -e` reports success on signed and unsigned files alike here, so it is
+not a test for validity — executing the binary is.)
+
 ## The port layout, and who owns what
 
 Three SSH daemons, each on its own port, none of them a replacement for

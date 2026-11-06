@@ -110,12 +110,26 @@ chmod 0644 "$w/Library/LaunchDaemons/com.hesper.dropbear.plist"
 
 install -m 0755 "$here/dropbear-daemon.sh" "$w/var/mobile/.local/bin/dropbear-daemon.sh"
 
-for p in dropbear dbclient dropbearkey scp; do
+# The SFTP server is opt-in, in both directions: build.sh only compiles it when
+# WITH_DB_SFTPSERVER=1, and this package only ships it then too.  The default
+# is deliberately not to have it -- see the WITH_DB_SFTPSERVER block in
+# build.sh for why dropbear has no sftp server of its own.
+BINS="dropbear dbclient dropbearkey scp"
+if [ "${WITH_DB_SFTPSERVER:-0}" = "1" ]; then
+    BINS="$BINS sftp-server"
+fi
+for p in $BINS; do
     bin="$OUT/dropbear-$p-$DB_VERSION-armv7"
-    [ -f "$bin" ] || { echo "missing $bin (run dropbear/build.sh)" >&2; exit 1; }
+    [ -f "$bin" ] || {
+        echo "missing $bin -- rerun dropbear/build.sh${WITH_DB_SFTPSERVER:+ WITH_DB_SFTPSERVER=1}" >&2
+        exit 1; }
     sign "$bin" "$w/var/mobile/tools/db-$p"
     chmod 0755 "$w/var/mobile/tools/db-$p"
 done
+# The shipped set is asserted rather than assumed, so a build that silently
+# forgot the opt-in cannot ship a plist that points at a missing sftp-server.
+[ "${WITH_DB_SFTPSERVER:-0}" = "1" ] || [ ! -e "$w/var/mobile/tools/db-sftp-server" ] || {
+    echo "db-sftp-server present without WITH_DB_SFTPSERVER=1" >&2; exit 1; }
 
 deb="$OUT/dropbear4_${DB_VERSION}-${DEBREV}_iphoneos-arm.deb"
 dpkg-deb --root-owner-group -Zgzip --build "$w" "$deb" >/dev/null
