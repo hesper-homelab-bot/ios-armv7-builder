@@ -1,0 +1,63 @@
+# config.site for cross-building Dropbear for armv7 iOS 10 on Linux.
+#
+# Usage:
+#     CONFIG_SITE=/path/to/ios-config.site ./configure ...
+#
+# A config.site rather than --cache-file, for the same reason as wget's:
+# autoconf rewrites the cache file at the end of every run, so hand-edited
+# cache values survive exactly one configure.
+#
+# This kit links with `-undefined dynamic_lookup`, so ld64 accepts a call to
+# any symbol and autoconf's link test -- which only asks "did the link
+# succeed?" -- answers yes for functions iOS has never had.
+
+# ---- functions the link test reports but iOS does not export ---------------
+
+# C11 Annex K memset_s.  Not in musl, not in libSystem: a minimal program
+# calling it aborts with "dyld: lazy symbol binding failed:
+# Symbol not found: _memset_s".  Without this override Dropbear's
+# dbhelpers.c takes the first branch and fails to compile.
+ac_cv_func_memset_s=no
+
+# BSD/Darwin-name for bzero that "cannot be optimised away", but iOS does not
+# have it either -- same dyld abort, verified on an iPad 4.
+ac_cv_func_explicit_bzero=no
+
+# Linux getrandom(2), glibc 2.25 and later.  Not on iOS; gnulib-free Dropbear
+# falls back to its own PRNG seeding.
+ac_cv_func_getrandom=no
+
+# ---- a header that exists but not where musl looks ------------------------
+
+# Dropbear's dbutil.c guards the Mach clock with HAVE_MACH_MACH_TIME_H while
+# guarding the *functions* with HAVE_MACH_ABSOLUTE_TIME.  A normal autoconf
+# run therefore enables the code that uses the types without including the
+# header that declares them, and the build dies with
+#     error: unknown type name 'mach_timebase_info_data_t'
+#     error: call to undeclared function 'mach_timebase_info'
+# The header is genuinely absent from anything musl-derived, so it is supplied
+# by sysroot-overlay/usr/include/mach/mach_time.h -- and answering yes here
+# makes dbutil.c include it.  Both functions were verified on the device:
+# mach_absolute_time returns a sane counter with a timebase of 125/3.
+ac_cv_header_mach_mach_time_h=yes
+
+# setresgid/setresuid are BSD-isms that iOS 10 does not export.  Verified by
+# actually calling each one on the device: setegid, seteuid, setusershell and
+# getusershell all return, but these two abort with
+#     dyld: lazy symbol binding failed: Symbol not found: _setresgid
+# The one place Dropbear uses setresgid is to retain the utmp group so wtmp
+# records can be written -- accounting we have already turned off above.
+ac_cv_func_setresgid=no
+ac_cv_func_setresuid=no
+
+# clearenv() is not exported by iOS 10 either, verified at runtime: the
+# connection negotiated and authenticated fine and then died inside the
+# session setup with "dyld: lazy symbol binding failed: Symbol not found:
+# _clearenv".  musl declares it, and the link test passes, so configure
+# enables Dropbear's clearenv() call.
+#
+# That is no loss, because svr-chansession.c already guards the call with
+#     #ifdef HAVE_CLEARENV / clearenv(); / #else / environ[0] = NULL; / #endif
+# so answering "no" makes Dropbear use its own POSIX fallback, which is
+# better than any shim we could add.
+ac_cv_func_clearenv=no

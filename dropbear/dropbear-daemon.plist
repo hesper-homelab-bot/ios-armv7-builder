@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.hesper.dropbear</string>
+
+	<!-- Runs as root so that the server can drop to the connecting user's
+	     privileges after authentication, the same as /usr/sbin/sshd does.
+	     The bootstrap locates the wrapper next to the users' own scripts. -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>/var/mobile/.local/bin/dropbear-daemon.sh</string>
+	</array>
+
+	<!-- 2222, never 22.  The old sshd owns port 22 and SSH is the only
+	     remote access to this device; this daemon is added in parallel and
+	     never replaces it. -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>DROPBEAR_PORT</key>
+		<string>__DROPBEAR_PORT__</string>
+	</dict>
+
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+
+	<key>StandardErrorPath</key>
+	<string>/var/mobile/.local/dropbear-daemon.err</string>
+	<key>StandardOutPath</key>
+	<string>/var/mobile/.local/dropbear-daemon.log</string>
+</dict>
+</plist>
