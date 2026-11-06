@@ -30,10 +30,12 @@ DB_VERSION="${DB_VERSION:-2026.94}"
 DEBREV="${DEBREV:-1}"
 MAINTAINER="${MAINTAINER:-Hesper <hesperup@users.noreply.github.com>}"
 PORT="${DROPBEAR_PORT:-22}"
-# Second -p handed to the dropbear binary as a fallback listener.  Empty for a
-# single-port install; DROPBEAR_EXTRA_ARGS="" is honoured, so unset it to drop
-# the fallback rather than passing a stray empty argument.
-EXTRA_ARGS="${DROPBEAR_EXTRA_ARGS--p 2222}"
+# An extra -p handed to the dropbear binary as a fallback listener.  Empty by
+# default: the 2222 lifeline this used to carry is gone now that
+# com.hesper.osshd serves OpenSSH 10.6p2 on 22226.  Note the ${VAR-...} form
+# with a single dash -- "${VAR:-...}" would substitute the fallback for an
+# explicitly empty value too, which is the opposite of what we want here.
+EXTRA_ARGS="${DROPBEAR_EXTRA_ARGS-}"
 
 # Host ldid occasionally produces a binary the device kills with "Killed: 9"
 # and no crash report; signing on the device always works.  So sign twice,

@@ -14,12 +14,13 @@
 		<string>/var/mobile/.local/bin/dropbear-daemon.sh</string>
 	</array>
 
-	<!-- Primary port, plus a fallback kept alongside it.  Dropbear listens on
-	     every -p it is given, so the fallback is passed straight through to
-	     the binary as a second -p: if the primary port regresses, the 2222
-	     lifeline -- the one port that was verified working end to end --
-	     still accepts connections.
-	     Set DROPBEAR_EXTRA_ARGS to empty for a single-port installation. -->
+	<!-- One port.  This daemon used to carry a second -p on 2222 as a
+	     verified lifeline, and deliberately no longer does: a third SSH
+	     daemon (com.hesper.osshd, the cross-built OpenSSH 10.6p2) now
+	     listens on 22226, so the lifeline's job is done and one listener per
+	     job is easier to reason about.  If a fallback is ever wanted again,
+	     set DROPBEAR_EXTRA_ARGS to "-p 2222": the wrapper passes it straight
+	     through to the binary, which listens on every -p it is given. -->
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>DROPBEAR_PORT</key>
