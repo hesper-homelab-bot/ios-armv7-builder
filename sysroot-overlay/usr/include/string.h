@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <features.h>
+#include <sys/types.h>   /* mode_t for strmode() below */
 
 #if __cplusplus >= 201103L
 #define NULL nullptr
@@ -88,6 +89,14 @@ size_t strlcpy (char *, const char *, size_t);
 void explicit_bzero (void *, size_t);
 #endif
 
+/* timingsafe_bcmp() -- real on iOS (verified on the device, iPad 4 / iOS
+   10.3.3: it returns 0 for two identical buffers, and dyld binds the symbol
+   without complaint).  musl's string.h -- which this overlay replaces
+   wholesale -- declares neither it nor explicit_bzero, so a program that uses
+   it compiles an implicit int-returning declaration and then fails, as OpenSSH
+   does in sshkey.c. */
+int timingsafe_bcmp(const void *, const void *, size_t);
+
 #ifdef _GNU_SOURCE
 #define	strdupa(x)	strcpy(alloca(strlen(x)+1),x)
 int strverscmp (const char *, const char *);
@@ -96,6 +105,13 @@ char *strcasestr(const char *, const char *);
 void *memrchr(const void *, int, size_t);
 void *mempcpy(void *, const void *, size_t);
 #endif
+
+/* strmode() -- BSD's "struct stat mode to -rw-r--r--" formatter.  Present in
+   iOS's libSystem (verified on the device: links and returns).  musl's
+   string.h -- which this overlay replaces wholesale -- declares neither it nor
+   anything else from the BSD extension set.  OpenSSH's sftp-common.c uses it
+   for the default layout of an sftp listing. */
+void strmode(mode_t, char *);
 
 #ifdef __cplusplus
 }

@@ -46,8 +46,17 @@ struct passwd *fgetpwent(FILE *);
 int putpwent(const struct passwd *, FILE *);
 #endif
 
+/* user_from_uid() -- BSD's "uid to name, with a numeric fallback" helper, with
+   the signature (uid, noname) where noname selects numeric output.  Present in
+   iOS's libSystem (verified on the device: links and returns).  musl's pwd.h,
+   which this overlay replaces, stops at getpwnam_r.  OpenSSH's sftp-common.c
+   calls it for the default "sftp -l" listing, so without the declaration it
+   fails to compile with "call to undeclared function 'user_from_uid'". */
+const char *user_from_uid(uid_t, int);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
+

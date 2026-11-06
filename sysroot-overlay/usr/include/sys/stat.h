@@ -104,6 +104,15 @@ int chmod(const char *, mode_t);
 int fchmodat(int, const char *, mode_t, int);
 int mkdirat(int, const char *, mode_t);
 int mkfifoat(int, const char *, mode_t);
+/* The last three are present in iOS's libSystem but musl, whose sys/stat.h
+   this overlay replaces, stops at futimens().  OpenSSH's sftp-server.c calls
+   utimensat() and fchownat() with flag 0 for the SFTP "setstat" command, so
+   without these declarations the build fails with
+   "call to undeclared function 'utimensat'" / 'fchownat'. */
+int utimensat(int, const char *, const struct timespec *, int);
+int fchownat(int, const char *, uid_t, gid_t, int);
+/* (futimesat() is declared by <sys/time.h>, which this file does not include --
+   adding it here would conflict.) */
 int futimens(int, const struct timespec *);
 
 #endif

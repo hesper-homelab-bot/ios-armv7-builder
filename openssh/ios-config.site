@@ -1,0 +1,367 @@
+# config.site for cross-building OpenSSH portable for armv7 iOS 10 on Linux.
+#
+# Usage:
+#     CONFIG_SITE=/path/to/openssh/ios-config.site ./configure ...
+#
+# A config.site rather than --cache-file: autoconf rewrites the cache at the end
+# of every run, so hand-edited cache values survive exactly one configure.
+#
+# Every answer below was established by *executing* the candidate on the device
+# (iPad 4, iOS 10.3.3, armv7): a tiny caller is cross-compiled with this kit,
+# run there, and a missing symbol produces
+#     dyld: lazy symbol binding failed: Symbol not found: _<name>
+# That is the only trustworthy evidence available, because the kit links with
+# -undefined dynamic_lookup, so every AC_CHECK_FUNCS link test on the host
+# reports "yes" for functions iOS has never had.  See ../README.md for the
+# probe method and the results table.
+#
+# The list is split in two on purpose:
+#   * functions that DO exist on iOS but that musl's headers do not declare --
+#     those are answered honestly and the *headers* are fixed in
+#     sysroot-overlay/ instead (arc4random, timingsafe_bcmp, getentropy, ...);
+#   * functions that iOS 10 genuinely does not export -- those are answered "no"
+#     so the project's own openbsd-compat fallback is used, which is the
+#     portable answer and needs no shim of ours.
+
+# ---- genuinely absent from iOS 10: the link test lies ----------------------
+# Verified ABSENT on the device (each one produced a dyld "Symbol not found").
+
+# recallocarray() is BSD but only from macOS 10.13 / iOS 11 on; iOS 10 does not
+# have it.  openbsd-compat supplies its own, so answering "no" costs nothing.
+ac_cv_func_recallocarray=no
+
+# freezero() is an OpenBSDism not present on iOS.
+ac_cv_func_freezero=no
+
+# strtonum() is an OpenBSDism not present on iOS.
+ac_cv_func_strtonum=no
+
+# bcrypt_pbkdf() -- OpenBSD's KDF, not exported by iOS 10 (verified: dyld
+# "Symbol not found: _bcrypt_pbkdf").  Worth pinning because the default
+# link test says "yes" and, unlike most of the list, this one is not merely
+# unused code: sshkey.c calls it when *decrypting* an encrypted private key, so
+# without this pin an `ssh -i key` would abort at runtime instead of working.
+ac_cv_func_bcrypt_pbkdf=no
+
+# b64_ntop()/b64_pton() are in <resolv.h> on BSD but iOS 10 exports neither.
+ac_cv_func_b64_ntop=no
+ac_cv_func___b64_ntop=no
+ac_cv_func_b64_pton=no
+ac_cv_func___b64_pton=no
+
+# Linux-only syscall wrappers: accept4(2), pipe2(2), eventfd(2), epoll(7) are
+# all absent on iOS 10 (the whole epoll interface is).  OpenSSH prefers
+# kqueue() on Darwin anyway, which iOS does have -- verified present.
+ac_cv_func_accept4=no
+ac_cv_func_pipe2=no
+ac_cv_func_eventfd=no
+ac_cv_func_epoll_wait=no
+ac_cv_header_sys_epoll_h=no
+ac_cv_header_sys_eventfd_h=no
+
+# Linux getrandom(2).  getentropy(2) IS available and is answered truthfully
+# further down; OpenSSH's entropy.c uses it.
+ac_cv_func_getrandom=no
+
+# C11 Annex K and BSD spellings that iOS 10 lacks.  memset_s is a *header-only*
+# probe here (it compiles because musl declares it, then would abort at first
+# call), and it also selects the HAVE_EXPLICIT_MEMSET branch of
+# openbsd-compat/explicit_bzero.c -- a function that likewise does not exist on
+# iOS.  Answering "no" sends explicit_bzero down its volatile-bzero path.
+ac_cv_func_memset_s=no
+ac_cv_func_explicit_memset=no
+ac_cv_func_explicit_bzero=no
+ac_cv_func___explicit_bzero=no
+
+# ptsname_r() -- musl declares it under _GNU_SOURCE but iOS 10 does not export
+# it, so a program that uses it would abort at first call.
+ac_cv_func_ptsname_r=no
+
+# fmt_scaled() -- BSD libutil's "human readable size" helper.  The header is
+# already answered "no" (<util.h>, <libutil.h> and <bsd/libutil.h> are all
+# absent from this musl-derived sysroot), and the function itself is absent too
+# (verified on the device: "dyld: Symbol not found: _fmt_scaled").  Without this
+# pin packet.c compiles the "no header" path anyway and fails with
+# "undeclared identifier FMT_SCALED_STDSIZE".
+ac_cv_func_fmt_scaled=no
+
+# readpassphrase() -- BSD's non-echoing prompt, from <readpassphrase.h>, which
+# no musl-derived sysroot has either.  Present on iOS?  Not in the sense that
+# matters: with the header answered "no" and the function answered "yes",
+# readpass.c compiled the calls but not the prototypes and died.  Answering
+# "no" makes OpenSSH use its own openbsd-compat/readpassphrase.c, which is the
+# portable equivalent and needs no extra #includes.
+ac_cv_func_readpassphrase=no
+
+# ---- present on iOS but musl's headers do not declare them -----------------
+# The fix for these is in sysroot-overlay/, not here; they are listed so the
+# reasoning is visible next to the answers they justify.  The overlay supplies
+# the prototypes, so configure's answer is the honest one and the project's
+# own openbsd-compat fallback stays out of the way.
+
+# arc4random() family: verified present.  sysroot stdlib.h now declares them.
+ac_cv_func_arc4random=yes
+ac_cv_func_arc4random_buf=yes
+ac_cv_func_arc4random_uniform=yes
+ac_cv_func_arc4random_stir=yes
+
+# timingsafe_bcmp(): verified present.  sysroot string.h now declares it.
+ac_cv_func_timingsafe_bcmp=yes
+
+# getentropy(2): verified present.  sysroot unistd.h now declares it.
+ac_cv_func_getentropy=yes
+
+# ---- OpenSSL API gaps: the same link-test lie, one level up ----------------
+#
+# OpenSSL 4.0.3 exports EVP_CIPHER_CTX_get_iv_length but *not*
+# EVP_CIPHER_CTX_get_iv (checked against the archive's symbol table and the
+# 4.0.0 libcrypto.num export list: only the _length form is listed).  The host
+# link test still "succeeds" for the same reason every other probe does, and
+# cipher.c then fails to compile with
+#     call to undeclared function 'EVP_CIPHER_CTX_get_iv'
+#
+# Answering "no" is not a workaround but the intended path: OpenSSH ships its
+# own implementation for exactly this case in openbsd-compat/
+# libressl-api-compat.c, and it is compiled and declared because of this answer
+# (openbsd-compat/openssl-compat.h:76).  It is correct rather than a stub --
+# it reads ctx->iv through EVP_CIPHER_CTX_iv_length(), which is the function
+# that confused the header, so no internal struct access is needed.
+ac_cv_func_EVP_CIPHER_CTX_get_iv=no
+
+# ---- absent, and the project has no fallback worth enabling ----------------
+
+# clearenv() is not exported by iOS 10 (verified: aborts with
+# "dyld: lazy symbol binding failed: Symbol not found: _clearenv").  musl
+# declares it and the host link test passes.  OpenSSH's own answer is no loss:
+# child.c and friends guard it, and where they do not they set environ[0]=NULL
+# by hand, which is the portable equivalent.
+ac_cv_func_clearenv=no
+
+# ---- setresgid()/setresuid(): header shims, not system calls ---------------
+#
+# iOS 10 exports neither (each aborts with "Symbol not found").  Two answers are
+# defensible and this is the one OpenSSH needs:
+#
+#   answering "no"  -> openbsd-compat/bsd-setres_id.c compiles its own copy,
+#                      but that file defines the *symbols*, which collides with
+#                      the static inline shims in sysroot-overlay's unistd.h:
+#                          error: static declaration of 'setresgid' follows
+#                                 non-static declaration
+#                      (this is exactly how the first build attempt died);
+#   answering "yes" -> the shims are used, which is correct and sufficient.
+#
+# The shims are not the "return -1" stubs Dropbear used; they forward to
+# setregid()/setreuid(), which iOS *does* export, and they only refuse the
+# "saved id only" form (r == -1 or e == -1) -- a form neither Dropbear nor
+# OpenSSH ever asks for.  OpenSSH's two call sites in uidswap.c both pass all
+# three ids equal, i.e. the fully-supported case, so the drop is real:
+#
+#     permanently_set_uid():  setresgid(g,g,g) -> setregid(g,g)
+#                             setresuid(u,u,u) -> setreuid(u,u)
+#
+# With r == e == s, setreuid() sets real/effective/saved to the same value,
+# which is precisely what setresuid(r,e,s) would have done; and the
+# "was able to restore old uid" self-test further down permanently_set_uid()
+# still passes, because the saved id has genuinely been overwritten.
+ac_cv_func_setresgid=yes
+ac_cv_func_setresuid=yes
+
+# ---- Darwin targets iOS; it has Seatbelt but not in the form OpenSSH wants --
+# iOS has sandbox_init() but sandbox-darwin.c needs <sandbox.h>, which no
+# musl-derived sysroot has, and the profile string OpenSSH uses
+# (kSBXProfilePureComputation) cannot be resolved without it.  configure would
+# otherwise fall through to the rlimit sandbox, whose probes are
+# cross-compiling-answered "no" for select/poll-with-rlimit.  Choosing it
+# explicitly avoids that ambiguity; sshd then simply runs unsandboxed.
+sandbox_arg=no
+
+# nlist() -- the a.out(3)-era symbol table interface.  <nlist.h> is correctly
+# answered "no" here, but the *function* link test still says yes, so misc.c
+# selected the nlist() branch of lib_contains_symbol() and then failed with
+#     error: array has incomplete element type 'struct nlist'
+#     error: call to undeclared function 'nlist'
+# iOS does export it, but only meaningfully for a.out, which nothing builds any
+# more; answering "no" selects misc.c's mmap()-the-Mach-O fallback, which is the
+# correct implementation for this platform anyway.
+ac_cv_func_nlist=no
+
+# getrrsetbyname() -- the BIND API for fetching SSHFP records, used by
+# "ssh -o VerifyHostKeyDNS=yes" and by sshd's DNS key verification.  Verified
+# absent on the device: "dyld: Symbol not found: _getrrsetbyname".
+#
+# This pin matters for a non-obvious reason.  openbsd-compat/getrrsetbyname.h
+# wraps its *entire* contents -- prototypes, the ERRSET_* return codes, the
+# struct rrsetinfo layout -- in
+#       #ifndef HAVE_GETRRSETBYNAME
+# and dns.c uses those ERRSET_* codes unconditionally (they come from BIND's
+# <netdb.h> on a system that has the real thing).  musl's <netdb.h> has no
+# ERRSET_*, so with the function answered "yes" the whole compat header was
+# skipped and dns.c failed with ten "undeclared identifier ERRSET_*" errors.
+# Answering "no" compiles OpenSSH's own getrrsetbyname and restores the codes.
+#
+# The deciding cache variable is AC_SEARCH_LIBS', not AC_CHECK_FUNCS':
+# AC_SEARCH_LIBS stores its answer in ac_cv_search_getrrsetbyname and writes
+# "none required" when the symbol links without any library at all -- which is
+# exactly what happens here.  Answering "no" to that variable makes autoconf
+# take the "not found" branch, which is where the compat code path lives.
+ac_cv_func_getrrsetbyname=no
+ac_cv_search_getrrsetbyname=no
+
+# pledge() is an OpenBSD-only system-call interface; the flag set OpenSSH uses
+# (PLEDGE_*) is OpenBSD's.  It is not on iOS, and the whole point of the feature
+# is to restrict what a *process* may do, so there is no portable substitute --
+# the code simply must not call it.  Without this pin it is "detected" and the
+# build dies with "call to undeclared function 'pledge'".
+ac_cv_func_pledge=no
+
+# scan_scaled() is libutil's "parse a 7g/512k style size" helper, the reverse of
+# fmt_scaled above.  Verified absent on the device
+# ("dyld: Symbol not found: _scan_scaled").  It is used for the RekeyLimit
+# option, so an "ssh -o RekeyLimit=1G" would abort at runtime with it enabled.
+# Answering "no" makes servconf/readconf reject RekeyLimit instead.
+ac_cv_func_scan_scaled=no
+ac_cv_search_scan_scaled=no
+
+# getexecpath() -- OpenBSD's "where is my own executable" helper, used by sshd
+# to re-exec itself with an absolute path.  Verified absent on the device
+# ("dyld: Symbol not found: _getexecpath").  sshd.c already handles the failure
+# by falling back to av[0], which is exactly the path the caller invoked, so
+# nothing is lost -- and it is the case when invoked via an absolute path
+# anyway.
+ac_cv_func_getexecpath=no
+
+# setpcred() is the AIX/IRIX credential-setting call, used in platform.c only
+# inside an #ifdef HAVE_SETPCRED around the ChrootDirectory setup.  Not on iOS
+# (verified on the device).  Answering "no" disables that optional path; the
+# ChrootDirectory directive itself still works, it just will not switch process
+# credentials through this particular AIX interface.
+ac_cv_func_setpcred=no
+
+# ---- utmp/wtmp/lastlog: the login accounting family ------------------------
+#
+# iOS's libSystem does export most of the *utmpx interface (getutxent,
+# getutxline, pututxline, setutxent, endutxent, utmpxname, getlastlogxbyname --
+# all verified present on the device), but five of the older spellings are gone,
+# and those five are exactly what loginrec.c selects between them on the
+# strength of a link test:
+#
+#   login(), logout(), logwtmp(), updwtmpx(), utmpname(), getutent()
+#
+# Verified absent on the device (each aborts with "dyld: Symbol not found").
+# Answering "no" drops OpenSSH to the utmpx-only path, which is what Darwin uses
+# anyway, so nothing useful is lost: the lastlog/lastlogx update is skipped and
+# record_login_logout() becomes a no-op rather than a fatal() on a missing
+# symbol.
+ac_cv_func_login=no
+ac_cv_func_logout=no
+ac_cv_func_logwtmp=no
+ac_cv_func_updwtmpx=no
+ac_cv_func_utmpname=no
+ac_cv_func_getutent=no
+
+# getlastlogxbyname() -- NetBSD/Mac's "last login time by user name" call, the
+# BSD spelling of the lastlog lookup.  iOS *does* export it (verified: links and
+# returns), but the struct it fills is NetBSD's struct lastlogx, which no
+# musl-derived sysroot has a definition for -- musl's <utmp.h> only carries the
+# Linux struct lastlog with the older field names.  loginrec.c reads
+#   ll_line / ll_host / ll_tv.tv_sec / ll_tv.tv_usec
+# off that struct, and getting the layout wrong means reading past the end of a
+# 144-byte structure into attacker-controlled bytes.  iOS can't tell us the
+# layout either: a probe that calls it with a zeroed buffer for a user with no
+# lastlog entry gets a success return and an untouched buffer, so there is
+# nothing to measure.  The conservative answer is therefore "no", which sends
+# loginrec.c to its #else branch reading the Linux-layout struct lastlog from
+# /var/log/lastlog instead: that file does not exist on iOS, the read fails
+# cleanly, and lastlog_get_entry() returns 0 -- i.e. "unknown", which is what
+# use_pam()'s login-time accounting would have reported anyway.
+ac_cv_func_getlastlogxbyname=no
+
+# unveil() is the OpenBSD companion to pledge(): it restricts which filesystem
+# paths a process may touch.  Not on iOS (and there is no portable equivalent
+# -- Darwin's Seatbelt is the nearest analogue but needs <sandbox.h>, which no
+# musl-derived sysroot has, and the profile strings OpenSSH uses are unknown
+# there).  Answering "no" leaves ssh-agent without that extra restriction; the
+# socket permissions it creates still stand on their own.
+ac_cv_func_unveil=no
+
+# ---- the two that would have died on the first connection ----------------
+#
+# Both were found by dumping the *finished* binaries' undefined symbol lists
+# (llvm-nm -u) and probing each one on the device.  Neither is a compile error:
+# with -undefined dynamic_lookup the link succeeds either way, so the only
+# symptom would have been a dyld abort at run time, on a code path exercised by
+# every single connection.
+
+# setproctitle() -- verified absent on the device.  It updates the process title
+# in ps(1), and sshd calls it once per connection ("[accepted]", "[session-auth
+# early]", the listener line).  The worst possible place to discover a missing
+# symbol, because the failure is intermittent-looking and leaves no log line.
+#
+# openbsd-compat carries a complete implementation in setproctitle.c, wired to
+# compat_init_setproctitle() and SPT_REUSEARGV so it overwrites the original
+# argv -- but the whole file is inside #ifndef HAVE_SETPROCTITLE, and the
+# configure link test said "yes", so only compat_init_setproctitle() survived
+# and every setproctitle() call would have aborted.
+ac_cv_func_setproctitle=no
+
+# reallocarray() -- verified absent on the device.  Unlike most of the list,
+# this one is not OpenSSH's code: it is referenced by the OpenSSL 4.0.3 archive
+# we link (OpenSSH uses it too, in xmalloc.c and scp.c).  Answering "no" makes
+# OpenSSH compile its own openbsd-compat/reallocarray.c, which wraps realloc()
+# with the overflow check -- and, crucially, also closes the hole in libcrypto,
+# because the archive member that needed it now has a definition to bind to.
+ac_cv_func_reallocarray=no
+
+# ---- closefrom(): the one that bites every program on iOS 10 ---------------
+#
+# iOS 10 does not export closefrom(3), and this is the same landmine the
+# README records for Dropbear and wget: musl declares it, the host link test
+# passes because -undefined dynamic_lookup, and the resulting binary aborts at
+# runtime with
+#     dyld: lazy symbol binding failed: Symbol not found: _closefrom
+# -- except here it aborts in sshd's *startup path* (sshd.c:1490, called before
+# the listener is even set up), which is far more visible than the forked-child
+# crashes Dropbear had.
+#
+# OpenSSH ships Todd Miller's portable implementation in
+# openbsd-compat/bsd-closefrom.c (the one sudo uses: it walks /dev/fd when
+# that works, falls back to fcntl(F_CLOSEM) and then to closing 0..OPEN_MAX),
+# and declares closefrom() in openbsd-compat.h under #ifndef HAVE_CLOSEFROM.
+# Answering "no" is therefore not a stub: it is the correct implementation.
+ac_cv_func_closefrom=no
+
+# ---- getspnam(): shadow passwords are not iOS's model at all ---------------
+#
+# musl's <shadow.h> declares getspnam() (it is Linux), and the host link test
+# passes, but iOS does not export it -- verified on the device:
+#     dyld: lazy symbol binding failed: Symbol not found: _getspnam
+# iOS keeps its account data in OpenDirectory, not in /etc/shadow, so there is
+# nothing for the function to read either.
+#
+# This one does not stop the build; it stops the *session*.  sshd-session --
+# the re-exec'd binary that finishes authentication -- calls it from
+# auth_shadow_pwexpired(), and the crash message only appears in sshd's own log,
+# after a full successful key exchange and publickey exchange:
+#     dyld: lazy symbol binding failed: Symbol not found: _getspnam
+#     session process ... killed by signal 6
+# so the client just sees "Connection closed by ... port 22223".
+ac_cv_func_getspnam=no
+
+# ---- prctl(): Linux-only, and it is called during sshd's startup -----------
+#
+# prctl(2) is Linux's process-control call.  Verified absent on the device
+# ("dyld: lazy symbol binding failed: Symbol not found: _prctl").  This one is
+# the sneakiest of the whole set, because of *where* it is used: platform.c's
+# platform-tracing.c calls prctl(PR_SET_DUMPABLE) from
+# platform_disable_tracing(), which runs in the re-exec'd sshd-session and in
+# sftp-server.  Neither is a debug-only path -- it is ordinary startup.  The
+# result is that an otherwise fully working SSH session dies the moment scp or
+# sftp execs sftp-server:
+#     debug1: subsystem: exec() .../ossh-sftp-server
+#     dyld: lazy symbol binding failed: Symbol not found: _prctl
+#     channel 0: read failed rfd 13 maxlen 32768: Broken pipe
+# so the client only reports "scp: Connection closed" with no clue that the
+# server binary even started.  Darwin has no equivalent call and needs none:
+# Darwin does not turn core dumps off with prctl, it just doesn't produce them
+# for the cases OpenSSH cares about here.
+ac_cv_func_prctl=no

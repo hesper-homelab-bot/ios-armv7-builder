@@ -69,6 +69,17 @@ struct sockaddr_in {
 #define INADDR_ANY          ((in_addr_t)0x00000000)
 #define INADDR_BROADCAST    ((in_addr_t)0xffffffff)
 #define INADDR_LOOPBACK     0x7f000001
+
+/* IN_LOOPBACKNET is a Linux-only name for the leading octet of the IPv4
+   loopback block (127.0.0.0/8).  Darwin's <netinet/in.h> spells the block's
+   class constants IN_CLASSA_NET etc. and never defines this name, and musl --
+   whose header this overlay replaces -- does not either.  OpenSSH's
+   sshconnect.c uses it to answer "is this address local?", so without this
+   definition the build fails with "undeclared identifier IN_LOOPBACKNET".
+   The value is not platform-specific: it is 127 on every system that names it,
+   and it is what "(addr >> 24) == IN_LOOPBACKNET" in sockaddr_is_local()
+   wants. */
+#define IN_LOOPBACKNET 127
 #define INADDR_NONE         0xffffffff
 
 #define IN6ADDR_ANY_INIT { { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } } }

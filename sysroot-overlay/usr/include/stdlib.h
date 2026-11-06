@@ -196,3 +196,18 @@ long double strtold_l(const char *__restrict, char **__restrict, struct __locale
 const char *getprogname(void);
 void setprogname(const char *);
 #endif
+
+/* arc4random() family -- Darwin's CSPRNG, present in iOS's libSystem since
+   forever and verified on the device (iPad 4, iOS 10.3.3) by calling each of
+   these: arc4random, arc4random_buf, arc4random_uniform and arc4random_stir all
+   return normally.  musl's stdlib.h (replaced by this overlay) does not declare
+   them, and neither does anything else in the sysroot, so every program that
+   uses OpenSSH-style entropy (OpenSSH, Dropbear 2020+, anything linking libedit)
+   compiles them as implicit declarations returning int and then warns or fails.
+   A separate § below records the probe method; this block is the fix. */
+#include <stdint.h>   /* uint32_t for the arc4random family */
+uint32_t arc4random(void);
+void arc4random_buf(void *, size_t);
+uint32_t arc4random_uniform(uint32_t);
+void arc4random_stir(void);
+void arc4random_addrandom(void *, int);
