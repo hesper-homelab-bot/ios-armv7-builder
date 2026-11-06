@@ -310,8 +310,13 @@ available and verify the artifact carries a signature, instead of `|| true`.
 Note also that `out/` artifacts straight from `build.sh` are *unsigned* by
 design; signing happens on the copies `make-deb.sh` stages.
 
-(`ldid -e` reports success on signed and unsigned files alike here, so it is
-not a test for validity — executing the binary is.)
+Signing is now asserted rather than hoped for: every `sign()` checks that
+`ldid` is available, propagates a non-zero exit, and then confirms with
+`ldid -e` that the artifact really carries a signature — `ldid -e` exits 0
+only on a signed file, which is worth stating because it was tested by signing
+a copy of an unsigned binary and re-checking (exit 1 before, 0 after).
+Executing the binary remains the only real test; this just makes the packaging
+fail instead of quietly shipping something that will be killed.
 
 ## The port layout, and who owns what
 

@@ -45,9 +45,34 @@ PKG="${PKG:-openssh4}"
 # exactly as the other packaging scripts do: here, and again after install.
 sign() {
     local src="$1" dst="$2"
-    cp "$src" "$dst"
-    ldid -S "$dst" 2>/dev/null || true
+    cp "$src" "$dst" || { echo "cp failed: $src -> $dst" >&2; exit 1; }
+
+    # Failures here must be loud.  This function used to end in
+    #     ldid -S "$dst" 2>/dev/null || true
+    # which swallowed everything, and the binary that reached the package was
+    # then *unsigned* -- and an unsigned Mach-O is killed by the device with
+    # SIGKILL and no crash report, before main().  That is the whole origin of
+    # the "host ldid occasionally produces a binary the device kills with
+    # Killed: 9" folklore: not host ldid being unreliable, but this
+    # swallowing the failure.  See the signing section in README.
+    command -v ldid >/dev/null 2>&1 || {
+        echo "ldid is not on PATH -- refusing to package an unsigned binary" >&2
+        exit 1
+    }
+    ldid -S "$dst" || {
+        echo "ldid -S failed for $dst" >&2
+        exit 1
+    }
+
+    # ldid -e exits 0 only when the file actually carries a signature (verified
+    # by signing a copy of an unsigned binary and re-checking), so this is a
+    # real assertion rather than a formality.
+    ldid -e "$dst" >/dev/null 2>&1 || {
+        echo "$dst carries no signature after ldid -S" >&2
+        exit 1
+    }
 }
+
 
 w="$(mktemp -d)"; trap 'rm -rf "$w"' EXIT
 mkdir -p "$w/DEBIAN" "$w/var/mobile/tools" "$w/usr/share/doc/$PKG"
