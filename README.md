@@ -68,11 +68,56 @@ apt-get install tmux              # /usr/bin/tmux
 apt-get install openssl4 curl4    # /var/mobile/openssl4, /var/mobile/tools
 ```
 
-`openssl4` and `curl4` deliberately install under `/var/mobile` and never
-shadow `/usr/lib/libcrypto.dylib` or `/usr/bin/curl`: the system copies are
-what `sshd` and the rest of iOS are linked against, and replacing them
-bricks remote access. Removing the packages (`rm -rf /var/mobile/openssl4`)
+The *libraries* stay untouched: `/usr/lib/libcrypto.dylib` and the shared
+cache are what `sshd` and the rest of iOS are linked against, and replacing
+them bricks remote access. Removing the packages (`rm -rf /var/mobile/openssl4`)
 leaves the device exactly as it was.
+
+### Shadowing the system binaries (2026-11-06)
+
+The command-line *binaries* are a different story, and they were moved out of
+the way with **symlinks**, never with copies and never by removing packages:
+
+| bare name | resolves to | notes |
+|---|---|---|
+| `/usr/bin/curl`, `/usr/local/bin/curl` | `/var/mobile/tools/curl` | 8.16.0 |
+| `/usr/bin/wget`, `/usr/local/bin/wget` | `/var/mobile/tools/wget` | iOS 10 has **no** `/usr/bin/wget` at all, so nothing was displaced |
+| `/usr/local/bin/openssl` | `/var/mobile/openssl4/openssl` | 4.0.3 |
+| `/usr/bin/openssl` | *left alone* | dpkg file (`openssl 0.9.8zg-13`), still 0.9.8zg by absolute path |
+
+Three decisions worth explaining:
+
+* **Symlink, don't copy.** A symlink is one `rm` from being reverted, keeps a
+  single source of truth so a rebuilt tool takes effect without a reinstall,
+  and — critically — leaves dpkg's md5sums valid. A file copied into a
+  dpkg-owned path gets silently clobbered back to 0.9.8zg by the next
+  `apt-get install --reinstall`.
+* **`/usr/bin` for curl/wget only.** A non-login shell (`sh -c`, scripts,
+  launchd jobs) gets `PATH=/usr/bin:/bin` and cannot see `/usr/local/bin` at
+  all, which is easy to discover only when a script mysteriously uses the old
+  version. `curl` and `wget` are owned by no dpkg package, so replacing them
+  costs nothing; `openssl` is a dpkg file, so it is shadowed only through
+  `/usr/local/bin`, which is already ahead of `/usr/bin` on the login-shell
+  PATH (and already hosts `untether-bootstrap.sh`).
+* **No package was ever removed.** `dpkg -r openssh` would delete
+  `/usr/sbin/sshd`, which is the daemon `sshfix` keeps alive on port 22222 and
+  which `sshpass` depends on. Removing the old package is the one step in this
+  whole exercise that can actually cost remote access, so the old files stay
+  on disk and are simply out-ranked on `PATH`.
+
+The displaced iOS curl is kept at
+`/var/mobile/.local/etc/system-shadow-backup/curl-ios-firmware`, deliberately
+mode `644` so it cannot be executed by accident. To roll the whole thing back:
+
+```sh
+sudo rm -f /usr/bin/curl /usr/bin/wget /usr/local/bin/{curl,wget,openssl}
+sudo cp /var/mobile/.local/etc/system-shadow-backup/curl-ios-firmware /usr/bin/curl
+sudo chmod 755 /usr/bin/curl
+```
+
+`dpkg -V openssl openssh` afterwards flags exactly one file,
+`/Library/LaunchDaemons/com.openssh.sshd.plist`, which is expected — that is the
+plist whose port was moved to 22222, not anything this shadowing touched.
 
 curl needs a CA bundle for HTTPS:
 
