@@ -198,6 +198,15 @@ int issetugid(void);
 int setregid(gid_t, gid_t);
 int setreuid(uid_t, uid_t);
 
+/* getentropy() -- Darwin has it (it is in libSystem, unlike Linux's getrandom
+   syscall wrapper, which iOS 10 does not export).  Verified on the device by
+   compiling a caller and running it: it returns 0 and fills the buffer.
+   musl's unistd.h (which this overlay replaces) does not declare it, and
+   neither does any other header in the sysroot, so OpenSSH's entropy.c would
+   compile it as an implicit declaration returning int.  Dropbear never hit
+   this because it only probes getrandom. */
+int getentropy(void *, size_t);
+
 /* ---------------------------------------------------------------------------
  * setresgid()/setresuid() shims for Dropbear.
  *
@@ -243,3 +252,10 @@ static inline int setresuid(uid_t r, uid_t e, uid_t u)
 		return -1;
 	return setreuid(r, e);
 }
+
+/* setlogin()/getlogin() -- BSD utmp-name setters/getter.  Both are present in
+   iOS's libSystem (verified on the device: each returns normally) but musl,
+   whose unistd.h this overlay replaces, declares neither.  OpenSSH's session.c
+   calls setlogin() when UseLogin is enabled, so it needs the prototype. */
+int setlogin(const char *);
+char *getlogin(void);

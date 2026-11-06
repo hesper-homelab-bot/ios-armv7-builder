@@ -17,6 +17,7 @@ What is inside:
 | `tmux/` | flagship build: full **tmux** (3.5a and 3.8 verified on an iPad 4) |
 | `openssl/` | **OpenSSL 4.0.3** (`version`, `rand`, AES/SHA all pass on device) |
 | `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
+| `openssh/` | **OpenSSH 10.6p2** — builds, logs in, scp/sftp work; *manual use only, no daemon* |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -37,11 +38,16 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 
 (cd openssl && ./build.sh)      # OpenSSL 4.0.3 -> out/openssl-4.0.3-armv7
 (cd curl    && ./build.sh)      # curl 8.16.0    -> out/curl-8.16.0-armv7
+(cd openssh && ./build.sh)      # OpenSSH 10.6p2 -> out/openssh-*-armv7
+./openssh/make-deb.sh           # openssh4 .deb, NO launchd daemon
 ./curl/make-deb.sh              # package both as openssl4 / curl4
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
 `libncursesw.5.dylib` are pulled from it during the build.
+
+OpenSSH is the one package here that is **not** installed as a service — see the
+`OpenSSH 10.6p2` section below for how it is meant to be run.
 
 ## Install on the device
 
@@ -85,11 +91,15 @@ Releases are also on the
 | tmux 3.8 | sessions, panes, detach/reattach, `list-windows` |
 | OpenSSL 4.0.3 | `version`, `rand -hex`, `dgst -sha256`, AES-256-CBC round-trip, `speed` ≈36 MB/s AES / ≈37 MB/s SHA-256 (pure C, no asm) |
 | curl 8.16.0 | `https://` to github.com / curl.se / cloudflare.com / apple.com / baidu.com — all HTTP 200, TLS 1.2 handshake ≈6 s, redirects and POST verified |
+| OpenSSH 10.6p2 | real login on port 22223 with publickey auth, interactive shell, `uid=501(mobile)`; `scp` up **and** down; `sftp` `get`/`put`. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7`. Run by hand, never as a daemon |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
 enabled (no nghttp2). `--disable-threaded-resolver` is used because
 `pthread_cleanup_push`/`pop` are macro machinery on Darwin.
+
+The one thing OpenSSH does *not* do yet is `sftp` directory listings — see the
+`OpenSSH 10.6p2` section. Transfers work; `ls` output does not.
 
 ## Why this is not just `./configure && make`
 
@@ -239,6 +249,134 @@ Debugging tips that actually worked, in order of usefulness:
    and *no crash report at all*, even though the md5 matches. Re-signing the
    same bytes on the device with its own `ldid -S` makes it run. The packaging
    scripts therefore sign twice.
+
+## OpenSSH 10.6p2
+
+`openssh/build.sh` builds OpenSSH portable 10.6p2 for armv7 iOS 10 on the Linux
+host, linked against the `openssl/` libcrypto. It was run on the device by hand
+on port 22223 (an idle port — 22 and 2222 are dropbear, 22222 is the system
+OpenSSH 6.7p1, and none of them were touched) and auth, shell, scp and sftp
+all worked. It is **not** installed as a service: `openssh/make-deb.sh` writes
+no `/Library/LaunchDaemons` plist, nothing calls `launchctl`, and everything
+lives under `/var/mobile/tools/` with an `ossh-` prefix so it can never shadow
+the `ssh`/`scp` the OS itself uses. Removing the package directory leaves the
+device exactly as it was.
+
+```
+remote software version OpenSSH_10.6      # vs the system's OpenSSH_6.7
+```
+
+### Why 10.6p2, and why not older
+
+It was the first version tried and it built and ran, so no downgrade was
+forced. Two things are worth recording:
+
+* OpenSSH needs OpenSSL ≥ 1.1.1. `--with-ssl-dir` points at the OpenSSL
+  **build tree** rather than an installed tree, because that version check does
+  run a binary — and an armv7 binary cannot execute on the Linux host. Pointing
+  at `$OSSL` (which has `lib/` but no `bin/`) makes configure fall back to
+  probing the headers, which is the only thing that can work here. This is the
+  "single hard blocker" `dropbear/build.sh` mentions, and this is how it is
+  dodged rather than solved.
+* `-DOPENSSL_API_COMPAT=0x10100000L` is passed by hand. Configure normally adds
+  it itself, but only after running a probe that reports the OpenSSL version,
+  and that probe cannot run here — so without the flag, OpenSSL 4 headers hide
+  the 1.1-era declarations OpenSSH uses and `cipher.c` fails on
+  `EVP_CIPHER_CTX_get_iv`.
+
+No older portable release was attempted, and no survey is claimed.
+
+### The configure lies that mattered
+
+`openssh/ios-config.site` pins the answers. The pattern is the same one every
+project in this repo hits — musl declares the function, `-undefined
+dynamic_lookup` makes the link test pass, and the answer is yes for something
+iOS 10 has never had. What is different about OpenSSH is that **three of the
+pins cannot be found by compiling**: the binary links, and then aborts at run
+time, sometimes only inside a re-exec'd child binary that starts after a
+*successful* authentication. Those are marked ★ below.
+
+| pinned | why | without it |
+|---|---|---|
+| `getspnam` ★ | iOS has no `/etc/shadow`; its account data is in OpenDirectory | key exchange *and* publickey auth succeed, then `sshd-session` dies with `Symbol not found: _getspnam`; the client just sees `Connection closed` |
+| `setproctitle` ★ | OpenBSD-only | sshd calls it once per connection (`[accepted]`, `[session-auth early]`); the archive member that supplies it is inside `#ifndef HAVE_SETPROCTITLE`, so it is silently not compiled |
+| `closefrom` ★ | iOS 10 does not export it | sshd aborts **before** binding the port, so `-t` fails and nothing listens |
+| `prctl` ★ | Linux-only | `platform_disable_tracing()` runs in `sshd-session` and `sftp-server` at ordinary startup — scp and sftp break while plain ssh still works |
+| `setresgid`/`setresuid` | iOS exports neither | answered **yes** on purpose: `sysroot-overlay/usr/include/unistd.h` has inline shims that forward to `setregid`/`setreuid`. Answering "no" would compile `bsd-setres_id.c`, which defines the real symbols and collides with the shims — `static declaration of 'setresgid' follows non-static declaration` |
+| `freezero`, `recallocarray`, `reallocarray`, `strtonum`, `bcrypt_pbkdf`, `explicit_bzero`, `ptsname_r`, `b64_ntop`, `b64_pton`, `getexecpath`, `pledge`, `unveil`, `scan_scaled`, `fmt_scaled`, `nlist`, `readpassphrase`, `accept4`, `pipe2`, `eventfd`, `getrandom`, `memset_s` | verified absent on the device | OpenSSH's own portable fallbacks are used; two (`fmt_scaled`, `readpassphrase`) otherwise fail at compile time with undeclared identifiers |
+| `login`, `logout`, `logwtmp`, `updwtmpx`, `utmpname`, `getutent` | verified absent; the `utmpx` spellings *are* present | login accounting drops to the utmpx-only path Darwin uses anyway |
+| `getlastlogxbyname` | iOS exports it, but the `struct lastlogx` it fills is NetBSD's and no musl sysroot has it — and the layout cannot be measured on device | reads `ll_line`/`ll_host`/`ll_tv` off a guessed layout; answered "no", which uses the Linux-layout `struct lastlog` path that fails cleanly on a missing `/var/log/lastlog` |
+| `arc4random*`, `timingsafe_bcmp`, `getentropy`, `strlcpy`/`strlcat`/`strnlen`, `asprintf`, `kqueue`, `daemon`, `initgroups`, `setrlimit`, `forkpty`/`openpty`/`posix_openpt` | verified **present** on iOS but undeclared by musl | the *headers* are fixed in `sysroot-overlay/` instead; the honest configure answer is kept |
+| `innetgr` | present on iOS, and musl has no `<netgroup.h>` at all | new `sysroot-overlay/usr/include/netgroup.h` |
+| `user_from_uid`, `group_from_gid`, `strmode` | present on iOS, undeclared by musl | new `grp.h` plus declarations in `pwd.h`/`string.h` |
+
+### New Darwin ABI traps (in `sysroot-overlay/`)
+
+| header | trap |
+|---|---|
+| `sys/mman.h` | **`MAP_ANON` is `0x1000` on Darwin, `0x20` in musl.** `mmap` validates its flags, so a wrong one is a *real error* rather than the silent no-op `O_NONBLOCK` was: OpenSSH's `sshkey_shield_private()` shields its host key with `mmap(..., MAP_ANON\|MAP_PRIVATE, -1, 0)` and the wrong constant made sshd refuse to start — `Unable to shield host key: Bad file descriptor`, then `no hostkeys available -- exiting`. Nothing in that message points at a header. `MAP_NORESERVE` and `MAP_STACK` were wrong too. Full Darwin `mman.h` supplied |
+| `sys/stat.h` | `utimensat()`/`fchownat()` present on iOS, declared by neither musl nor OpenSSH's `bsd-misc.h` (which only declares them when it has to supply them) |
+| `unistd.h` | `getentropy()`, `setlogin()`, `getlogin()` present on iOS, undeclared by musl |
+| `stdlib.h` | `arc4random()` family (Darwin's CSPRNG) — and it needs `#include <stdint.h>` before it, or the declaration itself fails to parse |
+| `string.h` | `timingsafe_bcmp()`, `strmode()` |
+| `pwd.h`, `grp.h` | `user_from_uid()`, `group_from_gid()` |
+| `netinet/in.h` | `IN_LOOPBACKNET` — the Linux name for the `127/8` leading octet; `sockaddr_is_local()` in `sshconnect.c` uses it. Darwin spells the class constants differently and never defines this name |
+| `netgroup.h` | did not exist in musl at all |
+
+### `*at()` functions accept no flags at all on iOS 10
+
+Measured on the device by driving `fstatat`, `fchmodat`, `utimensat` and
+`fchownat` with each of `{0, 0x100, 0x1000, 0x2, 0x800}`: **every call with a
+non-zero flag returned `EINVAL`; every call with `0` succeeded.** musl's
+`<fcntl.h>` defines no `AT_*` at all and OpenSSH only defines
+`AT_SYMLINK_NOFOLLOW` in the branch where it supplies its own `utimensat()`
+(which is not taken here, because iOS *has* utimensat), so the macro does not
+exist on this platform and `build.sh` rewrites the three call sites to `0`.
+Nothing was working before that flag existed.
+
+### Running it
+
+`sshd` re-execs `sshd-session` (and `sshd-auth` when privsep is on), so those
+must exist next to it and be named in the config:
+
+```
+SshdSessionPath /var/mobile/tools-osshtest/ossh-sshd-session
+SshdAuthPath     /var/mobile/tools-osshtest/ossh-sshd-auth
+Subsystem sftp   /var/mobile/tools-osshtest/ossh-sftp-server
+```
+
+Sign **on the device** (`ldid -S` on each `ossh-*`), then run it in the
+foreground so the log is readable afterwards:
+
+```
+nohup /var/mobile/tools-osshtest/ossh-sshd -D -e \
+    -f /var/mobile/tools-osshtest/sshd_config > /var/mobile/tools-osshtest/sshd.log 2>&1 &
+```
+
+`ossh-sshd -t -f <config>` is the fastest way to see how far it gets.
+
+### What did not work
+
+* **`sftp` directory listings.** `ls` prints
+  `Server sent suspect path "" during readdir of "..."` for every entry, so the
+  listing body is empty. `get`, `put`, and therefore `scp` (which OpenSSH 10
+  runs over SFTP) are unaffected and verified working. Not investigated
+  further; the SFTP wire format this `sftp-server` emits versus what the
+  OpenSSH 10 client expects is the likely place.
+* **`ns_get16`/`ns_get32` stay undefined** in `sshd`/`ssh`/`ssh-keygen`
+  (from OpenSSH's `getrrsetbyname.c`) and **`recvmmsg`/`sendmmsg`** in every
+  binary (pulled in by `libssl-lib-ssl_lib.o`'s reference to `BIO_s_datagram`,
+  which drags in OpenSSL's `libcrypto-lib-bss_dgram.o`). All six are absent on
+  iOS 10. They are unreachable — `VerifyHostKeyDNS` is off and nothing in this
+  build's paths calls them — and because dyld binds lazily, login/scp/sftp work
+  anyway. `build.sh` prints them as notes and does not fail.
+* **No password authentication, no PAM, no zlib.** `--without-*` for pam,
+  libedit, selinux, libaudit, wtmpdb, ldns and zlib: no headers for any of them
+  in this sysroot, and PAM would need `/etc/pam.d`, which iOS does not use.
+  Compression is off, which costs nothing on a LAN.
+* **`UsePrivilegeSeparation` is gone.** OpenSSH removed the directive, and
+  deleting it from `sshd_config` is what makes sshd start re-exec'ing
+  `sshd-session`, which in turn is what surfaced the `getspnam` crash above.
 
 ## Credits and licence
 
