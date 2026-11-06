@@ -79,8 +79,17 @@ never arrive through a routine `apt-get upgrade`. Install those by hand:
 ```sh
 dpkg -i dropbear4_2026.94-1_iphoneos-arm.deb
 dpkg -i openssh4_10.6p2-1_iphoneos-arm.deb
-for f in /var/mobile/tools/ossh-*; do ldid -S "$f"; done    # then re-sign on device
+sudo launchctl load -w /Library/LaunchDaemons/com.hesper.osshd.plist
 ```
+
+The package ships the job, the wrapper and an `sshd_config`, so an install
+gives a running service on port **22** instead of a directory of binaries; host
+keys are generated on first start. Re-signing on the device is no longer
+needed — see *Signing: what "Killed: 9" actually meant*.
+
+`openssh/make-deb.sh` takes `OSSH_PORT=` to package it elsewhere, and
+`dropbear/make-deb.sh` takes `DROPBEAR_PORT=` (plus `DROPBEAR_EXTRA_ARGS=` for
+an extra `-p`) for the same reason. Both default to 22.
 
 Adding them to the repo is a deliberate decision (`scripts/make-repo.sh` would
 do it), not an oversight.

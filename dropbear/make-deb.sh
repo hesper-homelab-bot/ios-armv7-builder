@@ -30,6 +30,18 @@ DB_VERSION="${DB_VERSION:-2026.94}"
 DEBREV="${DEBREV:-1}"
 MAINTAINER="${MAINTAINER:-Hesper <hesperup@users.noreply.github.com>}"
 PORT="${DROPBEAR_PORT:-22}"
+
+# Where the .deb lands.  A build with default parameters goes to out/, which is
+# what scripts/make-repo.sh scans and what releases are cut from.  A build with
+# any non-default option -- another port, a fallback -p, the custom sftp-server
+# -- is for one specific device, and publishing it would hand everybody a
+# package tuned for someone else's setup, so it goes to pkg/ instead.
+CUSTOM=0
+[ "$PORT" = "22" ]        || CUSTOM=1
+[ -n "$EXTRA_ARGS" ]      || CUSTOM=1
+[ "${WITH_DB_SFTPSERVER:-0}" = "1" ] && CUSTOM=1
+if [ "$CUSTOM" = 1 ]; then OUTDIR="$root/pkg"; else OUTDIR="$root/out"; fi
+mkdir -p "$OUTDIR"
 # An extra -p handed to the dropbear binary as a fallback listener.  Empty by
 # default: the 2222 lifeline this used to carry is gone now that
 # com.hesper.osshd serves OpenSSH 10.6p2 on 22226.  Note the ${VAR-...} form
@@ -133,6 +145,13 @@ sed -e "s|__DROPBEAR_PORT__|$PORT|" \
     > "$w/Library/LaunchDaemons/com.hesper.dropbear.plist"
 chmod 0644 "$w/Library/LaunchDaemons/com.hesper.dropbear.plist"
 
+# A conffile, deliberately.  This plist carries the port, and a device with both
+# SSH packages installed has to move one of them off 22.  Without the conffile
+# declaration dpkg would overwrite that edit with the packaged default on every
+# upgrade and put two daemons on one port -- the exact regression the wrapper's
+# port check now reports instead of hiding.
+echo "/Library/LaunchDaemons/com.hesper.dropbear.plist" > "$w/DEBIAN/conffiles"
+
 install -m 0755 "$here/dropbear-daemon.sh" "$w/var/mobile/.local/bin/dropbear-daemon.sh"
 
 # The SFTP server is opt-in, in both directions: build.sh only compiles it when
@@ -156,7 +175,7 @@ done
 [ "${WITH_DB_SFTPSERVER:-0}" = "1" ] || [ ! -e "$w/var/mobile/tools/db-sftp-server" ] || {
     echo "db-sftp-server present without WITH_DB_SFTPSERVER=1" >&2; exit 1; }
 
-deb="$OUT/dropbear4_${DB_VERSION}-${DEBREV}_iphoneos-arm.deb"
+deb="$OUTDIR/dropbear4_${DB_VERSION}-${DEBREV}_iphoneos-arm.deb"
 dpkg-deb --root-owner-group -Zgzip --build "$w" "$deb" >/dev/null
 rm -rf "$w"; trap - EXIT
 

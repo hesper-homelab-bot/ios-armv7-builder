@@ -32,6 +32,38 @@ log() {
     echo "dropbear-daemon: $*"
 }
 
+# Refuse to start on a port something already holds, and say what holds it.
+#
+# Both SSH packages here default to port 22, which is what someone installing
+# just one of them wants.  Installing both means one has to move, and without
+# this check the loser exits under KeepAlive forever with nothing in the log
+# explaining why -- the most expensive possible way to find out.  A line naming
+# the offending process turns it into a one-minute fix.
+#
+# iOS has no lsof and netstat there is unreliable, so this is a bind test:
+# something already owning the port makes it fail.  The test connection is
+# closed immediately so the real bind below is unaffected.
+port_holder() {
+    local p="$1" out=""
+    out="$( (exec 3<>"/dev/tcp/0.0.0.0/$p") 2>/dev/null && ps -eo args 2>/dev/null )"
+    exec 3>&- 2>/dev/null
+    [ -n "$out" ] && echo "$out" | grep -iE "dropbear|sshd|sftp-server" | head -2
+}
+
+port_busy() {
+    (exec 3<>"/dev/tcp/0.0.0.0/$PORT") 2>/dev/null
+}
+if port_busy; then
+    exec 3>&- 2>/dev/null
+    log "port $PORT is already in use -- not starting."
+    log "holder: $(port_holder "$PORT" || echo 'unknown (no matching process name)')"
+    log "this package and the other SSH package both default to 22; edit the"
+    log "DROPBEAR_PORT value in /Library/LaunchDaemons/com.hesper.dropbear.plist"
+    log "(a conffile, so your edit survives upgrades) and unload/load again."
+    exit 1
+fi
+exec 3>&- 2>/dev/null
+
 # Generate host keys on first run.  ed25519 is preferred; rsa is kept as well
 # because some old clients (including this device's own OpenSSH 6.7p1 client)
 # cannot do ed25519.

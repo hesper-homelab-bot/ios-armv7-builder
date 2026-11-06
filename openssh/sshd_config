@@ -1,0 +1,58 @@
+# OpenSSH sshd_config for the openssh4 package.
+#
+# Shipped as a *conffile* so that editing the port here survives
+# `apt-get upgrade`.  That matters: dropbear4 defaults to port 22 too, so a
+# device with both packages installed has to move one of them, and an upgrade
+# that silently reverted the edit would put two daemons on the same port.
+#
+# Default is 22, the standard SSH port, because most people install exactly one
+# of the two SSH packages here and expect a normal sshd.  If you have both,
+# change the Port line below to something free and unload/load the job -- the
+# wrapper refuses to start on a port that is already held rather than looping
+# silently, and names the process that holds it.
+Port 22
+
+# Re-exec targets.  These are config keys, not PATH lookups: sshd execs
+# sshd-session for the post-auth phase and sshd-auth when privilege separation
+# is on, and if the paths are wrong sshd dies before it ever listens.
+SshdSessionPath /var/mobile/tools/ossh-sshd-session
+SshdAuthPath     /var/mobile/tools/ossh-sshd-auth
+
+# The sftp server that backs both scp and sftp.  Ours, not the system one.
+Subsystem sftp   /var/mobile/tools/ossh-sftp-server
+
+HostKey /var/mobile/ssh-openssh/ssh_host_ed25519_key
+HostKey /var/mobile/ssh-openssh/ssh_host_rsa_key
+
+# Generated on first run by /var/mobile/.local/bin/osshd-daemon.sh if absent,
+# which is why the daemon is started through a wrapper rather than by exec'ing
+# ossh-sshd directly -- otherwise a fresh install leaves sshd exiting
+# immediately, and KeepAlive retries that forever and silently.
+AuthorizedKeysFile /var/mobile/.ssh/authorized_keys
+
+# Public key only.  There is no PAM on the device and no password database the
+# daemon could use, so nothing else can be offered.
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+PermitRootLogin no
+AllowUsers mobile
+
+# Nothing forwarded, nothing tunnelled: this is a shell and a file transfer, not
+# a jump host.
+AllowTcpForwarding no
+X11Forwarding no
+AllowAgentForwarding no
+PermitTunnel no
+GatewayPorts no
+
+PidFile /var/mobile/.local/osshd.pid
+StrictModes yes
+LoginGraceTime 60
+MaxAuthTries 4
+MaxSessions 8
+MaxStartups 10:30:60
+ClientAliveInterval 300
+ClientAliveCountMax 2
+LogLevel VERBOSE
+UseDNS no
