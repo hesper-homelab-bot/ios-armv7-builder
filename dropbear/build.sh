@@ -132,16 +132,51 @@ grep -q 'DROPBEAR_PATH_SSH_PROGRAM' src/default_options.h || {
     echo "scp dbclient path was not rewritten" >&2; exit 1; }
 
 # Programs to build.  scp is bundled, and SCPPROGRESS gives the progress bar.
-# (sftp is deliberately absent: it needs a separate sftp-server, and the
-#  device's OpenSSH one at /usr/libexec/sftp-server is reused for that.)
-make -j"$(nproc)" PROGRAMS="dropbear dbclient dropbearkey scp" SCPPROGRESS=1 >/dev/null
+#
+# No sftp-server by default, and that is a property of Dropbear itself rather
+# than a choice we made: it ships no sftp server at all.  The only thing it
+# has is a *path* it execs when a client asks for the "sftp" subsystem --
+# SFTPSERVER_PATH below, defaulting to /usr/libexec/sftp-server, which on this
+# device belongs to the openssh dpkg package.  Leaving that default alone is
+# what ties dropbear's sftp to openssh staying installed.  scp is unaffected:
+# db-scp execs a path of our own (see the DROPBEAR_PATH_SSH_PROGRAM rewrite
+# above), which is why it survives openssh being removed.
+#
+# WITH_DB_SFTPSERVER=1 opts in to the from-scratch SFTP server in
+# ../sftp-server/: it is compiled, SFTPSERVER_PATH is repointed at
+# $PREFIX/db-sftp-server, and make-deb.sh ships it.  Off by default.  Note that
+# this is a hand-written network file-access subsystem -- it is NOT audited,
+# and it is not on by default precisely so that it is not exposed by accident.
+PROGRAMS="dropbear dbclient dropbearkey scp"
+if [ "${WITH_DB_SFTPSERVER:-0}" = "1" ]; then
+    SFTP_PATH="$PREFIX/db-sftp-server"
+    "$root/tools/cc-wrapper.sh" "$root/sftp-server/sftp-server.c" -o sftp-server \
+        || { echo "sftp-server did not build" >&2; exit 1; }
+    PROGRAMS="$PROGRAMS sftp-server"
+else
+    # Restored explicitly rather than left alone.  The source tree is reused
+    # across builds (DB_SRC points at a persistent directory, not a freshly
+    # extracted tarball), so an in-place sed made by a previous WITH_DB_SFTPSERVER=1
+    # run would otherwise survive into this default build and silently ship a
+    # dropbear that execs a file this package does not install.
+    SFTP_PATH="/usr/libexec/sftp-server"
+fi
+sed -i "s|^#define SFTPSERVER_PATH .*|#define SFTPSERVER_PATH \"$SFTP_PATH\"|" \
+    src/default_options.h
+grep -q "$SFTP_PATH" src/default_options.h || {
+    echo "SFTPSERVER_PATH was not rewritten to $SFTP_PATH" >&2; exit 1; }
+
+# shellcheck disable=SC2086
+make -j"$(nproc)" PROGRAMS="$PROGRAMS" SCPPROGRESS=1 >/dev/null
 
 ldid -S dropbear dbclient dropbearkey 2>/dev/null || true
 mkdir -p "$root/out"
-for p in dropbear dbclient dropbearkey scp; do
+for p in $PROGRAMS; do
     [ -f "$p" ] || { echo "$p was not built" >&2; exit 1; }
     cp "$p" "$root/out/dropbear-$p-$DB_VERSION-armv7"
 done
-echo "==> $root/out/dropbear-{dropbear,dbclient,dropbearkey,scp}-$DB_VERSION-armv7"
+echo "==> $root/out/dropbear-{$PROGRAMS}-$DB_VERSION-armv7"
+[ "${WITH_DB_SFTPSERVER:-0}" = "1" ] && \
+    echo "    WITH_DB_SFTPSERVER=1: sftp served by db-sftp-server (unaudited)"
 echo "    server runs on its own port; do NOT replace /usr/sbin/sshd"
 echo "    (SSH is the only remote access to this device)"
