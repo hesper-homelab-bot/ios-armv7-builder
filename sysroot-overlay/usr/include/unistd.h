@@ -193,7 +193,6 @@ int getpeereid(int, uid_t *, gid_t *);
    is the correct one for OS X; the glibc branch it would otherwise pick
    calls __secure_getenv(), which does not exist here. */
 int issetugid(void);
-#endif
 
 int setregid(gid_t, gid_t);
 int setreuid(uid_t, uid_t);
@@ -259,3 +258,5 @@ static inline int setresuid(uid_t r, uid_t e, uid_t u)
    calls setlogin() when UseLogin is enabled, so it needs the prototype. */
 int setlogin(const char *);
 char *getlogin(void);
+
+#endif /* _UNISTD_H */
