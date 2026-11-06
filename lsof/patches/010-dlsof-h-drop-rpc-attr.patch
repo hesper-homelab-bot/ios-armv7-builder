@@ -1,0 +1,37 @@
+--- a/lib/dialects/darwin/dlsof.h	2026-06-16 21:05:05.000000000 +0800
++++ b/lib/dialects/darwin/dlsof.h	2026-11-06 22:10:31.446965599 +0800
+@@ -46,14 +46,21 @@
+ #    include <unistd.h>
+ #    include <wctype.h>
+ #    include <arpa/inet.h>
+-#    include <sys/attr.h>
+ #    include <sys/fcntl.h>
+ #    include <sys/socket.h>
+ #    include <netinet/in.h>
+-#    include <netinet/tcp_fsm.h>
+-#    include <netinet/tcp_timer.h>
++/* iOS 10.3 cross build: tcp_fsm.h (ptti.c's TCP state table) and
++ * tcp_timer.h (TCPT_KEEP index into tcp_sockinfo.tcpsi_timer[]) are
++ * needed and are provided by the sysroot overlay.  The rpc/xdr includes
++ * are dropped for good -- lib/*.c has zero xdr references and libSystem
++ * on iOS exports no XDR symbols -- and sys/attr.h is only needed under
++ * DIR_MNTSTATUS_TRIGGER (not defined below 1900).
+ #    include <rpc/rpc.h>
+ #    include <rpc/pmap_prot.h>
++#    include <sys/attr.h>
++ */
++#    include <netinet/tcp_fsm.h>
++#    include <netinet/tcp_timer.h>
+ #    include <libproc.h>
+ 
+ #    if DARWINV < 900
+@@ -121,8 +128,7 @@
+     struct sfile *next; /* forward link */
+ };
+ 
+-#    define XDR_VOID (const xdrproc_t) xdr_void
+-#    define XDR_PMAPLIST (const xdrproc_t) xdr_pmaplist
++/* iOS 10.3 cross build: XDR macros removed with the rpc includes above. */
+ 
+ #    if !defined(offsetof)
+ #        define offsetof(type, member) ((size_t)(&((type *)0)->member))

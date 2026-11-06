@@ -42,6 +42,19 @@
 
 #define FD_CLOEXEC      1
 
+/* Darwin open-flag bits used as fd status bits (xnu bsd/sys/fcntl.h):
+ * they appear in F_GETFL results and in the fd flags that proc_info
+ * reports.  Not open() flags -- do not confuse with O_RDONLY etc. */
+#define FREAD           0x0001
+#define FWRITE          0x0002
+#define FASYNC          0x0040  /* kernel/compat: same bits as O_ASYNC */
+#define FFSYNC          0x0080  /* kernel: same bits as O_FSYNC/O_SYNC */
+#define FNONBLOCK       0x0004  /* kernel/compat: same bits as O_NONBLOCK */
+#define FAPPEND         0x0008  /* kernel/compat: same bits as O_APPEND */
+#define FMARK           0x1000
+#define FDEFER          0x2000
+#define FHASLOCK        0x4000
+
 #define F_DUPFD         0
 #define F_GETFD         1
 #define F_SETFD         2

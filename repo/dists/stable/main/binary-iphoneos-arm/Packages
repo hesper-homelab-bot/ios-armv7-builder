@@ -47,6 +47,34 @@ Description: Dropbear SSH server and client for armv7 iOS 10+ (port 22)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Dropbear SSH 2026.94
 
+Package: lsof
+Version: 4.99.7-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/l/lsof/lsof_4.99.7-1_iphoneos-arm.deb
+Size: 59376
+MD5sum: dec8eeacf94bc0a80446ff2a0c1997f8
+SHA1: 3c0cebac39d448f9e93baa41ec58927b7337a950
+SHA256: 5a419299cf4f530dbf7eadfbe3e9981d924e0ae069ff5b22cf5d1155f86b309a
+Section: Utilities
+Priority: optional
+Homepage: https://github.com/lsof-org/lsof
+Description: lsof (LiSt Open Files) for armv7 iOS 10+
+ lsof 4.99.7, cross-compiled for armv7 iOS 10.x.  The libproc-based
+ Darwin dialect: enumerates processes and their open files through
+ proc_listpids()/proc_pidinfo(), the same kernel interface ps uses.
+ .
+ Installs /var/mobile/tools/lsof.  Run it as root (sudo) to see other
+ users' processes; unprivileged runs only show your own -- the same
+ behaviour as on macOS, where lsof is also privileged.
+ .
+ Replaces the 2013 lsof 4.78 found in jailbreak images, which fails on
+ iOS 10 with "Cannot allocate memory" for every PID because its
+ hand-parsed struct kinfo_proc no longer matches the kernel.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: lsof 4.99.7
+
 Package: openssh4
 Version: 10.6p2-1
 Architecture: iphoneos-arm

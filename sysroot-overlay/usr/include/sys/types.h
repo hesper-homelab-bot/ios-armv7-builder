@@ -69,6 +69,23 @@ typedef unsigned int in_addr_t;
 #define off64_t off_t
 #endif
 
+/*
+ * Darwin major/minor/makedev (xnu bsd/sys/types.h).  Darwin dev_t is
+ * 32 bits with the major in the top byte -- this is the layout the
+ * kernel uses in KERN_PROC and proc_info device fields, and it differs
+ * from musl's 64-bit encoding.  musl's own macros live in
+ * sys/sysmacros.h and stay untouched.
+ */
+#ifndef major
+#define major(x)	((int32_t)(((u_int32_t)(x) >> 24) & 0xff))
+#endif
+#ifndef minor
+#define minor(x)	((int32_t)((x) & 0xffffff))
+#endif
+#ifndef makedev
+#define makedev(x,y)	((dev_t)(((x) << 24) | (y)))
+#endif
+
 #ifdef __cplusplus
 }
 #endif

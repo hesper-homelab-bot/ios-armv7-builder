@@ -39,8 +39,10 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 (cd openssl && ./build.sh)      # OpenSSL 4.0.3 -> out/openssl-4.0.3-armv7
 (cd curl    && ./build.sh)      # curl 8.16.0    -> out/curl-8.16.0-armv7
 (cd openssh && ./build.sh)      # OpenSSH 10.6p2 -> out/openssh-*-armv7
+(cd lsof    && ./build.sh)      # lsof 4.99.7    -> out/lsof-4.99.7-armv7
 ./openssh/make-deb.sh           # openssh4 .deb, incl. the com.hesper.osshd daemon
 ./curl/make-deb.sh              # package both as openssl4 / curl4
+./lsof/make-deb.sh              # package lsof as the lsof .deb
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
@@ -69,8 +71,10 @@ echo "deb https://hesper-homelab-bot.github.io/ios-armv7-builder/repo stable mai
 apt-get update
 apt-get install tmux              # /usr/bin/tmux
 apt-get install openssl4 curl4    # /var/mobile/openssl4, /var/mobile/tools
+apt-get install lsof              # /var/mobile/tools/lsof
+```
 
-Those three are what this repository publishes. `dropbear4` and `openssh4` are
+Those four are what this repository publishes. `dropbear4` and `openssh4` are
 **not** in it — they are distributed as assets on the
 [Releases page](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
 instead, so that the packages which replace or shadow system SSH components
@@ -94,7 +98,6 @@ an extra `-p`) for the same reason. Both default to 22.
 
 Adding them to the repo is a deliberate decision (`scripts/make-repo.sh` would
 do it), not an oversight.
-```
 
 The *libraries* stay untouched: `/usr/lib/libcrypto.dylib` and the shared
 cache are what `sshd` and the rest of iOS are linked against, and replacing
@@ -133,6 +136,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | OpenSSL 4.0.3 | `version`, `rand -hex`, `dgst -sha256`, AES-256-CBC round-trip, `speed` ≈36 MB/s AES / ≈37 MB/s SHA-256 (pure C, no asm) |
 | curl 8.16.0 | `https://` to github.com / curl.se / cloudflare.com / apple.com / baidu.com — all HTTP 200, TLS 1.2 handshake ≈6 s, redirects and POST verified |
 | OpenSSH 10.6p2 | runs as a LaunchDaemon with publickey auth, `scp` up **and** down, and `sftp` `get`/`put`/`ls` all working. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7` |
+| lsof 4.99.7 | `lsof -p $$`, full enumeration (every PID, correct paths/users/pipes), `lsof -nP -i` with TCP states, `-i :port`; other users' processes with `sudo`. Replaces the 4.78 that fails with "Cannot allocate memory" on every PID |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
@@ -583,6 +587,76 @@ The binary confirms it in one instruction each. In the broken
 layout, so the fix is in the overlay every build in this repo shares — anything
 else that includes `<dirent.h>` (curl's `file://` listing, dropbear's `scp -r`,
 OpenSSL's `OPENSSL_DIR_read`, wget) gets it on its next rebuild for free.
+
+## lsof 4.99.7
+
+lsof is the clearest illustration of why *which kernel interface a program
+uses* decides whether it can be ported at all.
+
+The lsof 4.78 that ships in jailbreak images predates the libproc era. It
+parses `struct kinfo_proc` out of a `sysctl(KERN_PROC_ALL)` buffer by hand,
+and the struct it was compiled against no longer matches the iOS 10 kernel —
+so it runs, prints its banner, and then reports `Cannot allocate memory` for
+**every** PID. Nothing is wrong with the kernel or the process table; the
+program is reading the wrong bytes at the wrong offsets. There is no way to
+fix that from outside, and no reason to: since 4.80 the Darwin dialect talks
+to the kernel through `proc_listpids()`/`proc_pidinfo()`/`proc_pidfdinfo()` —
+the same libproc interface `ps` uses — and iOS exports it.
+
+That moves the whole port into headers, and really into one header:
+`sys/proc_info.h`, which defines the `PROC_PID*` flavor numbers and the
+structs the kernel copies into the caller's buffer. Those structs are kernel
+ABI. A field a few bytes off does not fail to compile — it makes every
+answer silently wrong, which is exactly the disease described above. So the
+sysroot's copy is taken **verbatim** from the xnu tag matching the device
+kernel (`uname -v` says `xnu-3789.70.16~4`, so the tag is `xnu-3789.70.16`;
+the `~n` build suffix never changes the headers) — not hand-written, not
+borrowed from a newer macOS SDK:
+
+```sh
+git clone --depth 1 --branch xnu-3789.70.16 --filter=blob:none --sparse \
+    https://github.com/apple-oss-distributions/xnu
+cd xnu && git sparse-checkout add --skip-checks bsd/sys/proc_info.h
+```
+
+`proc_info.h` drags a small tail of Darwin headers behind it; the overlay
+provides minimal versions of each, field-checked against the same tag:
+`sys/mount.h` (Darwin `struct statfs` — on iOS 10 the 64-bit-inode layout is
+the only one), `sys/un.h` (with `sun_len`, which musl's omits), `sys/`
+`kern_control.h`, `netinet/tcp_fsm.h` and `tcp_timer.h` (note: the user-space
+`TCPT_*` timer indices differ from the `BSD_KERNEL_PRIVATE` ones in the same
+file), `mach/port.h`, `mach/machine.h`, `uuid/uuid.h`, and a Darwin
+`sys/param.h` (`MAXPATHLEN` is 1024, not musl's 4096 — `vnode_info_path`
+embeds it). `libproc.h` itself now only declares functions and includes
+`sys/proc_info.h`; its earlier revision hand-declared a few of those structs
+and got `PROC_PIDTBSDINFO` wrong (4 where the kernel says 3) — proof that
+hand-copied ABI constants are a bug waiting for a caller.
+
+The source patches are three, all in the darwin dialect: `dlsof.h` drops the
+`<rpc/*>` includes (lsof's libproc code never references XDR and iOS exports
+no XDR symbols), `machine.h` stops including the host's absolute
+`/usr/include/string.h` and defines `HASNORPC_H` so the portmap blocks
+compile out, and Configure's unconditional `-lcurses` is removed (nothing in
+the dialect calls it and iOS has no curses). Configuration is entirely
+environment-driven, because lsof's `Configure` predates autoconf:
+`LSOF_VSTR` is the device's `uname -r` (16.7.0 → `DARWINV=1600`, which is
+exact for xnu-3789), `DARWIN_BASE=libproc`, `LSOF_INCLUDE` at the sysroot,
+and `LSOF_AR`/`LSOF_RANLIB` at the Darwin ar/ranlib — GNU ar archives are
+unreadable by ld64.
+
+Two behaviours worth knowing before trusting the output:
+
+* **Root visibility.** As an unprivileged user, lsof sees only its own
+  processes; other users' fds — including root daemons and their listening
+  sockets — are invisible, exactly as on macOS where lsof ships setuid. Run
+  `sudo lsof` for the full picture. This is the kernel enforcing
+  `proc_pidinfo`, not a build defect, so do not "fix" it with setuid.
+* **Stale objects.** lsof's hand-maintained Makefiles list explicit `.o:`
+  dependencies that do not include sysroot headers. After changing anything
+  in the overlay, `make clean` first — a stale `print.o` from before a
+  header change will link happily and then misreport address families, which
+  is how the duplicate-case collisions in its family switch went unnoticed
+  for one build.
 
 ## Credits and licence
 

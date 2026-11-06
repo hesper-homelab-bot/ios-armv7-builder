@@ -1,0 +1,28 @@
+--- a/lib/dialects/darwin/machine.h	2026-06-16 21:05:05.000000000 +0800
++++ b/lib/dialects/darwin/machine.h	2026-11-06 22:06:51.620697290 +0800
+@@ -50,9 +50,24 @@
+ // macOS Catalina and later removed /usr/include
+ #        include "string.h"
+ #    else
+-#        include "/usr/include/string.h"
++/* iOS 10.3 cross build: /usr/include is the Linux host's glibc, not the
++ * target's headers; the angle form resolves via the -I sysroot path. */
++#        include <string.h>
+ #    endif /* DARWINV>=1900 */
+ 
++/* iOS 10.3 cross build: HASLFILEADD embeds a mach_port_t in struct lfile
++ * and CLRLFILEADD/SETLFILEADD use MACH_PORT_NULL; provide the type. */
++#    include <mach/port.h>
++
++/*
++ * iOS 10.3 cross build: libSystem exports no XDR/RPC symbols at all
++ * (verified against the libSystem.tbd stub), so the portmap blocks in
++ * src/print.c and src/main.c -- normally guarded by <rpc/rpc.h> being
++ * includable -- must compile out entirely.
++ */
++
++#    define HASNORPC_H 1
++
+ /*
+  * CAN_USE_CLNT_CREATE is defined for those dialects where RPC clnt_create()
+  * can be used to obtain a CLIENT handle in lieu of clnttcp_create().

@@ -96,106 +96,106 @@ struct linger {
 #define SOCK_NONBLOCK  04000
 #endif
 
+/* Darwin: longest possible sockaddr length (xnu bsd/sys/socket.h); the
+ * proc_info socket structures embed char arrays of this size. */
+#define SOCK_MAXADDRLEN 255
+
+/*
+ * Darwin protocol/address families, numbering verbatim from xnu
+ * bsd/sys/socket.h.  This table deliberately does not carry musl's Linux
+ * family list: on Darwin the numbers differ (PF_INET6 is 30, not 10;
+ * AF_APPLETALK is 16, not 5) and the Linux-only families do not exist at
+ * all.  Defining them with Linux numbers made lsof's family switch compile
+ * two macros to one case value and would make socket() open the wrong
+ * family in an exotic domain.  Everything Darwin actually has is listed;
+ * the Linux-only names are left undefined so #ifdef-guarded code compiles
+ * them out, exactly as it does on macOS.
+ */
+
 #define PF_UNSPEC       0
 #define PF_LOCAL        1
 #define PF_UNIX         PF_LOCAL
 #define PF_FILE         PF_LOCAL
 #define PF_INET         2
-#define PF_AX25         3
-#define PF_IPX          4
-#define PF_APPLETALK    5
-#define PF_NETROM       6
-#define PF_BRIDGE       7
-#define PF_ATMPVC       8
-#define PF_X25          9
-#define PF_INET6        10
-#define PF_ROSE         11
+#define PF_IMPLINK      3
+#define PF_PUP          4
+#define PF_CHAOS        5
+#define PF_NS           6
+#define PF_ISO          7
+#define PF_OSI          PF_ISO
+#define PF_ECMA         8
+#define PF_DATAKIT      9
+#define PF_CCITT        10
+#define PF_SNA          11
 #define PF_DECnet       12
-#define PF_NETBEUI      13
-#define PF_SECURITY     14
-#define PF_KEY          15
-#define PF_NETLINK      16
-#define PF_ROUTE        PF_NETLINK
-#define PF_PACKET       17
-#define PF_ASH          18
-#define PF_ECONET       19
-#define PF_ATMSVC       20
-#define PF_RDS          21
-#define PF_SNA          22
-#define PF_IRDA         23
-#define PF_PPPOX        24
-#define PF_WANPIPE      25
-#define PF_LLC          26
-#define PF_IB           27
-#define PF_MPLS         28
-#define PF_CAN          29
-#define PF_TIPC         30
-#define PF_BLUETOOTH    31
-#define PF_IUCV         32
-#define PF_RXRPC        33
-#define PF_ISDN         34
-#define PF_PHONET       35
-#define PF_IEEE802154   36
-#define PF_CAIF         37
-#define PF_ALG          38
-#define PF_NFC          39
-#define PF_VSOCK        40
-#define PF_KCM          41
-#define PF_QIPCRTR      42
-#define PF_SMC          43
-#define PF_XDP          44
-#define PF_MAX          45
+#define PF_DLI          13
+#define PF_LAT          14
+#define PF_HYLINK       15
+#define PF_APPLETALK    16
+#define PF_ROUTE        17
+#define PF_LINK         18
+#define PF_XTP          pseudo_AF_XTP
+#define PF_COIP         20
+#define PF_CNT          21
+#define PF_SIP          24
+#define PF_IPX          23
+#define PF_RTIP         pseudo_AF_RTIP
+#define PF_PIP          pseudo_AF_PIP
+#define PF_NDRV         27
+#define PF_ISDN         28
+#define PF_KEY          pseudo_AF_KEY
+#define PF_INET6        30
+#define PF_NATM         31
+#define PF_SYSTEM       32
+#define PF_NETBIOS      33
+#define PF_PPP          34
+#define PF_HDRCMPLT     pseudo_AF_HDRCMPLT
+#define PF_AFP          36
+#define PF_RESERVED_36  36
+#define PF_IEEE80211    37
+#define PF_UTUN         38
+#define PF_MULTIPATH    39
+#define PF_MAX          40
 
 #define AF_UNSPEC       PF_UNSPEC
 #define AF_LOCAL        PF_LOCAL
 #define AF_UNIX         AF_LOCAL
 #define AF_FILE         AF_LOCAL
 #define AF_INET         PF_INET
-#define AF_AX25         PF_AX25
-#define AF_IPX          PF_IPX
-#define AF_APPLETALK    PF_APPLETALK
-#define AF_NETROM       PF_NETROM
-#define AF_BRIDGE       PF_BRIDGE
-#define AF_ATMPVC       PF_ATMPVC
-#define AF_X25          PF_X25
-#define AF_INET6        PF_INET6
-#define AF_ROSE         PF_ROSE
-#define AF_DECnet       PF_DECnet
-#define AF_NETBEUI      PF_NETBEUI
-#define AF_SECURITY     PF_SECURITY
-#define AF_KEY          PF_KEY
-#define AF_NETLINK      PF_NETLINK
-#define AF_ROUTE        PF_ROUTE
-#define AF_PACKET       PF_PACKET
-#define AF_ASH          PF_ASH
-#define AF_ECONET       PF_ECONET
-#define AF_ATMSVC       PF_ATMSVC
-#define AF_RDS          PF_RDS
+#define AF_IMPLINK      PF_IMPLINK
+#define AF_PUP          PF_PUP
+#define AF_CHAOS        PF_CHAOS
+#define AF_NS           PF_NS
+#define AF_ISO          PF_ISO
+#define AF_OSI          AF_ISO
+#define AF_ECMA         PF_ECMA
+#define AF_DATAKIT      PF_DATAKIT
+#define AF_CCITT        PF_CCITT
 #define AF_SNA          PF_SNA
-#define AF_IRDA         PF_IRDA
-#define AF_PPPOX        PF_PPPOX
-#define AF_WANPIPE      PF_WANPIPE
-#define AF_LLC          PF_LLC
-#define AF_IB           PF_IB
-#define AF_MPLS         PF_MPLS
-#define AF_CAN          PF_CAN
-#define AF_TIPC         PF_TIPC
-#define AF_BLUETOOTH    PF_BLUETOOTH
-#define AF_IUCV         PF_IUCV
-#define AF_RXRPC        PF_RXRPC
+#define AF_DECnet       PF_DECnet
+#define AF_DLI          PF_DLI
+#define AF_LAT          PF_LAT
+#define AF_HYLINK       PF_HYLINK
+#define AF_APPLETALK    PF_APPLETALK
+#define AF_ROUTE        PF_ROUTE
+#define AF_LINK         PF_LINK
+#define pseudo_AF_XTP   19
+#define AF_COIP         PF_COIP
+#define AF_CNT          PF_CNT
+#define pseudo_AF_RTIP  22
+#define AF_SIP          PF_SIP
+#define pseudo_AF_PIP   25
+#define AF_NDRV         PF_NDRV
 #define AF_ISDN         PF_ISDN
-#define AF_PHONET       PF_PHONET
-#define AF_IEEE802154   PF_IEEE802154
-#define AF_CAIF         PF_CAIF
-#define AF_ALG          PF_ALG
-#define AF_NFC          PF_NFC
-#define AF_VSOCK        PF_VSOCK
-#define AF_KCM          PF_KCM
-#define AF_QIPCRTR      PF_QIPCRTR
-#define AF_SMC          PF_SMC
-#define AF_XDP          PF_XDP
+#define AF_E164         AF_ISDN
+#define pseudo_AF_KEY   29
+#define AF_INET6        PF_INET6
+#define AF_NATM         PF_NATM
+#define AF_SYSTEM       PF_SYSTEM
+#define AF_SYS_KERNCONTROL 4
+#define AF_NETBIOS      PF_NETBIOS
+#define AF_PPP          34
 #define AF_MAX          PF_MAX
-
 #ifndef SO_DEBUG
 #define SO_DEBUG        1
 #define SO_REUSEADDR    2
@@ -464,7 +464,7 @@ __REDIR(recvmmsg, __recvmmsg_time64);
 #undef AF_SYSTEM
 #define AF_SYSTEM	32
 #undef AF_MAX
-#define AF_MAX		41
+#define AF_MAX		40
 #undef PF_UNSPEC
 #define PF_UNSPEC	AF_UNSPEC
 #undef PF_UNIX
