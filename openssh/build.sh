@@ -127,11 +127,29 @@ fi
 # this define is a *successful* key exchange, a *successful* publickey
 # authentication, and then sshd-session aborting with "Symbol not found:
 # _getspnam" -- the client only sees "Connection closed".
+#
+# --with-privsep-user=_sshd is required for sshd to run *as root*, which is
+# what a LaunchDaemon does.  OpenSSH's default is a nonexistent-on-iOS account
+# named plain "sshd", and the failure is only that -- sshd refuses to start
+# before it ever binds a socket:
+#     sshd: PrivDropPrivilege: fatal: chroot("/var/empty"): No such file or
+#         directory          <- when /var/empty is missing
+#     ...
+#     Privilege separation user sshd does not exist.
+# Running the same binary as an unprivileged user (mobile, uid 501) works,
+# because then privsep is not entered at all -- so the bug is invisible until
+# launchd starts it as root.  iOS *does* ship exactly this user, as `_sshd`
+# (uid 75, home /var/empty, shell /usr/bin/false):
+#     _sshd:*:75:75:sshd Privilege separation:/var/empty:/usr/bin/false
+# so "sshd does not exist" is a compile-time answer, not a device fact.  The
+# chroot directory is left at the default /var/empty, which exists on the
+# device (drwxr-xr-x root:sys), so --with-privsep-path is not needed.
 CC="$root/tools/cc-wrapper.sh" AR="$root/tools/darwin-ar" \
 RANLIB="$root/tools/darwin-ranlib" \
 CFLAGS="-DDISABLE_SHADOW -DOPENSSL_API_COMPAT=0x10100000L" \
 ./configure --host=armv7-apple-darwin --build=x86_64-pc-linux-gnu \
     --prefix="$PREFIX" \
+    --with-privsep-user=_sshd \
     --with-ssl-dir="$OSSL" \
     --without-zlib --without-pam --without-libedit \
     --without-selinux --without-libaudit --without-wtmpdb \

@@ -17,7 +17,7 @@ What is inside:
 | `tmux/` | flagship build: full **tmux** (3.5a and 3.8 verified on an iPad 4) |
 | `openssl/` | **OpenSSL 4.0.3** (`version`, `rand`, AES/SHA all pass on device) |
 | `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
-| `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); *manual use only, no daemon* |
+| `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); ships the `com.hesper.osshd` daemon on port 22226 |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -115,7 +115,7 @@ Two consequences of taking the clients that are easy to miss:
       PubkeyAcceptedAlgorithms +ssh-rsa
   ```
 
-  Without that block the new client reaches dropbear on 22/2222 but not the
+  Without that block the new client reaches dropbear on 22 but not the
   legacy server on 22222 — which is precisely the asymmetry that would look
   like a broken upgrade rather than a disabled algorithm.
 
@@ -187,15 +187,44 @@ Releases are also on the
 | tmux 3.8 | sessions, panes, detach/reattach, `list-windows` |
 | OpenSSL 4.0.3 | `version`, `rand -hex`, `dgst -sha256`, AES-256-CBC round-trip, `speed` ≈36 MB/s AES / ≈37 MB/s SHA-256 (pure C, no asm) |
 | curl 8.16.0 | `https://` to github.com / curl.se / cloudflare.com / apple.com / baidu.com — all HTTP 200, TLS 1.2 handshake ≈6 s, redirects and POST verified |
-| OpenSSH 10.6p2 | real login on port 22223 with publickey auth, interactive shell, `uid=501(mobile)`; `scp` up **and** down; `sftp` `get`/`put`. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7`. Run by hand, never as a daemon |
+| OpenSSH 10.6p2 | runs as the `com.hesper.osshd` LaunchDaemon on port **22226** with publickey auth, `scp` up **and** down, and `sftp` `get`/`put`/`ls` all working. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7`. Verified from the host and from the device itself |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
 enabled (no nghttp2). `--disable-threaded-resolver` is used because
 `pthread_cleanup_push`/`pop` are macro machinery on Darwin.
 
-The one thing OpenSSH does *not* do yet is `sftp` directory listings — see the
-`OpenSSH 10.6p2` section. Transfers work; `ls` output does not.
+OpenSSH's `sftp` directory listings were broken by a wrong `struct dirent`
+in the shared sysroot overlay until `9cabef1` — see the `OpenSSH 10.6p2`
+section for the two-byte root cause and how it was measured.
+
+## The port layout, and who owns what
+
+Three SSH daemons, each on its own port, none of them a replacement for
+another:
+
+| port | daemon | what it is |
+|---|---|---|
+| 22 | `com.hesper.dropbear` | dropbear 2026.94, cross-built here. Primary remote access |
+| 22222 | `com.openssh.sshd` | the system OpenSSH 6.7p1, moved off 22 by `sshfix` and kept under its protection |
+| 22226 | `com.hesper.osshd` | OpenSSH 10.6p2, cross-built here, installed from the `openssh4` package |
+
+Port 2222 used to be a second `-p` on dropbear, kept as a verified lifeline
+while the port-22 cutover was still fresh. It is gone now: with a third daemon
+on 22226 the lifeline's job is done, and one listener per job is easier to
+reason about. `dropbear/dropbear-daemon.plist` still accepts
+`DROPBEAR_EXTRA_ARGS="-p 2222"` if a fallback is ever wanted again — the
+wrapper passes it straight through, and dropbear listens on every `-p` given.
+
+`osshd` is started by `openssh/osshd.plist` through
+`/var/mobile/.local/bin/osshd-daemon.sh`, which mirrors
+`dropbear/dropbear-daemon.sh` for a reason: the host keys are generated on
+first run and the package does not ship them, so without a wrapper a fresh
+install leaves sshd exiting immediately, which `KeepAlive` retries forever and
+silently. The daemon runs as root, which is what requires
+`--with-privsep-user=_sshd` — iOS reserves `_sshd` (uid 75) for exactly this,
+and the OpenSSH default of looking for a user literally named `sshd` fails
+with `Privilege separation user sshd does not exist`.
 
 ## Why this is not just `./configure && make`
 
@@ -433,24 +462,45 @@ Nothing was working before that flag existed.
 
 ### Running it
 
-`sshd` re-execs `sshd-session` (and `sshd-auth` when privsep is on), so those
-must exist next to it and be named in the config:
+Install the package, then sign **on the device** (`ldid -S` on each `ossh-*` —
+the host signature is not always honoured, and a bad signature shows up as
+`Killed: 9` with no crash report):
 
-```
-SshdSessionPath /var/mobile/tools-osshtest/ossh-sshd-session
-SshdAuthPath     /var/mobile/tools-osshtest/ossh-sshd-auth
-Subsystem sftp   /var/mobile/tools-osshtest/ossh-sftp-server
-```
-
-Sign **on the device** (`ldid -S` on each `ossh-*`), then run it in the
-foreground so the log is readable afterwards:
-
-```
-nohup /var/mobile/tools-osshtest/ossh-sshd -D -e \
-    -f /var/mobile/tools-osshtest/sshd_config > /var/mobile/tools-osshtest/sshd.log 2>&1 &
+```sh
+dpkg -i openssh4_10.6p2-5_iphoneos-arm.deb
+for f in /var/mobile/tools/ossh-*; do ldid -S "$f"; done
+sudo launchctl load -w /Library/LaunchDaemons/com.hesper.osshd.plist
 ```
 
-`ossh-sshd -t -f <config>` is the fastest way to see how far it gets.
+`sshd` re-execs `sshd-session`, so that path has to be in the config, and it is
+not a PATH search — these are config keys:
+
+```
+SshdSessionPath /var/mobile/tools/ossh-sshd-session
+SshdAuthPath     /var/mobile/tools/ossh-sshd-auth
+Subsystem sftp   /var/mobile/tools/ossh-sftp-server
+```
+
+Two different reasons sshd refuses to start, both of which cost time to tell
+apart from the outside:
+
+* `Privilege separation user sshd does not exist` — iOS has `_sshd`, not
+  `sshd`. Fixed by `--with-privsep-user=_sshd` at configure time; without it
+  sshd cannot run as root and therefore cannot be a LaunchDaemon at all.
+* It runs fine as `mobile` and fails as root. That is the same problem seen
+  from the other side.
+
+To test by hand first rather than committing it to launchd:
+
+```sh
+nohup /var/mobile/tools/ossh-sshd -D -e \
+    -f /var/mobile/ssh-openssh/sshd_config > /var/mobile/.local/osshd.log 2>&1 &
+```
+
+`ossh-sshd -t -f <config>` is the fastest way to see how far it gets. Note that
+`scp` and `sftp` exec the ssh binary from `/var/mobile/tools/bin/ssh`, a path
+compiled in at configure time and not a PATH search — the package ships that
+link, and it has to be absolute or it dangles.
 
 ### What did not work
 
