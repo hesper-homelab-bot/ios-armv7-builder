@@ -2,3 +2,7 @@ tmp/
 out/
 pkg/
 wget/
+
+# build byproducts from sftp-server/
+sftp-server/*.o
+sftp-server/test/__pycache__/
