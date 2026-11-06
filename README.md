@@ -17,7 +17,7 @@ What is inside:
 | `tmux/` | flagship build: full **tmux** (3.5a and 3.8 verified on an iPad 4) |
 | `openssl/` | **OpenSSL 4.0.3** (`version`, `rand`, AES/SHA all pass on device) |
 | `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
-| `openssh/` | **OpenSSH 10.6p2** — builds, logs in, scp/sftp work; *manual use only, no daemon* |
+| `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); *manual use only, no daemon* |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -367,6 +367,7 @@ time, sometimes only inside a re-exec'd child binary that starts after a
 | `pwd.h`, `grp.h` | `user_from_uid()`, `group_from_gid()` |
 | `netinet/in.h` | `IN_LOOPBACKNET` — the Linux name for the `127/8` leading octet; `sockaddr_is_local()` in `sshconnect.c` uses it. Darwin spells the class constants differently and never defines this name |
 | `netgroup.h` | did not exist in musl at all |
+| `dirent.h`, `bits/dirent.h` | **`struct dirent` is not musl's, and the difference is two bytes.** musl declares `off_t d_off` and `d_name[256]` after it; Darwin has no `d_off` at all and adds a `d_seekoff` cookie, so on this 64-bit-`off_t` port `d_name` lands at offset 19 while the device puts it at 21. `get`/`put` never call `readdir`, so only directory listings broke — every entry came back as `""`, which is the whole `Server sent suspect path "" during readdir` bug. Measured field-by-field on the device; see below |
 
 ### `*at()` functions accept no flags at all on iOS 10
 
@@ -402,12 +403,6 @@ nohup /var/mobile/tools-osshtest/ossh-sshd -D -e \
 
 ### What did not work
 
-* **`sftp` directory listings.** `ls` prints
-  `Server sent suspect path "" during readdir of "..."` for every entry, so the
-  listing body is empty. `get`, `put`, and therefore `scp` (which OpenSSH 10
-  runs over SFTP) are unaffected and verified working. Not investigated
-  further; the SFTP wire format this `sftp-server` emits versus what the
-  OpenSSH 10 client expects is the likely place.
 * **`ns_get16`/`ns_get32` stay undefined** in `sshd`/`ssh`/`ssh-keygen`
   (from OpenSSH's `getrrsetbyname.c`) and **`recvmmsg`/`sendmmsg`** in every
   binary (pulled in by `libssl-lib-ssl_lib.o`'s reference to `BIO_s_datagram`,
@@ -422,6 +417,62 @@ nohup /var/mobile/tools-osshtest/ossh-sshd -D -e \
 * **`UsePrivilegeSeparation` is gone.** OpenSSH removed the directive, and
   deleting it from `sshd_config` is what makes sshd start re-exec'ing
   `sshd-session`, which in turn is what surfaced the `getspnam` crash above.
+
+### The empty `ls`, and how the real `struct dirent` was measured
+
+The first build of this port left `sftp` directory listings broken: every entry
+produced `Server sent suspect path "" during readdir of "..."` and the listing
+body was empty, while `get`/`put`/`scp` and plain `ssh` were fine. The upstream
+error is a *client*-side check that the server's name is neither empty nor
+contains `/`, so an empty name meant `sftp-server` itself was handing the client
+empty strings out of `readdir(3)` — not a wire-format problem, and not anything
+`get`/`put` touch, which is exactly why only listings broke.
+
+The cause is the last piece of musl-that-is-not-Darwin, and it is two bytes:
+
+| | musl's `struct dirent` | Darwin's, on the device |
+|---|---|---|
+| `d_ino` | `ino_t` @0 | `ino_t` @0 |
+| `d_off` | `off_t` @8 | — does not exist |
+| | | `d_seekoff` @8 (the directory cookie) |
+| `d_reclen` | `unsigned short` @16 | `unsigned short` @16 |
+| `d_type` | `unsigned char` @18 | `unsigned char` @20 |
+| | | `d_namlen` @18, `unsigned short` |
+| `d_name` | `char[256]` @19 | `char[]` @21 |
+
+Because this sysroot's `ino_t` and `off_t` are both 64-bit, musl's declaration
+puts `d_name` at offset **19**; the device puts it at **21**. Two bytes short,
+landing on a byte that is zero in every record — so every `d_name` read through
+the musl offset is `""`. Nothing about that is visible at compile or link time:
+the struct is only ever a pointer the target libc fills in, and it links fine
+because `-undefined dynamic_lookup` accepts anything.
+
+The table was not read out of a header. It was measured on the device by dumping
+the raw records from both `getdirentries(2)` and `readdir(3)` (byte-identical,
+so `readdir()` is a pass-through) against a directory of files with known name
+lengths — 1, 2, 3, 6, 7, 9, 16, 19, 22, 24, 189, 254 and 255 bytes — with every
+field cross-checked:
+
+* `d_reclen` @16 — `readdir()`'s return pointer advances by exactly this much
+  from one entry to the next, for all 17 entries.
+* `d_namlen` @18 — equals `strlen(d_name)` for all 17 entries, 254 and 255
+  included.
+* `d_type` @20 — `DT_DIR`(4) for `.` and `..`, `DT_REG`(8) for every regular
+  file, `DT_LNK`(10) for a symlink.
+* `d_name` @21 — the name starts here for every entry.
+* `d_seekoff` @8 — `telldir()` returns its low 32 bits (1, 2, 3, … the entry's
+  position), which pins both the field and its offset.
+* `d_name[]` is big enough for the filesystem's own limit: a 255-byte name came
+  back whole.
+
+The binary confirms it in one instruction each. In the broken
+`sftp-server`, `process_readdir` computes `d_name` with
+`add.w r9, r0, #0x13`; in the fixed one, `#0x15`.
+
+`sysroot-overlay/usr/include/dirent.h` and `bits/dirent.h` now carry the Darwin
+layout, so the fix is in the overlay every build in this repo shares — anything
+else that includes `<dirent.h>` (curl's `file://` listing, dropbear's `scp -r`,
+OpenSSL's `OPENSSL_DIR_read`, wget) gets it on its next rebuild for free.
 
 ## Credits and licence
 
