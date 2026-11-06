@@ -84,6 +84,44 @@ the way with **symlinks**, never with copies and never by removing packages:
 | `/usr/bin/wget`, `/usr/local/bin/wget` | `/var/mobile/tools/wget` | iOS 10 has **no** `/usr/bin/wget` at all, so nothing was displaced |
 | `/usr/local/bin/openssl` | `/var/mobile/openssl4/openssl` | 4.0.3 |
 | `/usr/bin/openssl` | *left alone* | dpkg file (`openssl 0.9.8zg-13`), still 0.9.8zg by absolute path |
+| `/usr/local/bin/{ssh,scp,sftp,ssh-keygen,ssh-add,ssh-agent,ssh-keyscan}` | the matching `/var/mobile/tools/ossh-*` | 10.6p2 |
+| `/usr/bin/{ssh,scp,sftp}`, `/usr/sbin/sshd` | *left alone* | dpkg files (`openssh 6.7p1-13`); **no `sshd` link was created**, deliberately |
+
+The `sshd` row is the point: the new *clients* were taken on, the new *daemon*
+was not. Nothing on the device invokes `sshd` by bare name anyway — the
+sshd plist hardcodes `/usr/sbin/sshd` — so not linking it keeps port 22222
+behaving exactly as before, and an `apt-get install --reinstall openssh`
+cannot start a second server on a port dropbear already owns.
+
+Two consequences of taking the clients that are easy to miss:
+
+* **scp and sftp exec a compiled-in ssh path, not a PATH search.**
+  `build.sh` configures with `--prefix=/var/mobile/tools`, so bindir defaulted
+  to `$PREFIX/bin` and both binaries carry the literal
+  `/var/mobile/tools/bin/ssh`. The `ossh-` prefix moves the real binaries out
+  of that path, so until the package also ships a `bin/ssh` link every scp and
+  sftp dies with `exec: /var/mobile/tools/bin/ssh: No such file or directory`
+  while `ssh` keeps working — a very confusing failure. `make-deb.sh` now
+  creates the link, with an **absolute** target: a relative `ossh-ssh` resolves
+  against the link's own directory and dangles.
+* **OpenSSH 10 refuses the system sshd by default.** It disables `ssh-rsa`
+  (SHA-1), and the 6.7p1 server on 22222 offers only `ssh-rsa`/`ssh-dss`, so a
+  bare `ssh -p 22222` fails with `no matching host key type found`. Re-enabling
+  it in the device's `~/.ssh/config` restores the drop-in behaviour:
+
+  ```
+  Host *
+      HostKeyAlgorithms +ssh-rsa
+      PubkeyAcceptedAlgorithms +ssh-rsa
+  ```
+
+  Without that block the new client reaches dropbear on 22/2222 but not the
+  legacy server on 22222 — which is precisely the asymmetry that would look
+  like a broken upgrade rather than a disabled algorithm.
+
+`make-deb.sh` also builds with `dpkg-deb --root-owner-group`: otherwise the
+binaries land on the device owned by the host's build uid (1000), a user that
+does not exist there. Re-sign with `ldid -S` on the device after installing.
 
 Three decisions worth explaining:
 
@@ -110,10 +148,23 @@ The displaced iOS curl is kept at
 mode `644` so it cannot be executed by accident. To roll the whole thing back:
 
 ```sh
-sudo rm -f /usr/bin/curl /usr/bin/wget /usr/local/bin/{curl,wget,openssl}
+# 1. the shadowing links
+sudo rm -f /usr/bin/curl /usr/bin/wget \
+          /usr/local/bin/{curl,wget,openssl,ssh,scp,sftp,ssh-keygen,ssh-add,ssh-agent,ssh-keyscan}
+
+# 2. the package-provided ssh path dependency (dpkg -r openssh4 does this too)
+sudo rm -rf /var/mobile/tools/bin
+sudo dpkg -r openssh4
+
+# 3. restore the displaced iOS curl
 sudo cp /var/mobile/.local/etc/system-shadow-backup/curl-ios-firmware /usr/bin/curl
 sudo chmod 755 /usr/bin/curl
 ```
+
+Step 1 alone is enough to go back to the system versions; steps 2 and 3 only
+matter if you also want the `openssh4` package and the displaced curl gone.
+Note that `ssh` keeps working throughout — it falls back to `/usr/bin/ssh`,
+which was never touched.
 
 `dpkg -V openssl openssh` afterwards flags exactly one file,
 `/Library/LaunchDaemons/com.openssh.sshd.plist`, which is expected — that is the

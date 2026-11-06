@@ -96,10 +96,34 @@ done
 
 chmod 755 "$w"/var/mobile/tools/*
 
+# OpenSSH's scp and sftp do not search PATH for the ssh binary: they exec a
+# path compiled into them, which is <bindir>/ssh.  build.sh configures with
+# --prefix="$PREFIX" (default /var/mobile/tools), so bindir defaulted to
+# $PREFIX/bin and both binaries carry the literal
+# /var/mobile/tools/bin/ssh.  The ossh- prefix moves the real binaries out of
+# that path, so without this link every scp and sftp invocation dies with
+#     exec: /var/mobile/tools/bin/ssh: No such file or directory
+# while ssh itself keeps working -- a confusing failure to debug, so the
+# dependency is satisfied by the package rather than by the user.
+#
+# The target has to be absolute: a relative "ossh-ssh" would resolve against
+# the link's own directory and look for /var/mobile/tools/bin/ossh-ssh, which
+# does not exist.  Verified on the device: relative dangles, absolute works.
+mkdir -p "$w/var/mobile/tools/bin"
+ln -sfn /var/mobile/tools/ossh-ssh "$w/var/mobile/tools/bin/ssh"
+
+[ -L "$w/var/mobile/tools/bin/ssh" ] || { echo "bin/ssh is not a symlink" >&2; exit 1; }
+[ "$(readlink "$w/var/mobile/tools/bin/ssh")" = /var/mobile/tools/ossh-ssh ] || {
+    echo "bin/ssh points at the wrong target" >&2; exit 1; }
+
 mkdir -p "$root/pkg"
 deb="$root/pkg/${PKG}_${OSSH_VERSION}-${DEBREV}_iphoneos-arm.deb"
+# --root-owner-group: without it these binaries land on the device owned by the
+# host's build uid (1000), a user that does not exist there.  root:root at mode
+# 755 is both tidy and the safer posture -- a logged-in user cannot swap the ssh
+# binary they are about to execute.  (Re-sign on the device after installing.)
 # shellcheck disable=SC2086
-dpkg-deb -Zgzip -b "$w" "$deb"
+dpkg-deb -Zgzip --root-owner-group -b "$w" "$deb"
 echo "==> $deb"
 echo "    installs /var/mobile/tools/ossh-* and NOTHING under /Library"
 echo "    no LaunchDaemons plist, no launchctl, no service"
