@@ -14,13 +14,18 @@
 		<string>/var/mobile/.local/bin/dropbear-daemon.sh</string>
 	</array>
 
-	<!-- 2222, never 22.  The old sshd owns port 22 and SSH is the only
-	     remote access to this device; this daemon is added in parallel and
-	     never replaces it. -->
+	<!-- Primary port, plus a fallback kept alongside it.  Dropbear listens on
+	     every -p it is given, so the fallback is passed straight through to
+	     the binary as a second -p: if the primary port regresses, the 2222
+	     lifeline -- the one port that was verified working end to end --
+	     still accepts connections.
+	     Set DROPBEAR_EXTRA_ARGS to empty for a single-port installation. -->
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>DROPBEAR_PORT</key>
 		<string>__DROPBEAR_PORT__</string>
+		<key>DROPBEAR_EXTRA_ARGS</key>
+		<string>__DROPBEAR_EXTRA_ARGS__</string>
 	</dict>
 
 	<key>RunAtLoad</key>

@@ -48,6 +48,13 @@ struct in_addr {
     in_addr_t s_addr;
 };
 
+/* Lowest port number a privileged process may bind.  musl omits it; Dropbear's
+ * tcp-forwarding check uses it to decide whether an unprivileged bind may
+ * claim a reserved port.  Same value on Darwin and Linux. */
+#ifndef IPPORT_RESERVED
+#define IPPORT_RESERVED 1024
+#endif
+
 struct sockaddr_in {
 	unsigned char	sin_len;	/* Darwin: total length (16) */
 	sa_family_t	sin_family;
