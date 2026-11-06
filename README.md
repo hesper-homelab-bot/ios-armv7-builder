@@ -85,7 +85,8 @@ sudo launchctl load -w /Library/LaunchDaemons/com.hesper.osshd.plist
 The package ships the job, the wrapper and an `sshd_config`, so an install
 gives a running service on port **22** instead of a directory of binaries; host
 keys are generated on first start. Re-signing on the device is no longer
-needed — see *Signing: what "Killed: 9" actually meant*.
+needed — the packaging scripts now assert the signature rather than swallowing
+the failure that caused the old warning.
 
 `openssh/make-deb.sh` takes `OSSH_PORT=` to package it elsewhere, and
 `dropbear/make-deb.sh` takes `DROPBEAR_PORT=` (plus `DROPBEAR_EXTRA_ARGS=` for
@@ -203,64 +204,13 @@ an explicit restore a previous `WITH_DB_SFTPSERVER=1` run would leave the path
 pointing at a file the default package does not install, and the failure would
 only show up on the device as a subsystem that execs nothing.
 
-## Signing: what "Killed: 9" actually meant
+## Signing: once, on the host
 
-Every `make-deb.sh` here used to carry the same warning — *host ldid
-occasionally produces a binary the device kills with "Killed: 9" and no crash
-report; signing on the device always works* — and so reported to sign twice.
-That warning is wrong, and it is worth recording how it was disproved because
-it cost real effort for years.
-
-First, the two claims contradict each other in this repo's own history.
-`e3fd62b` ("sign with a host ldid when available") states the host-signed
-binary was *verified to run on the device* and closes the pipeline host-side.
-A later commit added the "Killed: 9" comment, and it was then copied verbatim
-into curl's, dropbear's and openssh's packaging.
-
-Second, on the device today `curl`, `wget` and every `db-*` binary are signed
-only on the host and have never been re-signed there — their mtimes are still
-the install times — and all of them run.
-
-Third, a controlled experiment settles it. Same binary, one variable:
-
-| state | result |
-|---|---|
-| unsigned | exit **137** (SIGKILL), `Killed: 9`, stdout and stderr both **empty** |
-| same binary, host `ldid -S` | runs, exits normally |
-| same binary, signed on device | runs, exits normally |
-
-The symptom is real; the diagnosis was not. The mechanism is in the old
-`sign()`:
-
-```sh
-sign() {
-    local src="$1" dst="$2"
-    cp "$src" "$dst"
-    ldid -S "$dst" 2>/dev/null || true      # <-- this
-}
-```
-
-`|| true` swallows the failure. When `ldid` is missing from `PATH`, or fails,
-the binary that reaches the package is **completely unsigned**, and an unsigned
-Mach-O is killed by the kernel during `exec` — before `main()`, hence no
-output and no crash report. It looked intermittent ("occasionally") because it
-depended on that one invocation succeeding, and it looked host-specific because
-the device-side step was run by a human who would have noticed a missing
-`ldid`, while the host-side failure was silent.
-
-So host signing works, and re-signing on the device buys nothing. The correct
-fix is to make the failure loud rather than to work around it — check `ldid` is
-available and verify the artifact carries a signature, instead of `|| true`.
-Note also that `out/` artifacts straight from `build.sh` are *unsigned* by
-design; signing happens on the copies `make-deb.sh` stages.
-
-Signing is now asserted rather than hoped for: every `sign()` checks that
-`ldid` is available, propagates a non-zero exit, and then confirms with
-`ldid -e` that the artifact really carries a signature — `ldid -e` exits 0
-only on a signed file, which is worth stating because it was tested by signing
-a copy of an unsigned binary and re-checking (exit 1 before, 0 after).
-Executing the binary remains the only real test; this just makes the packaging
-fail instead of quietly shipping something that will be killed.
+`ldid -S` runs on the build machine and nowhere else. The old "sign twice,
+on the device" rule this repo used to follow was disproved — the full
+post-mortem, including the controlled experiment, is in `DEVICE.md`, which
+is not published. The packaging scripts now assert the signature instead of
+swallowing the failure that caused the folklore.
 
 ## One device, one layout
 
@@ -526,8 +476,10 @@ dpkg -i openssh4_10.6p2-1_iphoneos-arm.deb
 sudo launchctl load -w /Library/LaunchDaemons/com.hesper.osshd.plist
 ```
 
-Signing on the device is **not** needed — see the signing section below for why
-the old "Killed: 9" warning was wrong.
+Signing on the device is **not** needed. The old warning that a host signature
+sometimes gets killed with `Killed: 9` was wrong, and the packaging now fails
+loudly instead of shipping an unsigned binary; the full post-mortem is in
+`DEVICE.md` (not published).
 
 `sshd` re-execs `sshd-session`, so that path has to be in the config, and it is
 not a PATH search — these are config keys:
