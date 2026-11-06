@@ -21,6 +21,54 @@ Description: curl with HTTPS for armv7 iOS 10+ (static OpenSSL 4)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: curl 8
 
+Package: dropbear4
+Version: 2026.94-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/d/dropbear4/dropbear4_2026.94-1_iphoneos-arm.deb
+Size: 391872
+MD5sum: 24afa8cdbeb9c7e2cb85a1c9f1776379
+SHA1: 161f9a487f41266aa28fb94cc3df721e63ca07cb
+SHA256: 55c37f64c65302bad1a72d1d8db4b84499319582b45a128e09134254b0359fba
+Section: Networking
+Priority: optional
+Homepage: https://matt.ucc.asn.au/dropbear/
+Description: Dropbear SSH server and client for armv7 iOS 10+ (port 22)
+ Dropbear 2026.94, cross-compiled for armv7 iOS 10.x with its bundled
+ libtomcrypt (no OpenSSL dependency).
+ .
+ Installs /var/mobile/tools/db-dropbear (server), db-dbclient, db-dropbearkey
+ and db-scp, plus a LaunchDaemon that runs the server on port 22.
+ .
+ This is the primary SSH server on port 22; the legacy /usr/sbin/sshd is
+ relocated to port 22222 by sshfix, not deleted, so the previous access
+ path is still recoverable if this package is removed.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: Dropbear SSH 2026.94
+
+Package: openssh4
+Version: 10.6p2-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Filename: pool/main/o/openssh4/openssh4_10.6p2-1_iphoneos-arm.deb
+Size: 13561158
+MD5sum: ecce21108c37d70e810d393665dcf5dc
+SHA1: fb24162a97e7f907a61c532761388f2ce759e2cb
+SHA256: b158700149ac3f0e33adbaec35a3cb7bbae6093f192873d0f98919ed88ffa897
+Section: Networking
+Priority: optional
+Homepage: https://www.openssh.com/
+Description: OpenSSH 10.6p2 for armv7 iOS, manual use only
+ Installs as ossh-* under /var/mobile/tools so it never shadows the system
+ ssh/scp. Deliberately registers no launchd daemon: run it yourself with
+ .
+   ossh-sshd -D -e -f /var/mobile/tools-osshtest/sshd_config
+ .
+ on a port of your choosing.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: OpenSSH 10.6p2
+
 Package: openssl4
 Version: 4.0.3-1
 Architecture: iphoneos-arm
