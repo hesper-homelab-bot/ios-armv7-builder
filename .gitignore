@@ -6,3 +6,7 @@ wget/
 # build byproducts from sftp-server/
 sftp-server/*.o
 sftp-server/test/__pycache__/
+
+# Device-specific operating notes.  Never published: what is installed on my iPad 4,
+# how it differs from the released defaults, and how to undo any of it.
+DEVICE.md

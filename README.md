@@ -100,119 +100,29 @@ cache are what `sshd` and the rest of iOS are linked against, and replacing
 them bricks remote access. Removing the packages (`rm -rf /var/mobile/openssl4`)
 leaves the device exactly as it was.
 
-### Shadowing the system binaries (2026-11-06)
+### Making them the default on a device
 
-The command-line *binaries* are a different story, and they were moved out of
-the way with **symlinks**, never with copies and never by removing packages:
+If you want the new tools to answer to their bare names, **symlink rather than
+copy** — a symlink is one `rm` from being reverted, keeps a single source of
+truth, and leaves dpkg's md5sums valid, whereas a file copied into a
+dpkg-owned path is silently clobbered back to 0.9.8zg by the next
+`--reinstall`.
 
-| bare name | resolves to | notes |
-|---|---|---|
-| `/usr/bin/curl`, `/usr/local/bin/curl` | `/var/mobile/tools/curl` | 8.16.0 |
-| `/usr/bin/wget`, `/usr/local/bin/wget` | `/var/mobile/tools/wget` | iOS 10 has **no** `/usr/bin/wget` at all, so nothing was displaced |
-| `/usr/local/bin/openssl` | `/var/mobile/openssl4/openssl` | 4.0.3 |
-| `/usr/bin/openssl` | *left alone* | dpkg file (`openssl 0.9.8zg-13`), still 0.9.8zg by absolute path |
-| `/usr/local/bin/{ssh,scp,sftp,ssh-keygen,ssh-add,ssh-agent,ssh-keyscan}` | the matching `/var/mobile/tools/ossh-*` | 10.6p2 |
-| `/usr/bin/{ssh,scp,sftp}`, `/usr/sbin/sshd` | *left alone* | dpkg files (`openssh 6.7p1-13`); **no `sshd` link was created**, deliberately |
+Three things that are easy to get wrong:
 
-The `sshd` row is the point: the new *clients* were taken on, the new *daemon*
-was not. Nothing on the device invoked `sshd` by bare name anyway — the sshd
-plist hardcoded `/usr/sbin/sshd` — so not linking it could not change how the
-then-running system daemon on 22222 behaved, and an
-`apt-get install --reinstall openssh` could not start a second server on a port
-dropbear already owned. (That daemon has since been cut; see the port-layout
-section.)
+* A **non-login shell** (`sh -c`, scripts, launchd jobs) gets
+  `PATH=/usr/bin:/bin` and cannot see `/usr/local/bin` at all, so a link placed
+  only there leaves scripts on the old versions. Put links in `/usr/bin` too,
+  but only for files no dpkg package owns.
+* Do not `dpkg -r` the old packages. `openssh` owns `/usr/sbin/sshd` and the
+  ssh clients, and `sshpass` depends on it; removing it is the one step in this
+  whole exercise that can cost remote access. Shadow, do not delete.
+* Never write over a dpkg-owned binary — write a symlink somewhere earlier on
+  `PATH` instead.
 
-Two consequences of taking the clients that are easy to miss:
+Which links actually exist on the author's iPad, and how to undo them, is in
+`DEVICE.md` (not published).
 
-* **scp and sftp exec a compiled-in ssh path, not a PATH search.**
-  `build.sh` configures with `--prefix=/var/mobile/tools`, so bindir defaulted
-  to `$PREFIX/bin` and both binaries carry the literal
-  `/var/mobile/tools/bin/ssh`. The `ossh-` prefix moves the real binaries out
-  of that path, so until the package also ships a `bin/ssh` link every scp and
-  sftp dies with `exec: /var/mobile/tools/bin/ssh: No such file or directory`
-  while `ssh` keeps working — a very confusing failure. `make-deb.sh` now
-  creates the link, with an **absolute** target: a relative `ossh-ssh` resolves
-  against the link's own directory and dangles.
-* **OpenSSH 10 refuses the system sshd by default.** It disables `ssh-rsa`
-  (SHA-1), and the 6.7p1 server on 22222 offers only `ssh-rsa`/`ssh-dss`, so a
-  bare `ssh -p 22222` fails with `no matching host key type found`. Re-enabling
-  it in the device's `~/.ssh/config` restores the drop-in behaviour:
-
-  ```
-  Host *
-      HostKeyAlgorithms +ssh-rsa
-      PubkeyAcceptedAlgorithms +ssh-rsa
-  ```
-
-  Without that block the new client reaches dropbear on 22 but not the
-  legacy server on 22222 — which is precisely the asymmetry that would look
-  like a broken upgrade rather than a disabled algorithm.
-
-`make-deb.sh` also builds with `dpkg-deb --root-owner-group`: otherwise the
-binaries land on the device owned by the host's build uid (1000), a user that
-does not exist there. Re-sign with `ldid -S` on the device after installing.
-
-Three decisions worth explaining:
-
-* **Symlink, don't copy.** A symlink is one `rm` from being reverted, keeps a
-  single source of truth so a rebuilt tool takes effect without a reinstall,
-  and — critically — leaves dpkg's md5sums valid. A file copied into a
-  dpkg-owned path gets silently clobbered back to 0.9.8zg by the next
-  `apt-get install --reinstall`.
-* **`/usr/bin` for curl/wget only.** A non-login shell (`sh -c`, scripts,
-  launchd jobs) gets `PATH=/usr/bin:/bin` and cannot see `/usr/local/bin` at
-  all, which is easy to discover only when a script mysteriously uses the old
-  version. `curl` and `wget` are owned by no dpkg package, so replacing them
-  costs nothing; `openssl` is a dpkg file, so it is shadowed only through
-  `/usr/local/bin`, which is already ahead of `/usr/bin` on the login-shell
-  PATH (and already hosts `untether-bootstrap.sh`).
-* **No package was ever removed.** `dpkg -r openssh` would delete
-  `/usr/sbin/sshd`, and it is still the only copy of that old
-  OpenSSH 6.7p1 on the device — kept deliberately, so it can be brought back by
-  hand on a spare port if it is ever wanted (see the port-layout section).
-  It would also take `sshpass` with it. Removing that package was the one step
-  in this whole exercise that could actually cost remote access, so the old
-  files stay on disk, unloaded and simply out-ranked on `PATH`.
-
-The displaced iOS curl is kept at
-`/var/mobile/.local/etc/system-shadow-backup/curl-ios-firmware`, deliberately
-mode `644` so it cannot be executed by accident. To roll the whole thing back:
-
-```sh
-# 1. the shadowing links
-sudo rm -f /usr/bin/curl /usr/bin/wget \
-          /usr/local/bin/{curl,wget,openssl,ssh,scp,sftp,ssh-keygen,ssh-add,ssh-agent,ssh-keyscan}
-
-# 2. the package-provided ssh path dependency (dpkg -r openssh4 does this too)
-sudo rm -rf /var/mobile/tools/bin
-sudo dpkg -r openssh4
-
-# 3. restore the displaced iOS curl
-sudo cp /var/mobile/.local/etc/system-shadow-backup/curl-ios-firmware /usr/bin/curl
-sudo chmod 755 /usr/bin/curl
-```
-
-Step 1 alone is enough to go back to the system versions; steps 2 and 3 only
-matter if you also want the `openssh4` package and the displaced curl gone.
-Note that `ssh` keeps working throughout — it falls back to `/usr/bin/ssh`,
-which was never touched.
-
-`dpkg -V openssl openssh` afterwards flags exactly one file,
-`/Library/LaunchDaemons/com.openssh.sshd.plist`: that is the plist whose port
-was rewritten to 22222 earlier and which has since been left unloaded rather
-than restored. It is expected and unrelated to this shadowing — the binaries
-here were never written over, only out-ranked on `PATH`, which is why nothing
-under `/usr/bin` or `/usr/sbin` shows up.
-
-curl needs a CA bundle for HTTPS:
-
-```sh
-export SSL_CERT_FILE=/etc/ssl/cert.pem
-curl -sS https://github.com            # 200, TLS 1.2
-```
-
-Releases are also on the
-[Releases page](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases).
 
 ## Verified on an iPad 4 (iOS 10.3.3, armv7)
 
@@ -352,65 +262,28 @@ a copy of an unsigned binary and re-checking (exit 1 before, 0 after).
 Executing the binary remains the only real test; this just makes the packaging
 fail instead of quietly shipping something that will be killed.
 
-## The port layout, and who owns what
+## One device, one layout
 
-Two SSH daemons, each on its own port, neither a replacement for the other:
+Which ports the daemons end up on, what else is installed on the device, and
+how any of it was changed are recorded in `DEVICE.md` — a file that is in
+`.gitignore` and never published. What is here is only what another user needs:
+the packages default to port 22, one daemon per job, and moving one means
+editing its conffile.
 
-| port | daemon | what it is |
-|---|---|---|
-| 22 | `com.hesper.dropbear` | dropbear 2026.94, cross-built here. Primary remote access |
-| 22226 | `com.hesper.osshd` | OpenSSH 10.6p2, cross-built here, installed from the `openssh4` package |
+Two things about the layout are worth stating for anyone who installs both
+packages. They cannot both own 22, and the one that loses the race refuses to
+start rather than looping under `KeepAlive` with a silent exit:
 
-Port 2222 used to be a second `-p` on dropbear, kept as a verified lifeline
-while the port-22 cutover was still fresh; it is gone, and
-`dropbear/dropbear-daemon.plist` still accepts `DROPBEAR_EXTRA_ARGS="-p 2222"`
-if a fallback is ever wanted again, since the wrapper passes it straight
-through and dropbear listens on every `-p` given.
-
-Port 22222 — the system OpenSSH 6.7p1, moved there off 22 earlier — was
-**cut on 2026-11-06**. The daemon is unloaded and its `sshfix` protector
-disabled, because after the dropbear sftp work nothing needed it any more:
-
-* `db-scp` execs our own dbclient, and dropbear's sftp subsystem now execs
-  `db-sftp-server` — see the sftp section above for what changed.
-* The only reason to keep 22222 was as a path built by someone else. Two
-  independently cross-built daemons are enough, and a third one that has to be
-  babysat by a timer script is more fragile than it is worth.
-
-`sshfix` (`com.hesper.sshfix`, `ssh-selfheal.sh`) is disabled with
-`launchctl unload -w`, not deleted: it would otherwise reinstall the sshd plist
-and reload 22222 within its 120-second cycle. The files are still on the
-device under `/var/mobile/.local/`, and everything it needs is backed up in
-`/var/mobile/.local/etc/backup-cut-22222/`.
-
-### Running the old system sshd by hand, if it is ever wanted
-
-The `openssh` package is still installed and `/usr/sbin/sshd` untouched, so
-nothing was deleted — the daemon is simply not started by launchd. To bring it
-up for a test, foreground it on a spare port:
-
-```sh
-# the plist that used to be the live one is preserved; point it at a free port
-sed 's/22222/22299/' /var/mobile/.local/etc/sshd.plist.good > /tmp/sshd-test.plist
-sudo cp /tmp/sshd-test.plist /Library/LaunchDaemons/com.openssh.sshd.plist
-sudo chown root:wheel /Library/LaunchDaemons/com.openssh.sshd.plist
-sudo launchctl load -w /Library/LaunchDaemons/com.openssh.sshd.plist
-sudo launchctl unload -w /Library/LaunchDaemons/com.openssh.sshd.plist   # when done
+```
+osshd-daemon: port 22 is already in use -- not starting.
+holder: /var/mobile/tools/db-dropbear -F -E -p 22 ...
 ```
 
-Pick a port that is actually free first — 22, 22226 and 22299 are not all of
-them. And note that a client reaching it must re-enable `ssh-rsa`, since
-OpenSSH 10 disables it and 6.7p1 offers nothing else.
+And the plists plus `sshd_config` are **conffiles**, so the port you set is not
+overwritten by the next `apt-get upgrade` — which is the difference between an
+upgrade you can fix in a minute and one that quietly puts two daemons on one
+port.
 
-`osshd` is started by `openssh/osshd.plist` through
-`/var/mobile/.local/bin/osshd-daemon.sh`, which mirrors
-`dropbear/dropbear-daemon.sh` for a reason: the host keys are generated on
-first run and the package does not ship them, so without a wrapper a fresh
-install leaves sshd exiting immediately, which `KeepAlive` retries forever and
-silently. The daemon runs as root, which is what requires
-`--with-privsep-user=_sshd` — iOS reserves `_sshd` (uid 75) for exactly this,
-and the OpenSSH default of looking for a user literally named `sshd` fails
-with `Privilege separation user sshd does not exist`.
 
 ## Why this is not just `./configure && make`
 
@@ -555,11 +428,6 @@ Debugging tips that actually worked, in order of usefulness:
    curl's own socket setup. Probe the *candidate constant* directly: looping
    `socket(AF_INET, SOCK_STREAM | bit, 0)` over single bits found that iOS 10
    accepts none of them.
-5. **Never trust a host-signed binary.** `ldid -S` on the build machine
-   intermittently yields a binary the device kills with `Killed: 9` (rc 137)
-   and *no crash report at all*, even though the md5 matches. Re-signing the
-   same bytes on the device with its own `ldid -S` makes it run. The packaging
-   scripts therefore sign twice.
 
 ## OpenSSH 10.6p2
 
@@ -653,15 +521,13 @@ Nothing was working before that flag existed.
 
 ### Running it
 
-Install the package, then sign **on the device** (`ldid -S` on each `ossh-*` —
-the host signature is not always honoured, and a bad signature shows up as
-`Killed: 9` with no crash report):
-
 ```sh
-dpkg -i openssh4_10.6p2-5_iphoneos-arm.deb
-for f in /var/mobile/tools/ossh-*; do ldid -S "$f"; done
+dpkg -i openssh4_10.6p2-1_iphoneos-arm.deb
 sudo launchctl load -w /Library/LaunchDaemons/com.hesper.osshd.plist
 ```
+
+Signing on the device is **not** needed — see the signing section below for why
+the old "Killed: 9" warning was wrong.
 
 `sshd` re-execs `sshd-session`, so that path has to be in the config, and it is
 not a PATH search — these are config keys:
