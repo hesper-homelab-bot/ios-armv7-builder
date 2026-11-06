@@ -169,7 +169,12 @@ grep -q "$SFTP_PATH" src/default_options.h || {
 # shellcheck disable=SC2086
 make -j"$(nproc)" PROGRAMS="$PROGRAMS" SCPPROGRESS=1 >/dev/null
 
-ldid -S dropbear dbclient dropbearkey 2>/dev/null || true
+# These out/ artifacts are deliberately left unsigned -- make-deb.sh signs the
+# copies it stages, so signing here too would work but buys nothing, and an
+# unsigned artifact is the honest thing to hand over.  The "|| true" that used
+# to sit on this line is the same bug documented in the sign() of every
+# make-deb.sh: it let a failed sign pass silently and ship an unsigned binary.
+# Now the step simply does not exist here, so there is nothing to swallow.
 mkdir -p "$root/out"
 for p in $PROGRAMS; do
     [ -f "$p" ] || { echo "$p was not built" >&2; exit 1; }
