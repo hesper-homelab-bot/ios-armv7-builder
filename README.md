@@ -17,7 +17,7 @@ What is inside:
 | `tmux/` | flagship build: full **tmux** (3.5a and 3.8 verified on an iPad 4) |
 | `openssl/` | **OpenSSL 4.0.3** (`version`, `rand`, AES/SHA all pass on device) |
 | `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
-| `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); ships the `com.hesper.osshd` daemon on port 22226 |
+| `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); ships the `com.hesper.osshd` daemon, defaulting to port 22 |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -46,11 +46,11 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
 `libncursesw.5.dylib` are pulled from it during the build.
 
-OpenSSH is installed as a service, on its own port (22226) and via its own
-`com.hesper.osshd` plist — it does not touch `/usr/sbin/sshd`, which the system
-sshd plist names by absolute path. See the `OpenSSH 10.6p2` section for how to
-run it, and the port-layout section for why there are two daemons rather than
-one replacement.
+OpenSSH is installed as a service too, on its own port (default 22) and via
+its own `com.hesper.osshd` plist — it does not touch `/usr/sbin/sshd`, which the
+system sshd plist names by absolute path. Installing both SSH packages means
+moving one of them off 22; see *One device, one layout* for how that is handled
+gracefully rather than silently.
 
 ## Install on the device
 
@@ -131,7 +131,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | tmux 3.8 | sessions, panes, detach/reattach, `list-windows` |
 | OpenSSL 4.0.3 | `version`, `rand -hex`, `dgst -sha256`, AES-256-CBC round-trip, `speed` ≈36 MB/s AES / ≈37 MB/s SHA-256 (pure C, no asm) |
 | curl 8.16.0 | `https://` to github.com / curl.se / cloudflare.com / apple.com / baidu.com — all HTTP 200, TLS 1.2 handshake ≈6 s, redirects and POST verified |
-| OpenSSH 10.6p2 | runs as the `com.hesper.osshd` LaunchDaemon on port **22226** with publickey auth, `scp` up **and** down, and `sftp` `get`/`put`/`ls` all working. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7`. Verified from the host and from the device itself |
+| OpenSSH 10.6p2 | runs as a LaunchDaemon with publickey auth, `scp` up **and** down, and `sftp` `get`/`put`/`ls` all working. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7` |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
@@ -433,18 +433,18 @@ Debugging tips that actually worked, in order of usefulness:
 
 `openssh/build.sh` builds OpenSSH portable 10.6p2 for armv7 iOS 10 on the Linux
 host, linked against the `openssl/` libcrypto. It runs as the
-`com.hesper.osshd` LaunchDaemon on port **22226**, from `openssh/osshd.plist`
+`com.hesper.osshd` LaunchDaemon on a port you choose (default 22), from
+`openssh/osshd.plist`
 through `/var/mobile/.local/bin/osshd-daemon.sh`, and `openssh/make-deb.sh`
 writes that plist (and only that one) into `/Library/LaunchDaemons`. Everything
 lives under `/var/mobile/tools/` with an `ossh-` prefix so nothing can shadow
 the system `ssh`/`scp`/`sshd`, and removing the package leaves the device as it
 was.
 
-It was first brought up by hand on 22223 to be tested before anything touched
-launchd — auth, shell, scp and sftp all worked there — and 22223 has since been
-closed again. The paths that were reserved and never disturbed on the way were
-22 and 2222 (then dropbear) and 22222 (then the system OpenSSH 6.7p1); 2222 and
-22222 are both gone now, for the reasons in the port-layout section.
+It was brought up by hand on a spare port before anything was wired into
+launchd, and the ports already in use on the device were left alone throughout;
+what that layout ended up being is recorded in `DEVICE.md`, which is not
+published.
 
 ```
 remote software version OpenSSH_10.6      # vs the system's OpenSSH_6.7
