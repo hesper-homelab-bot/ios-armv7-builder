@@ -39,15 +39,18 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 (cd openssl && ./build.sh)      # OpenSSL 4.0.3 -> out/openssl-4.0.3-armv7
 (cd curl    && ./build.sh)      # curl 8.16.0    -> out/curl-8.16.0-armv7
 (cd openssh && ./build.sh)      # OpenSSH 10.6p2 -> out/openssh-*-armv7
-./openssh/make-deb.sh           # openssh4 .deb, NO launchd daemon
+./openssh/make-deb.sh           # openssh4 .deb, incl. the com.hesper.osshd daemon
 ./curl/make-deb.sh              # package both as openssl4 / curl4
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
 `libncursesw.5.dylib` are pulled from it during the build.
 
-OpenSSH is the one package here that is **not** installed as a service — see the
-`OpenSSH 10.6p2` section below for how it is meant to be run.
+OpenSSH is installed as a service, on its own port (22226) and via its own
+`com.hesper.osshd` plist — it does not touch `/usr/sbin/sshd`, which the system
+sshd plist names by absolute path. See the `OpenSSH 10.6p2` section for how to
+run it, and the port-layout section for why there are two daemons rather than
+one replacement.
 
 ## Install on the device
 
@@ -66,6 +69,21 @@ echo "deb https://hesper-homelab-bot.github.io/ios-armv7-builder/repo stable mai
 apt-get update
 apt-get install tmux              # /usr/bin/tmux
 apt-get install openssl4 curl4    # /var/mobile/openssl4, /var/mobile/tools
+
+Those three are what this repository publishes. `dropbear4` and `openssh4` are
+**not** in it — they are distributed as assets on the
+[Releases page](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
+instead, so that the packages which replace or shadow system SSH components
+never arrive through a routine `apt-get upgrade`. Install those by hand:
+
+```sh
+dpkg -i dropbear4_2026.94-1_iphoneos-arm.deb
+dpkg -i openssh4_10.6p2-1_iphoneos-arm.deb
+for f in /var/mobile/tools/ossh-*; do ldid -S "$f"; done    # then re-sign on device
+```
+
+Adding them to the repo is a deliberate decision (`scripts/make-repo.sh` would
+do it), not an oversight.
 ```
 
 The *libraries* stay untouched: `/usr/lib/libcrypto.dylib` and the shared
@@ -88,10 +106,12 @@ the way with **symlinks**, never with copies and never by removing packages:
 | `/usr/bin/{ssh,scp,sftp}`, `/usr/sbin/sshd` | *left alone* | dpkg files (`openssh 6.7p1-13`); **no `sshd` link was created**, deliberately |
 
 The `sshd` row is the point: the new *clients* were taken on, the new *daemon*
-was not. Nothing on the device invokes `sshd` by bare name anyway — the
-sshd plist hardcodes `/usr/sbin/sshd` — so not linking it keeps port 22222
-behaving exactly as before, and an `apt-get install --reinstall openssh`
-cannot start a second server on a port dropbear already owns.
+was not. Nothing on the device invoked `sshd` by bare name anyway — the sshd
+plist hardcoded `/usr/sbin/sshd` — so not linking it could not change how the
+then-running system daemon on 22222 behaved, and an
+`apt-get install --reinstall openssh` could not start a second server on a port
+dropbear already owned. (That daemon has since been cut; see the port-layout
+section.)
 
 Two consequences of taking the clients that are easy to miss:
 
@@ -138,10 +158,12 @@ Three decisions worth explaining:
   `/usr/local/bin`, which is already ahead of `/usr/bin` on the login-shell
   PATH (and already hosts `untether-bootstrap.sh`).
 * **No package was ever removed.** `dpkg -r openssh` would delete
-  `/usr/sbin/sshd`, which is the daemon `sshfix` keeps alive on port 22222 and
-  which `sshpass` depends on. Removing the old package is the one step in this
-  whole exercise that can actually cost remote access, so the old files stay
-  on disk and are simply out-ranked on `PATH`.
+  `/usr/sbin/sshd`, and it is still the only copy of that old
+  OpenSSH 6.7p1 on the device — kept deliberately, so it can be brought back by
+  hand on a spare port if it is ever wanted (see the port-layout section).
+  It would also take `sshpass` with it. Removing that package was the one step
+  in this whole exercise that could actually cost remote access, so the old
+  files stay on disk, unloaded and simply out-ranked on `PATH`.
 
 The displaced iOS curl is kept at
 `/var/mobile/.local/etc/system-shadow-backup/curl-ios-firmware`, deliberately
@@ -167,8 +189,11 @@ Note that `ssh` keeps working throughout — it falls back to `/usr/bin/ssh`,
 which was never touched.
 
 `dpkg -V openssl openssh` afterwards flags exactly one file,
-`/Library/LaunchDaemons/com.openssh.sshd.plist`, which is expected — that is the
-plist whose port was moved to 22222, not anything this shadowing touched.
+`/Library/LaunchDaemons/com.openssh.sshd.plist`: that is the plist whose port
+was rewritten to 22222 earlier and which has since been left unloaded rather
+than restored. It is expected and unrelated to this shadowing — the binaries
+here were never written over, only out-ranked on `PATH`, which is why nothing
+under `/usr/bin` or `/usr/sbin` shows up.
 
 curl needs a CA bundle for HTTPS:
 
@@ -530,14 +555,19 @@ Debugging tips that actually worked, in order of usefulness:
 ## OpenSSH 10.6p2
 
 `openssh/build.sh` builds OpenSSH portable 10.6p2 for armv7 iOS 10 on the Linux
-host, linked against the `openssl/` libcrypto. It was run on the device by hand
-on port 22223 (an idle port — 22 and 2222 are dropbear, 22222 is the system
-OpenSSH 6.7p1, and none of them were touched) and auth, shell, scp and sftp
-all worked. It is **not** installed as a service: `openssh/make-deb.sh` writes
-no `/Library/LaunchDaemons` plist, nothing calls `launchctl`, and everything
-lives under `/var/mobile/tools/` with an `ossh-` prefix so it can never shadow
-the `ssh`/`scp` the OS itself uses. Removing the package directory leaves the
-device exactly as it was.
+host, linked against the `openssl/` libcrypto. It runs as the
+`com.hesper.osshd` LaunchDaemon on port **22226**, from `openssh/osshd.plist`
+through `/var/mobile/.local/bin/osshd-daemon.sh`, and `openssh/make-deb.sh`
+writes that plist (and only that one) into `/Library/LaunchDaemons`. Everything
+lives under `/var/mobile/tools/` with an `ossh-` prefix so nothing can shadow
+the system `ssh`/`scp`/`sshd`, and removing the package leaves the device as it
+was.
+
+It was first brought up by hand on 22223 to be tested before anything touched
+launchd — auth, shell, scp and sftp all worked there — and 22223 has since been
+closed again. The paths that were reserved and never disturbed on the way were
+22 and 2222 (then dropbear) and 22222 (then the system OpenSSH 6.7p1); 2222 and
+22222 are both gone now, for the reasons in the port-layout section.
 
 ```
 remote software version OpenSSH_10.6      # vs the system's OpenSSH_6.7
