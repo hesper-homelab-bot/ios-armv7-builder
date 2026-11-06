@@ -315,21 +315,53 @@ not a test for validity — executing the binary is.)
 
 ## The port layout, and who owns what
 
-Three SSH daemons, each on its own port, none of them a replacement for
-another:
+Two SSH daemons, each on its own port, neither a replacement for the other:
 
 | port | daemon | what it is |
 |---|---|---|
 | 22 | `com.hesper.dropbear` | dropbear 2026.94, cross-built here. Primary remote access |
-| 22222 | `com.openssh.sshd` | the system OpenSSH 6.7p1, moved off 22 by `sshfix` and kept under its protection |
 | 22226 | `com.hesper.osshd` | OpenSSH 10.6p2, cross-built here, installed from the `openssh4` package |
 
 Port 2222 used to be a second `-p` on dropbear, kept as a verified lifeline
-while the port-22 cutover was still fresh. It is gone now: with a third daemon
-on 22226 the lifeline's job is done, and one listener per job is easier to
-reason about. `dropbear/dropbear-daemon.plist` still accepts
-`DROPBEAR_EXTRA_ARGS="-p 2222"` if a fallback is ever wanted again — the
-wrapper passes it straight through, and dropbear listens on every `-p` given.
+while the port-22 cutover was still fresh; it is gone, and
+`dropbear/dropbear-daemon.plist` still accepts `DROPBEAR_EXTRA_ARGS="-p 2222"`
+if a fallback is ever wanted again, since the wrapper passes it straight
+through and dropbear listens on every `-p` given.
+
+Port 22222 — the system OpenSSH 6.7p1, moved there off 22 earlier — was
+**cut on 2026-11-06**. The daemon is unloaded and its `sshfix` protector
+disabled, because after the dropbear sftp work nothing needed it any more:
+
+* `db-scp` execs our own dbclient, and dropbear's sftp subsystem now execs
+  `db-sftp-server` — see the sftp section above for what changed.
+* The only reason to keep 22222 was as a path built by someone else. Two
+  independently cross-built daemons are enough, and a third one that has to be
+  babysat by a timer script is more fragile than it is worth.
+
+`sshfix` (`com.hesper.sshfix`, `ssh-selfheal.sh`) is disabled with
+`launchctl unload -w`, not deleted: it would otherwise reinstall the sshd plist
+and reload 22222 within its 120-second cycle. The files are still on the
+device under `/var/mobile/.local/`, and everything it needs is backed up in
+`/var/mobile/.local/etc/backup-cut-22222/`.
+
+### Running the old system sshd by hand, if it is ever wanted
+
+The `openssh` package is still installed and `/usr/sbin/sshd` untouched, so
+nothing was deleted — the daemon is simply not started by launchd. To bring it
+up for a test, foreground it on a spare port:
+
+```sh
+# the plist that used to be the live one is preserved; point it at a free port
+sed 's/22222/22299/' /var/mobile/.local/etc/sshd.plist.good > /tmp/sshd-test.plist
+sudo cp /tmp/sshd-test.plist /Library/LaunchDaemons/com.openssh.sshd.plist
+sudo chown root:wheel /Library/LaunchDaemons/com.openssh.sshd.plist
+sudo launchctl load -w /Library/LaunchDaemons/com.openssh.sshd.plist
+sudo launchctl unload -w /Library/LaunchDaemons/com.openssh.sshd.plist   # when done
+```
+
+Pick a port that is actually free first — 22, 22226 and 22299 are not all of
+them. And note that a client reaching it must re-enable `ssh-rsa`, since
+OpenSSH 10 disables it and 6.7p1 offers nothing else.
 
 `osshd` is started by `openssh/osshd.plist` through
 `/var/mobile/.local/bin/osshd-daemon.sh`, which mirrors
