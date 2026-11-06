@@ -12,10 +12,12 @@
 #   /var/mobile/.local/bin/dropbear-daemon.sh
 #       the wrapper: generates host keys on first run and execs dropbear -F
 #   /Library/LaunchDaemons/com.hesper.dropbear.plist
-#       the daemon, on port 2222 with KeepAlive
+#       the daemon, on the primary port with a fallback, with KeepAlive
 #
-# The daemon never replaces /usr/sbin/sshd.  It is a second SSH server on a
-# different port; a cutover is a separate, explicit decision.
+# INSTALL LAYOUT: dropbear takes over port 22 and keeps the port it was
+# installed and verified on (2222) as a fallback.  The legacy /usr/sbin/sshd
+# is moved to 22222 by sshfix rather than removed, so uninstalling this
+# package and reverting the plists restores the original access path.
 #
 # Usage:
 #   ./dropbear/make-deb.sh                 # uses ../out/dropbear-*-armv7
@@ -27,7 +29,11 @@ OUT="$root/out"
 DB_VERSION="${DB_VERSION:-2026.94}"
 DEBREV="${DEBREV:-1}"
 MAINTAINER="${MAINTAINER:-Hesper <hesperup@users.noreply.github.com>}"
-PORT="${DROPBEAR_PORT:-2222}"
+PORT="${DROPBEAR_PORT:-22}"
+# Second -p handed to the dropbear binary as a fallback listener.  Empty for a
+# single-port install; DROPBEAR_EXTRA_ARGS="" is honoured, so unset it to drop
+# the fallback rather than passing a stray empty argument.
+EXTRA_ARGS="${DROPBEAR_EXTRA_ARGS--p 2222}"
 
 # Host ldid occasionally produces a binary the device kills with "Killed: 9"
 # and no crash report; signing on the device always works.  So sign twice,
@@ -53,16 +59,16 @@ Maintainer: $MAINTAINER
 Homepage: https://matt.ucc.asn.au/dropbear/
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Depends: firmware (>= 10.3)
-Description: Dropbear SSH server and client for armv7 iOS 10+ (port 2222)
+Description: Dropbear SSH server and client for armv7 iOS 10+ (port $PORT)
  Dropbear $DB_VERSION, cross-compiled for armv7 iOS 10.x with its bundled
  libtomcrypt (no OpenSSL dependency).
  .
  Installs /var/mobile/tools/db-dropbear (server), db-dbclient, db-dropbearkey
- and db-scp, plus a LaunchDaemon that runs the server on port $PORT.
+ and db-scp, plus a LaunchDaemon that runs the server on port $PORT${EXTRA_ARGS:+ with $EXTRA_ARGS as a fallback}.
  .
- This is a SECOND SSH server and does not replace the system one on port 22;
- /usr/sbin/sshd is left untouched, so the existing remote access keeps
- working if this package is removed.
+ This is the primary SSH server on port 22; the legacy /usr/sbin/sshd is
+ relocated to port 22222 by sshfix, not deleted, so the previous access
+ path is still recoverable if this package is removed.
 CTRL
 
 cat > "$w/usr/share/doc/dropbear4/copyright" <<CR
@@ -89,13 +95,14 @@ original clean-room stubs or BSD-licensed musl headers; no Apple SDK files
 are redistributed.  The bundled libtomcrypt and libtommath are public domain.
 CR
 
-# The port the daemon listens on is written into the plist at package time so
-# that a rebuild with DROPBEAR_PORT=... produces a matching package.
-# The port the daemon listens on is substituted at package time, so a rebuild
-# with DROPBEAR_PORT=... produces a matching package.  The placeholder is
-# delimited on purpose: a plain s|DROPBEAR_PORT|...| would also rewrite the
-# *key name* DROPBEAR_PORT in the plist and break the environment dictionary.
-sed -e "s|__DROPBEAR_PORT__|$PORT|" "$here/dropbear-daemon.plist" \
+# The primary port and the fallback -p argument are substituted at package
+# time, so a rebuild with DROPBEAR_PORT=... produces a matching package.
+# The placeholders are delimited on purpose: a plain s|DROPBEAR_PORT|...|
+# would also rewrite the *key name* DROPBEAR_PORT in the plist and break the
+# environment dictionary.
+sed -e "s|__DROPBEAR_PORT__|$PORT|" \
+    -e "s|__DROPBEAR_EXTRA_ARGS__|$EXTRA_ARGS|" \
+    "$here/dropbear-daemon.plist" \
     > "$w/Library/LaunchDaemons/com.hesper.dropbear.plist"
 chmod 0644 "$w/Library/LaunchDaemons/com.hesper.dropbear.plist"
 

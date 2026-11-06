@@ -9,6 +9,11 @@
 #define __NEED_uid_t
 #define __NEED_gid_t
 #define __NEED_useconds_t
+
+/* The process environment.  musl puts this in unistd.h; this curated
+ * overlay replaces that header, and Dropbear's clearenv fallback reads
+ * environ[0] directly, so it has to stay declared. */
+extern char **environ;
 #include <bits/alltypes.h>
 
 #define STDIN_FILENO  0
@@ -77,6 +82,57 @@ int ftruncate(int, off_t);
 int fdatasync(int);
 void *sbrk(intptr_t);
 useconds_t ualarm(useconds_t, useconds_t);
+/* glibc spells the /etc/shells iterator this way; Darwin and iOS have it,
+ * verified on the device (each one returns when called).  musl declares only
+ * login_tty, so Dropbear's svr-auth.c shell-check loop fails to compile. */
+char *getusershell(void);
+void  setusershell(void);
+void  endusershell(void);
+
+/* setegid: present on iOS (verified), absent from musl's declarations. */
+int setegid(gid_t);
+int seteuid(uid_t);
+
+/* daemon() is BSD/Darwin and present on iOS; musl does not declare it.
+   Dropbear svr-main.c needs it to detach from the terminal. */
+int daemon(int, int);
+
+/* getpass reads a password from the controlling terminal without echo.  musl
+ * does not declare it; Darwin and iOS both have it. */
+char *getpass(const char *);
+
+/* POSIX getopt() and its variables.  musl's unistd.h declares all of these;
+ * this overlay replaces that header wholesale, and the omission only shows up
+ * when something includes <unistd.h> and calls getopt -- which is exactly how
+ * Dropbear's bundled scp.c failed to compile. */
+int getopt(int, char *const[], const char *);
+int getopt_long(int, char *const[], const char *, const void *, int *);
+int getopt_long_only(int, char *const[], const char *, const void *, int *);
+extern char *optarg;
+extern int optind, opterr, optopt;
+
+/* Remaining POSIX/XSI/BSD declarations musl has and this curated overlay
+ * dropped.  Each is part of the base OS interface rather than a GNU or Linux
+ * extension, so they are expected on iOS too; they are declared here so that
+ * a future port does not rediscover them one compile error at a time.
+ * Deliberately NOT included: eaccess/euidaccess/posix_close (glibc),
+ * getentropy/gettid/copy_file_range/dup3/pipe2/fexecve (Linux), vfork/vhangup,
+ * and the *at() family, which iOS 10 partly lacks. */
+int     pread(int, void *, size_t, off_t);
+int     pwrite(int, const void *, size_t, off_t);
+int     lockf(int, int, off_t);
+void    swab(const void *__restrict, void *__restrict, ssize_t);
+char   *ctermid(char *);
+int     chroot(const char *);
+int     lchown(const char *, uid_t, gid_t);
+void    sync(void);
+int     getdomainname(char *, size_t);
+int     setdomainname(const char *, size_t);
+long    gethostid(void);
+void    sethostname(const char *, size_t);
+char   *getlogin(void);
+int     getlogin_r(char *, size_t);
+
 long sysconf(int);
 long pathconf(const char *, int);
 long fpathconf(int, int);
@@ -138,3 +194,52 @@ int getpeereid(int, uid_t *, gid_t *);
    calls __secure_getenv(), which does not exist here. */
 int issetugid(void);
 #endif
+
+int setregid(gid_t, gid_t);
+int setreuid(uid_t, uid_t);
+
+/* ---------------------------------------------------------------------------
+ * setresgid()/setresuid() shims for Dropbear.
+ *
+ * Dropbear's sysoptions.h has a hard compile-time invariant:
+ *
+ *     #if DROPBEAR_SVR_DROP_PRIVS && !defined(HAVE_SETRESGID)
+ *     #  error "DROPBEAR_SVR_DROP_PRIVS requires setresgid()."
+ *     #endif
+ *
+ * and DROPBEAR_SVR_DROP_PRIVS is "change server process to user privileges
+ * after authentication" -- disabling it would run every session as root.
+ * So HAVE_SETRESGID has to stay definable.  iOS 10, however, does not export
+ * either function (verified on the device: calling each aborts with
+ * "dyld: lazy symbol binding failed: Symbol not found: _setresgid").
+ *
+ * The situation is not actually bad, because of what Dropbear uses:
+ *
+ *   * the real privilege drop uses setgid(), initgroups() and setuid(),
+ *     all of which DO exist on iOS;
+ *   * setresgid appears exactly once in the whole tree, svr-auth.c:519, to
+ *     retain the utmp group so wtmp records can be written.  That call
+ *     already checks its return value and sets have_utmp_gid only on
+ *     success, so returning failure takes a path Dropbear is designed to
+ *     handle -- and we disable utmp anyway.
+ *
+ * So these shims exist to keep Dropbear's invariant true while letting that
+ * one call fail cleanly.  static inline keeps them out of the archive, so
+ * configure's link test for setresgid (which crosses a shared-library
+ * boundary) still reports "no", which is the honest answer.
+ * ------------------------------------------------------------------------- */
+static inline int setresgid(gid_t r, gid_t e, gid_t s)
+{
+	(void)s;	/* no way to set the saved id alone on iOS */
+	if (r == (gid_t)-1 || e == (gid_t)-1)
+		return -1;	/* caller wants "saved only": let it fall back */
+	return setregid(r, e);
+}
+
+static inline int setresuid(uid_t r, uid_t e, uid_t u)
+{
+	(void)u;
+	if (r == (uid_t)-1 || e == (uid_t)-1)
+		return -1;
+	return setreuid(r, e);
+}

@@ -15,16 +15,18 @@
 #     supervise a process that stays in the foreground, so the binary is
 #     exec'd with -F.
 #
-# This daemon deliberately listens on port 2222 and never touches
-# /usr/sbin/sshd on port 22: SSH is the only remote access to this device, so
-# the old server stays running until a cutover is explicitly decided.
+# Port layout: DROPBEAR_PORT is the primary listener (22) and
+# DROPBEAR_EXTRA_ARGS carries a second -p as a fallback, so the port this
+# daemon was installed and verified on stays reachable even if the primary
+# regresses.  SSH is the only remote access to this device, which is exactly
+# why the fallback is never dropped without a deliberate decision.
 set -u
 
 BINDIR=/var/mobile/tools
 KEYDIR=/var/mobile/ssh
 DROPBEAR="$BINDIR/db-dropbear"
 DROPBEARKEY="$BINDIR/db-dropbearkey"
-PORT="${DROPBEAR_PORT:-2222}"
+PORT="${DROPBEAR_PORT:-22}"
 
 log() {
     echo "dropbear-daemon: $*"
