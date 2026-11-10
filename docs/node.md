@@ -1,5 +1,14 @@
 # Node 22.23.4（armv7 / iOS 10.3.3）移植专项
 
+> **2026-11-11 03:30 更新：Phase 2 主体完成。** 全部 13 道墙攻克，
+> 诊断已移除的 node_final 全冒烟 6/6 通过
+> （--version、42×3、TypedArray、Buffer、JSON、require('fs')），
+> 已安装为 /var/mobile/tools/node/bin/node.real + jitless wrapper。
+> 墙 #12（blob fixup 11415 处）与墙 #13（torque host 布局字面量，
+> force_32bit_output 重生成）为本阶段两大根因级发现，细节见
+> BUILD-STATE (w)-(ae)。
+
+
 > 工具链通用规则（env、归档、thumb、原子雷区、部署三件套、探针模板）见
 > `docs/toolchain.md`，本文不重复。设备私有细节见 `DEVICE.md`（gitignored）。
 > **权威流水账**：`~/scratch/node-research/BUILD-STATE.md`（仓库外，节 (a)–(v)）——
