@@ -12,6 +12,7 @@
 | `docs/dropbear.md` | ssh 服务专项（dropbear 22、selfheal 守护、host keys） |
 | `docs/openssh.md` | 自编 OpenSSH 10.6p2（22226 验证口） |
 | `docs/quickjs.md` | QuickJS（Phase 1） |
+| `docs/debugserver.md` | 活体调试（设备 debugserver + 主机 lldb-21） |
 | `DEVICE.md` | 设备全书（英文编号节；**gitignored，私有**，勿提交勿外发） |
 
 ## 本仓库工作规则
