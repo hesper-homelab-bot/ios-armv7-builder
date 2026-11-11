@@ -45,9 +45,22 @@ struct group  *fgetgrent(FILE *);
 int           putgrent(const struct group *, FILE *);
 #endif
 
-#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+/*
+ * Standard BSD/Darwin group-management calls.  They must also be visible
+ * for _DARWIN_C_SOURCE and plain __APPLE__: libuv compiles with
+ * -D_DARWIN_C_SOURCE rather than _GNU_SOURCE, and its spawn path calls
+ * setgroups(), which was resolving to an implicit declaration.
+ *
+ * Note the first parameter is int, not size_t -- Darwin's signature is
+ *     int setgroups(int ngroups, const gid_t *grouplist);
+ * (verified against the sysroot's own usage and the libSystem behaviour
+ * on device: setgroups(0, NULL) returns -1/EPERM for an unprivileged
+ * process rather than failing to link).
+ */
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE) || defined(_DARWIN_C_SOURCE) || \
+    defined(__APPLE__)
 int getgrouplist(const char *, gid_t, gid_t *, int *);
-int setgroups(size_t, const gid_t *);
+int setgroups(int, const gid_t *);
 int initgroups(const char *, gid_t);
 #endif
 

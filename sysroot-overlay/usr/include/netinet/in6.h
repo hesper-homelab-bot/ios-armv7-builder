@@ -26,6 +26,17 @@ struct sockaddr_in6 {
 };
 
 #define IN6ADDR_ANY_INIT { { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } } }
+
+/*
+ * Argument structure for IPV6_JOIN_GROUP / IPV6_LEAVE_GROUP (and Darwin's
+ * IPV6_ADD_MEMBERSHIP / IPV6_DROP_MEMBERSHIP spellings), from
+ * xnu-3789.70.16 bsd/netinet6/in6.h.  Note the interface is an index
+ * (unsigned int), not an address as in the IPv4 ip_mreq.
+ */
+struct ipv6_mreq {
+	struct in6_addr	ipv6mr_multiaddr;
+	unsigned int	ipv6mr_interface;
+};
 #define IN6ADDR_LOOPBACK_INIT { { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 } } }
 
 extern const struct in6_addr in6addr_any;

@@ -89,4 +89,40 @@ typedef unsigned int in_addr_t;
 #ifdef __cplusplus
 }
 #endif
+
+/*
+ * Darwin integer aliases.  Apple's <sys/_types.h> defines the __uintN_t /
+ * __intN_t family and the <sys/ioccom.h> ioctl macros are written in terms
+ * of them; the sysroot has no _types.h (it is a kernel-internal header
+ * pulling a tree of <sys/_types/*.h>), so the aliases live here, where
+ * Darwin also re-exports them.
+ */
+#ifndef __uint8_t
+typedef unsigned char		__uint8_t;
+typedef unsigned short		__uint16_t;
+typedef unsigned int		__uint32_t;
+typedef unsigned long long	__uint64_t;
+typedef signed char		__int8_t;
+typedef short			__int16_t;
+typedef int			__int32_t;
+typedef long long		__int64_t;
+#endif
+
+
+/*
+ * uuid_t.  Darwin defines it as a bare 16-byte array (not a struct), in
+ * <uuid/uuid.h> and re-exported through <sys/types.h>-adjacent headers.
+ * sqlite's unixFile code takes uuid_t parameters without including
+ * <uuid/uuid.h> (the SDK supplies it transitively), so the typedef is
+ * repeated here.
+ *
+ * Verified on device (2026-11-08): sizeof(uuid_t) == 16 and
+ * gethostuuid() filled one with a real identifier
+ * (9a799b54e60c51bc919fb221c1411e62).
+ */
+#ifndef UUID_T_DEFINED
+#define UUID_T_DEFINED
+typedef unsigned char uuid_t[16];
+#endif
+
 #endif

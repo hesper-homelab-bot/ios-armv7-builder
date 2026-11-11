@@ -16,6 +16,16 @@
 extern char **environ;
 #include <bits/alltypes.h>
 
+/*
+ * One extern "C" block for all declarations: this header (and
+ * <termios.h>) were the last two without one, so tcgetpgrp/tcsetpgrp and
+ * friends got C++ linkage here while <termios.h> gave them C linkage,
+ * which is a hard "different language linkage" error in C++4 code.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
@@ -122,7 +132,6 @@ int     pread(int, void *, size_t, off_t);
 int     pwrite(int, const void *, size_t, off_t);
 int     lockf(int, int, off_t);
 void    swab(const void *__restrict, void *__restrict, ssize_t);
-char   *ctermid(char *);
 int     chroot(const char *);
 int     lchown(const char *, uid_t, gid_t);
 void    sync(void);
@@ -257,6 +266,24 @@ static inline int setresuid(uid_t r, uid_t e, uid_t u)
    whose unistd.h this overlay replaces, declares neither.  OpenSSH's session.c
    calls setlogin() when UseLogin is enabled, so it needs the prototype. */
 int setlogin(const char *);
+
+/* ctermid() is stdio.h's; declaring it here too collides with libc++'s
+   cstdio -> stdio.h path in C++ (different language linkage). */
 char *getlogin(void);
+
+/*
+ * confstr() with the Darwin user-dir selectors (Apple Libc-1244.30.3
+ * include/unistd.h).  On iOS _CS_DARWIN_USER_TEMP_DIR falls back to
+ * getenv("TMPDIR"); confstr itself is exported by libSystem (verified on
+ * device 2026-11-07: returns the sandbox temp path).
+ */
+#define _CS_DARWIN_USER_DIR		65536
+#define _CS_DARWIN_USER_TEMP_DIR	65537
+#define _CS_DARWIN_USER_CACHE_DIR	65538
+size_t	confstr(int, char *, size_t);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _UNISTD_H */

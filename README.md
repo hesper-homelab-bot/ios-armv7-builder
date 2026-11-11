@@ -658,6 +658,53 @@ Two behaviours worth knowing before trusting the output:
   is how the duplicate-case collisions in its family switch went unnoticed
   for one build.
 
+## Fetching a Darwin header without guessing
+
+`tools/fetch-darwin-header.sh` exists because the loop
+
+> find the header -> take the definition from upstream -> prove it on the device
+
+was repeated by hand about twenty times across the ports (tmux, curl, lsof,
+dropbear, openssh, node), and because **every mistake in that loop was a
+confidently-written wrong value**, not a syntax error.
+
+```sh
+./tools/fetch-darwin-header.sh sys/filio.h          # print source + provenance
+./tools/fetch-darwin-header.sh sys/event.h --install  # stamp + sync into overlay
+./tools/fetch-darwin-header.sh mach/boolean.h --probe # also emit a device probe
+```
+
+What it does:
+
+1. **Resolves the header from an authoritative source**, in order: the local
+   xnu sparse clone (tag `xnu-3789.70.16`), the Libc clone, cctools' `foreign/`
+   headers, the libdispatch clone, then GitHub over HTTP for anything else.
+   It prints where it got the text so the provenance ends up in the file.
+2. **Installs with a provenance comment** into `sysroot-overlay/usr/include/`
+   and syncs to `tmp/sysroot` with an `rsync --include='*.h'` filter. It will
+   not overwrite an existing, differing header without `--force` — the overlay
+   is a working tree every build depends on.
+3. **Checks** the result before it can break a build: include-guard pairing,
+   `extern "C"` presence, and a "Darwin does not have this at all" list
+   (`SIGPWR`, `SIGSTKFLT`, `SIGPOLL`, `sendmmsg`/`recvmmsg`, ...). A failed
+   check exits non-zero.
+4. **Writes a probe skeleton** with `--probe` that carries the exact compile /
+   sign / scp / run sequence for the device, and the rules learned the hard
+   way.
+
+The third step of the loop — proving the value on the device — is the only one
+that cannot be automated, and the probe skeleton leaves the asserts to you.
+Nothing in this port is believed until the device says so:
+
+| Symbol | Value | How it was settled |
+|---|---|---|
+| `F_GETPATH` | 50 | swept fcntl numbers 45..55, found the one returning a path |
+| `MCAST_JOIN_GROUP` | 80 | xnu (`bsd/netinet/in.h`) — Linux is 42 |
+| `MAP_MEM_NAMED_CREATE` | `0x20000` | cctools `foreign/mach/memory_object_types.h` |
+| `malloc_zone_t` `size` | offset 16 | found by calling `zone->size(zone, p)` |
+| `IP_TTL` | 4 | xnu — Linux is 2 |
+| `SIGPWR` / `SIGSTKFLT` | *absent* | device signal dump showed the collisions they'd cause |
+
 ## Credits and licence
 
 The scripts here are provided under the MIT licence. tmux, libevent and musl

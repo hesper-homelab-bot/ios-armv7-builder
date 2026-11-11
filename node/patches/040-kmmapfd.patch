@@ -1,0 +1,18 @@
+--- /tmp/orig/node-v22.23.4/deps/v8/src/base/platform/platform-posix.cc	2026-10-21 03:59:14.000000000 +0800
++++ deps/v8/src/base/platform/platform-posix.cc	2026-11-09 16:04:22.275084417 +0800
+@@ -123,7 +123,14 @@
+ // kMmapFd is used to pass vm_alloc flags to tag the region with the user
+ // defined tag 255 This helps identify V8-allocated regions in memory analysis
+ // tools like vmmap(1).
+-const int kMmapFd = VM_MAKE_TAG(255);
++//
++// iOS armv7 cross build: mmap(2) with a VM-tag pseudo-fd raises SIGSYS on
++// iOS 10 (EXC_CRASH SIGSYS in the device crash report, frame inside
++// CallDescriptors::InitializeOncePerProcess -- the first V8 allocation).
++// Plain anonymous mmap works: the jit probe (fd = -1) allocated RWX and
++// executed on the device.  So the tag is dropped here; the regions are
++// anonymous like on every other non-Darwin platform.
++const int kMmapFd = -1;
+ #else   // !V8_OS_DARWIN
+ const int kMmapFd = -1;
+ #endif  // !V8_OS_DARWIN

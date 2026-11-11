@@ -1,0 +1,55 @@
+--- /tmp/orig/node-v22.23.4/deps/uv/src/unix/kqueue.c	2026-10-21 03:59:14.000000000 +0800
++++ deps/uv/src/unix/kqueue.c	2026-11-11 07:52:57.905747431 +0800
+@@ -149,9 +149,14 @@
+   if (0 == kevent(kqfd, &change, 1, NULL, 0, NULL))
+     return;
+ 
+-  if (errno == EBADF || errno == ENOENT)
++  if (errno == EBADF || errno == ENOENT || errno == EINVAL)
+     return;
+ 
++  /* [ios-armv7 wall14] diagnostic instead of blind abort */
++  fprintf(stderr, "[kqfix14] delete failed fd=%d filter=%d errno=%d "
++                  "backend_fd=%d\n", (int)ev->ident, (int)ev->filter,
++          errno, kqfd);
++  fflush(stderr);
+   abort();
+ }
+ 
+@@ -214,8 +219,12 @@
+       EV_SET(events + nevents, w->fd, filter, op, fflags, 0, 0);
+ 
+       if (++nevents == ARRAY_SIZE(events)) {
+-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+-          abort();
++        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL)) {
++          /* [ios-armv7] diagnostic instead of blind abort */
++          fprintf(stderr, "[kqfix] READ reg failed fd=%d errno=%d\n",
++                  (int)(events[nevents-1].ident), errno);
++          fflush(stderr);
++        }
+         nevents = 0;
+       }
+     }
+@@ -224,13 +233,18 @@
+       EV_SET(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+ 
+       if (++nevents == ARRAY_SIZE(events)) {
+-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+-          abort();
++        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL)) {
++          fprintf(stderr, "[kqfix] WRITE reg failed fd=%d errno=%d\n",
++                  (int)(events[nevents-1].ident), errno);
++          fflush(stderr);
++        }
+         nevents = 0;
+       }
+     }
+ 
+-   if ((w->events & UV__POLLPRI) == 0 && (w->pevents & UV__POLLPRI) != 0) {
++   /* [ios-armv7] EV_OOBAND is not supported by the iOS 10 kernel kqueue
++      (kevent returns EINVAL); registering it abort()s the whole loop. */
++   if (0 && (w->events & UV__POLLPRI) == 0 && (w->pevents & UV__POLLPRI) != 0) {
+       EV_SET(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0, 0, 0);
+ 
+       if (++nevents == ARRAY_SIZE(events)) {

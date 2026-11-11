@@ -70,6 +70,9 @@ struct protoent {
     int p_proto;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 int sethostent(int);
 int setnetent(int);
 int setprotoent(int);

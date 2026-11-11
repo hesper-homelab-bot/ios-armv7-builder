@@ -1,0 +1,24 @@
+--- /tmp/orig/node-v22.23.4/deps/v8/src/torque/torque.cc	2026-10-21 03:59:14.000000000 +0800
++++ deps/v8/src/torque/torque.cc	2026-11-11 01:01:01.761433790 +0800
+@@ -33,12 +33,16 @@
+     } else if (argument == "-v8-root") {
+       options.v8_root = std::string(argv[++i]);
+     } else if (argument == "-m32") {
+-#ifdef V8_COMPRESS_POINTERS
+-      std::cerr << "Pointer compression is incompatible with -m32.\n";
+-      base::OS::Abort();
+-#else
++      // [ios-armv7 wall13] Force 32-bit target layouts for generated CSA
++      // field offsets even when torque itself is compiled with
++      // V8_COMPRESS_POINTERS (host x64 cross-build).  The host pointer
++      // compression only affects torque's own process constants; the
++      // force_32bit_output branch below overrides every layout size
++      // (tagged/raw-ptr/external-ptr) with sizeof(int32_t), which matches
++      // the ILP32 target (kSystemPointerSize == 4).  The upstream
++      // "#ifdef V8_COMPRESS_POINTERS -> Abort" guard is removed because it
++      // made -m32 unusable in exactly the cross-build that needs it.
+       options.force_32bit_output = true;
+-#endif
+     } else if (argument == "-annotate-ir") {
+       options.annotate_ir = true;
+     } else if (argument == "-strip-v8-root") {

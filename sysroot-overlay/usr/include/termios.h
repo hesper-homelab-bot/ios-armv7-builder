@@ -9,6 +9,16 @@
 
 #include <sys/types.h>
 
+/*
+ * extern "C" for the whole file: tcgetpgrp/tcsetpgrp are also declared by
+ * <unistd.h>, and the two headers must agree on their linkage or C++
+ * consumers fail with "declaration of 'tcgetpgrp' has a different language
+ * linkage".
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef unsigned long	tcflag_t;
 typedef unsigned char	cc_t;
 typedef unsigned long	speed_t;
@@ -172,5 +182,9 @@ int	 cfsetospeed(struct termios *, speed_t);
 void	 cfmakeraw(struct termios *);
 pid_t	 tcgetpgrp(int);
 int	 tcsetpgrp(int, pid_t);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

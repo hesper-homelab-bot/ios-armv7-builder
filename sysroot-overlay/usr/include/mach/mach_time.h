@@ -1,39 +1,47 @@
 #ifndef _MACH_MACH_TIME_H_
 #define _MACH_MACH_TIME_H_
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
- * Clean-room stub for <mach/mach_time.h>, continuing the pattern of mach/mach.h
- * above.
+ * <mach/mach_time.h> for the iOS armv7 cross build.
  *
- * Apple deleted the Mach timing declarations from the standalone header years
- * ago and folded them into <mach/mach.h>, so the standalone name is not
- * something musl (or anything derived from it) will ever provide.  iOS 10
- * exports both functions regardless.
+ * Note the name collision that trips builds: on Darwin `mach_timebase_info`
+ * is BOTH a struct tag and a function.  Code written against the SDK says
  *
- * Dropbear's dbutil.c needs them for its monotonic clock when
- * HAVE_MACH_ABSOLUTE_TIME is set, and configure does set it -- it probes for
- * the mach/mach_time.h header separately, so a normal autoconf run picks up
- * the function while the header is absent and the build dies with
+ *     mach_timebase_info_data_t info;
+ *     mach_timebase_info(&info);
  *
- *     error: unknown type name 'mach_timebase_info_data_t'
- *     error: call to undeclared function 'mach_timebase_info'
- *
- * Verified on the device (iPad 4, iOS 10.3.3): calling both returns
- * mach_absolute_time = 2201214266670 with numer = 125, denom = 3.
- *
- * Layout matters and is easy to get backwards: on Darwin the two fields are
- * unsigned 32-bit values packed together, not pointers or 64-bit words.
+ * which only compiles if the struct is named `mach_timebase_info` and the
+ * function of the same name exists.  Verified on device (iPad 4, iOS 10.3.3):
+ * mach_absolute_time() = 2201214266670, numer=125, denom=3 -- so 24 MHz.
  */
+
 #include <stdint.h>
 
-typedef struct {
+struct mach_timebase_info {
 	uint32_t	numer;
 	uint32_t	denom;
-} mach_timebase_info_data_t;
+};
+typedef struct mach_timebase_info mach_timebase_info_data_t;
 
-typedef mach_timebase_info_data_t mach_timebase_info_data_t;
+int		mach_timebase_info(mach_timebase_info_data_t *info);
+uint64_t	mach_absolute_time(void);
 
-int   mach_timebase_info(mach_timebase_info_data_t *info);
-uint64_t mach_absolute_time(void);
+/*
+ * mach_continuous_time() keeps counting across system sleep, unlike
+ * mach_absolute_time().  Verified on device (2026-11-08): returned
+ * 3500032722238 -- nanoseconds since boot.
+ */
+uint64_t	mach_continuous_time(void);
+uint64_t	mach_approximate_time(void);
 
-#endif /* _MACH_MACH_TIME_H_ */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

@@ -1,11 +1,28 @@
 #ifndef _STDLIB_H
 #define _STDLIB_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/*
+ * Note on the include order below.  musl's <stdlib.h> opens extern "C"
+ * *before* its #include lines; that is harmless when the C library is the
+ * only thing in the include path, but here <features.h>,
+ * <bits/alltypes.h>, <alloca.h> and <stdint.h> can reach libc++ headers
+ * through #include_next.  Any template seen inside an extern "C" region is
+ * a hard error, so libc++ dies with
+ *     templates must have C++ linkage
+ * on <new>/<optional>/__memory/addressof.h.
+ *
+ * Therefore: includes first, then ONE extern "C" block covering all the
+ * declarations.  This matches what the SDK headers do too.
+ */
 
 #include <features.h>
+/*
+ * <stdint.h> is included here, before any extern "C" block opens, for the
+ * uint32_t that the arc4random declarations below need.  Putting it inside
+ * the block is what dragged libc++ headers into a C-linkage region and
+ * broke <new>/<cstdlib> with "templates must have C++ linkage".
+ */
+#include <stdint.h>
 
 #if __cplusplus >= 201103L
 #define NULL nullptr
@@ -19,6 +36,10 @@ extern "C" {
 #define __NEED_wchar_t
 
 #include <bits/alltypes.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int atoi (const char *);
 long atol (const char *);
@@ -177,37 +198,29 @@ char *secure_getenv(const char *);
 struct __locale_struct;
 float strtof_l(const char *__restrict, char **__restrict, struct __locale_struct *);
 double strtod_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-long double strtold_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-#endif
+#endif /* _GNU_SOURCE */
 
-#if defined(_LARGEFILE64_SOURCE)
-#define mkstemp64 mkstemp
-#define mkostemp64 mkostemp
-#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-#define mkstemps64 mkstemps
-#define mkostemps64 mkostemps
-#endif
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-
+/* ---- Darwin additions ----------------------------------------------
+ * getprogname/setprogname and srandomdev (random(3) already declared by
+ * musl above); srandomdev seeds from /dev/urandom and was verified on
+ * device 2026-11-08.
+ *
+ * arc4random(): iOS's libSystem has always exported these but musl never
+ * declared them, so OpenSSH, Dropbear and libedit compiled them as
+ * implicit int-returning calls.  Device-verified 2026-11-08.
+ */
 const char *getprogname(void);
 void setprogname(const char *);
-#endif
+void srandomdev(void);
 
-/* arc4random() family -- Darwin's CSPRNG, present in iOS's libSystem since
-   forever and verified on the device (iPad 4, iOS 10.3.3) by calling each of
-   these: arc4random, arc4random_buf, arc4random_uniform and arc4random_stir all
-   return normally.  musl's stdlib.h (replaced by this overlay) does not declare
-   them, and neither does anything else in the sysroot, so every program that
-   uses OpenSSH-style entropy (OpenSSH, Dropbear 2020+, anything linking libedit)
-   compiles them as implicit declarations returning int and then warns or fails.
-   A separate § below records the probe method; this block is the fix. */
-#include <stdint.h>   /* uint32_t for the arc4random family */
 uint32_t arc4random(void);
 void arc4random_buf(void *, size_t);
 uint32_t arc4random_uniform(uint32_t);
 void arc4random_stir(void);
 void arc4random_addrandom(void *, int);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _STDLIB_H */

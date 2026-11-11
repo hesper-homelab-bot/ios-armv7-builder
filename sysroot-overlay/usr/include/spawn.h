@@ -94,6 +94,25 @@ int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *__restrict, int
 int posix_spawn_file_actions_addclose(posix_spawn_file_actions_t *, int);
 int posix_spawn_file_actions_adddup2(posix_spawn_file_actions_t *, int, int);
 
+/*
+ * Darwin extensions.
+ *
+ * POSIX_SPAWN_CLOEXEC_DEFAULT closes every descriptor in the child except
+ * the ones named by the file actions -- the value is from
+ * xnu-3789.70.16 bsd/sys/spawn.h line 69.  libuv's process.c uses it so
+ * that spawning does not leak the parent's descriptors.
+ *
+ * posix_spawn_file_actions_addinherit_np() is the "keep this one open"
+ * counterpart; verified on device with posix_spawn_file_actions_init()
+ * followed by addinherit_np(fa, 1): both returned 0.
+ */
+#define POSIX_SPAWN_CLOEXEC_DEFAULT	0x4000
+#define POSIX_SPAWN_START_SUSPENDED	0x0080
+
+int posix_spawn_file_actions_addinherit_np(posix_spawn_file_actions_t *, int);
+int posix_spawn_file_actions_addchdir_np(posix_spawn_file_actions_t *__restrict,
+	const char *__restrict);
+
 #ifdef __cplusplus
 }
 #endif
