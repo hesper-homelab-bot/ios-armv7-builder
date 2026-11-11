@@ -18,6 +18,7 @@ What is inside:
 | `openssl/` | **OpenSSL 4.0.3** (`version`, `rand`, AES/SHA all pass on device) |
 | `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
 | `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); ships the `com.hesper.osshd` daemon, defaulting to port 22 |
+| `node/` | **Node.js 22.23.4** (V8 12.4) — the first full Node runtime for armv7 iOS, jitless by force of the device memory model, with a real embedded code blob + startup snapshot from a custom arm32-capable `mksnapshot` |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -43,6 +44,9 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 ./openssh/make-deb.sh           # openssh4 .deb, incl. the com.hesper.osshd daemon
 ./curl/make-deb.sh              # package both as openssl4 / curl4
 ./lsof/make-deb.sh              # package lsof as the lsof .deb
+
+(cd node && ./build.sh)         # Node 22.23.4; the load-bearing recipe is node/patches/ + docs/node.md
+./node/make-deb.sh              # node4 .deb: jitless wrapper + signed binary
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
@@ -72,9 +76,10 @@ apt-get update
 apt-get install tmux              # /usr/bin/tmux
 apt-get install openssl4 curl4    # /var/mobile/openssl4, /var/mobile/tools
 apt-get install lsof              # /var/mobile/tools/lsof
+apt-get install node4             # /usr/local/bin/node (jitless wrapper)
 ```
 
-Those four are what this repository publishes. `dropbear4` and `openssh4` are
+Those five are what this repository publishes. `dropbear4` and `openssh4` are
 **not** in it — they are distributed as assets on the
 [Releases page](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
 instead, so that the packages which replace or shadow system SSH components
@@ -137,6 +142,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | curl 8.16.0 | `https://` to github.com / curl.se / cloudflare.com / apple.com / baidu.com — all HTTP 200, TLS 1.2 handshake ≈6 s, redirects and POST verified |
 | OpenSSH 10.6p2 | runs as a LaunchDaemon with publickey auth, `scp` up **and** down, and `sftp` `get`/`put`/`ls` all working. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7` |
 | lsof 4.99.7 | `lsof -p $$`, full enumeration (every PID, correct paths/users/pipes), `lsof -nP -i` with TCP states, `-i :port`; other users' processes with `sudo`. Replaces the 4.78 that fails with "Cannot allocate memory" on every PID |
+| Node.js 22.23.4 | `node --version` → v22.23.4; `-e` JS execution; HTTP roundtrip server; curl ↔ node interop; outbound HTTP/HTTPS/DNS; ESM imports; SHA-256 known-answer vectors; `pbkdf2` on the threadpool; `os.cpus()` = P101AP × 2. JIT is impossible on this device (W^X), so the wrapper forces `--jitless` |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
@@ -657,6 +663,43 @@ Two behaviours worth knowing before trusting the output:
   header change will link happily and then misreport address families, which
   is how the duplicate-case collisions in its family switch went unnoticed
   for one build.
+
+## Node.js 22.23.4
+
+`node/build.sh` and `node/make-deb.sh` build and package **Node.js 22.23.4**
+(V8 12.4) — the first C++20 port in this repo, and the one that pushed the
+toolchain from "compiles C programs" to "compiles a modern C++ runtime".
+Ships in the APT repository and as the
+[node-22.23.4 release](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases/tag/node-22.23.4).
+
+What is different about this port, one line each:
+
+* **Jitless by necessity.** The device cannot execute generated code
+  (`mprotect`→RWX raises SIGBUS, `MAP_JIT` returns `EINVAL`), so the installed
+  `node` is a wrapper that appends `--jitless` and execs `node.real`.
+* **A real V8 code blob and startup snapshot**, produced by a custom
+  arm32-capable `mksnapshot` (11,415 relocation fixups applied before the
+  blob ships).
+* **The deb installs ready to run**: `/usr/local/bin/node` (the wrapper) and
+  `node.real`, both `ldid -S`-signed at package time — `dpkg -i` is the whole
+  install. npm is not included (`--without-npm`) and Intl is off
+  (`--with-intl=none`).
+* **Known limits**: no JIT (wall #15 — a device memory-model fact, not a bug),
+  and the kernel-locked 1 MB main-thread stack bounds deep recursion.
+
+The engineering log for this port is the deepest in the repo: **15 walls**,
+from the silent exec SIGKILL of an unsigned Mach-O (wall #10) through a no-op
+`__atomic_load_8` on the device that corrupted the OpenSSL CSPRNG (wall #11),
+torque's 32-bit literal layout (wall #13) and a sysroot `struct kevent` ABI
+mismatch — 52 B against the kernel's 20 B — that surfaced only as wrong
+`changelist` entries (wall #14). The per-wall account, the patch set
+(`node/patches/`) and the verification checklist (`node/VERIFY.md`) live in
+[docs/node.md](docs/node.md).
+
+One build-system note: Node's own build system cannot run unmodified against
+this hand-made sysroot, so the load-bearing recipe is the patch set plus the
+link script described in `docs/node.md`; `node/build.sh` (whose header states
+its own prepared/proven status) assembles the same steps.
 
 ## Fetching a Darwin header without guessing
 

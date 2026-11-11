@@ -75,6 +75,40 @@ Description: lsof (LiSt Open Files) for armv7 iOS 10+
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: lsof 4.99.7
 
+Package: node4
+Version: 22.23.4-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/n/node4/node4_22.23.4-1_iphoneos-arm.deb
+Size: 18414130
+MD5sum: b6f15735f74ef99c463c3a428e677ea2
+SHA1: 75f9afeab9916e5f7335a0d822bdc2b0942bd2f6
+SHA256: d497afcab465617fb3545dfe1e07f4cd2b4c3b73812ee6a97f2c3e3836ec71f3
+Section: Development
+Priority: optional
+Homepage: https://nodejs.org
+Description: Node.js 22.23.4 for armv7 iOS 10+ (jitless)
+ Node.js 22.23.4, cross-compiled for armv7 iOS 10.x with an embedded
+ V8, libuv, OpenSSL, c-ares, zlib and llhttp, all statically linked.
+ .
+ Installs to /var/mobile/tools/node.  Nothing under /usr is touched and no system
+ binary is replaced; removing the package leaves the device as it was.
+ .
+ IMPORTANT: this device cannot execute JIT-generated code -- the kernel
+ kills the process.  The `node` installed here is therefore a wrapper
+ that sets NODE_OPTIONS=--jitless before exec'ing the engine, so jitless
+ is the default and the user does not have to remember it.  The engine
+ itself is /var/mobile/tools/node/bin/node.real.
+ .
+ Because JIT is off, long-running compute is dramatically slower than on
+ a desktop.  Short scripts, file manipulation and npm are the intended
+ uses.  There is no Intl (built --with-intl=none) and no startup snapshot
+ (built --without-node-snapshot), so `node -e` has a noticeable fixed
+ startup cost.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: Node.js 22
+
 Package: openssh4
 Version: 10.6p2-1
 Architecture: iphoneos-arm
