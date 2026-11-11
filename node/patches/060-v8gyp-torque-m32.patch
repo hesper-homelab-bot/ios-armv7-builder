@@ -1,0 +1,60 @@
+--- /tmp/orig/node-v22.23.4/tools/v8_gypfiles/v8.gyp	2026-10-21 03:59:17.000000000 +0800
++++ tools/v8_gypfiles/v8.gyp	2026-11-11 08:59:44.193220408 +0800
+@@ -132,6 +132,18 @@
+             '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
+             '-o', '<(SHARED_INTERMEDIATE_DIR)/torque-generated',
+             '-v8-root', '<(V8_ROOT)',
++            # iOS armv7 cross build.  -m32 selects torque's
++            # force_32bit_output mode: generated CSA field offsets are
++            # computed with 4-byte tagged/raw_ptr/external_ptr sizes, which
++            # is what the ILP32 target layout is.  Without it the host x64
++            # toolset bakes 8-byte kSystemPointerSize-derived offsets into
++            # the generated *-tq-csa.cc and multi-field object reads go
++            # wrong at runtime (wall #13: JSArrayBuffer bit_field read at
++            # literal 48 vs the real +32).  This is the OUTPUT mode flag,
++            # not a -m32 compile of torque itself -- the torque binary
++            # stays a pointer-compressed x64 program (compiling IT with
++            # -m32 aborts; see toolchain.gypi's host block).
++            '-m32',
+             '<@(torque_files_without_v8_root)',
+           ],
+         },
+@@ -1439,6 +1451,16 @@
+         ['is_component_build', {
+           'defines': ["BUILDING_V8_BASE_SHARED"],
+         }],
++        # iOS cross build: V8_OS_DARWIN headers pull <dispatch/dispatch.h>
++        # (libdispatch ships with iOS).  The host-side copy under
++        # ~/ios-tool/x-libdispatch has a non-Apple branch and is used only
++        # to satisfy compilation on the build machine.
++        ['OS=="ios"', {
++          'include_dirs': [ '<!(echo $HOME)/ios-tool/x-libdispatch/include' ],
++          'direct_dependent_settings': {
++            'include_dirs': [ '<!(echo $HOME)/ios-tool/x-libdispatch/include' ],
++          },
++        }],
+         ['is_posix or is_fuchsia', {
+           'sources': [
+             '<(V8_ROOT)/src/base/platform/platform-posix.cc',
+@@ -1527,12 +1549,20 @@
+             '<(V8_ROOT)/src/base/platform/platform-darwin.cc',
+           ]
+         }],
+-        ['OS == "ios"', {
++        ['OS == "ios" and _toolset=="target"', {
+           'sources': [
+             '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
+             '<(V8_ROOT)/src/base/platform/platform-darwin.cc',
+           ]
+         }],
++        # Cross build: the host toolset builds for the build machine, so it
++        # needs the linux platform sources even though OS=="ios".
++        ['OS == "ios" and _toolset=="host"', {
++          'sources': [
++            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
++            '<(V8_ROOT)/src/base/platform/platform-linux.cc',
++          ]
++        }],
+         ['is_win', {
+           'sources': [
+             '<(V8_ROOT)/src/base/debug/stack_trace_win.cc',

@@ -114,6 +114,14 @@ extern "C" {
 
 int ioctl (int, int, ...);
 
+/*
+ * fsctl() is Darwin's filesystem-specific ioctl entry point.  libuv's
+ * darwin.c calls it (F_PUNCHHOLE / F_TRIM_ACTIVE_FILE handling); the
+ * symbol is exported by libSystem.
+ */
+int fsctl(const char *path, unsigned long request, void *data, unsigned options);
+int ffsctl(int fd, unsigned long request, void *data, unsigned options);
+
 #ifdef __cplusplus
 }
 #endif
@@ -150,5 +158,26 @@ int ioctl (int, int, ...);
 #define TIOCEXCL	0x2000740d
 #undef TIOCNXCL
 #define TIOCNXCL	0x2000740e
+
+/*
+ * pty allocation ioctls: libuv's tty.c probes a descriptor with
+ * TIOCPTYGNAME to decide whether it is a pty master.
+ *
+ * Values follow from xnu-3789.70.16 bsd/sys/ttycom.h, which spells them
+ * with the _IO/_IOC macros (see <sys/ioccom.h>):
+ *
+ *   #define TIOCPTYGRANT  _IO('t', 84)                -> 0x20007454
+ *   #define TIOCPTYGNAME  _IOC(IOC_OUT, 't', 83, 128) -> 0x40747453
+ *   #define TIOCPTYUNLK   _IO('t', 82)                -> 0x20007452
+ *
+ * 't' = 0x74; _IO is 0x20000000 | num in the low byte with 0x74<<8, while
+ * _IOC_OUT adds 0x40000000 and puts the 128-byte payload in the size field.
+ */
+#undef TIOCPTYGRANT
+#define TIOCPTYGRANT	0x20007454
+#undef TIOCPTYGNAME
+#define TIOCPTYGNAME	0x40747453
+#undef TIOCPTYUNLK
+#define TIOCPTYUNLK	0x20007452
 /* ===== end DARWIN_OVERRIDES ===== */
 #endif

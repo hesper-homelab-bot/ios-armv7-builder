@@ -11,6 +11,11 @@
  */
 
 typedef int		integer_t;
+/* boolean_t is the Mach spelling of C's int boolean; xnu defines it in
+ * osfmk/mach/boolean.h, which re-exports it through <mach/machine.h> on
+ * Apple platforms.  It was missing from the whole sysroot while
+ * sys/proc_info.h already used it -- adding it here fixes both. */
+typedef int		boolean_t;
 typedef int		cpu_type_t;
 typedef int		cpu_subtype_t;
 typedef int		cpu_threadtype_t;

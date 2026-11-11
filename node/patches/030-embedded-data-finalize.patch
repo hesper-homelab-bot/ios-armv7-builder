@@ -1,0 +1,68 @@
+--- /tmp/orig/node-v22.23.4/deps/v8/src/snapshot/embedded/embedded-data.cc	2026-10-21 03:59:14.000000000 +0800
++++ deps/v8/src/snapshot/embedded/embedded-data.cc	2026-11-11 03:17:44.853699444 +0800
+@@ -174,7 +174,6 @@
+   static const int kRelocMask =
+       RelocInfo::ModeMask(RelocInfo::CODE_TARGET) |
+       RelocInfo::ModeMask(RelocInfo::RELATIVE_CODE_TARGET);
+-
+   static_assert(Builtins::kAllBuiltinsAreIsolateIndependent);
+   for (Builtin builtin = Builtins::kFirst; builtin <= Builtins::kLast;
+        ++builtin) {
+@@ -380,6 +379,20 @@
+   EmbeddedData d(blob_code, blob_code_size, blob_data, blob_data_size);
+ 
+   // Fix up call targets that point to other embedded builtins.
++  // [ios-armv7 wall12 fix 2026-11-10] this MUST run before the dump: the
++  // early-dump workaround below used to _exit(0) before this point, so the
++  // blob's builtin->builtin pc-relative CODE_TARGET fixups were never
++  // applied -- every unpatched call site then branched to a stale serialized
++  // value (e.g. 0x22) at first JS.  The dump+exit now happens AFTER finalize
++  // (and hashing), still skipping the parts that crash on this device (the
++  // .S generation and the teardown).
++  // NewFromIsolate is called twice per mksnapshot run: once from inside
++  // CreateSnapshotDataBlob (blob embedding, before the startup snapshot is
++  // written) and once from the explicit WriteEmbeddedFile at the end.  The
++  // first call must return normally; only the second one dumps+exits, so
++  // that the startup snapshot files land on disk from the SAME generation.
++
++  // Fix up call targets that point to other embedded builtins.
+   FinalizeEmbeddedCodeTargets(isolate, &d);
+ 
+   // Hash the blob and store the result.
+@@ -415,6 +428,36 @@
+ 
+   if (v8_flags.serialization_statistics) d.PrintStatistics();
+ 
++  // [ios-armv7 wall12 fix 2026-11-10] dump the FINALIZED blob (fixups +
++  // hashes applied) and exit before the .S generation / teardown, which
++  // crash on this device.  Everything node consumes (embedded_code.bin /
++  // embedded_data.bin) is complete at this point.
++  static int nfs_calls = 0;
++  ++nfs_calls;
++  {
++    fprintf(stderr, "EMBEDDED(finalized): code=%p size=%u data=%p size=%u\n",
++            (void*)blob_code, blob_code_size, (void*)blob_data,
++            blob_data_size);
++    fflush(stderr);
++    FILE* fp = fopen("/var/mobile/scratch/snapgen/embedded_code.bin", "wb");
++    if (fp) {
++      fwrite(blob_code, 1, blob_code_size, fp);
++      fclose(fp);
++      fprintf(stderr, "EMBEDDED: code dumped\n");
++      fflush(stderr);
++    }
++    fp = fopen("/var/mobile/scratch/snapgen/embedded_data.bin", "wb");
++    if (fp) {
++      fwrite(blob_data, 1, blob_data_size, fp);
++      fclose(fp);
++      fprintf(stderr, "EMBEDDED: data dumped\n");
++      fflush(stderr);
++    }
++    fprintf(stderr, "EMBEDDED: dumping complete (call %d)\n", nfs_calls);
++    fflush(stderr);
++    if (nfs_calls >= 2) _exit(0);  // second call: done, skip .S gen + teardown
++  }
++
+   return d;
+ }
+ 

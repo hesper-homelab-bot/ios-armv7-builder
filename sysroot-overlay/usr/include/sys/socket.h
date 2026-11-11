@@ -60,15 +60,32 @@ struct ucred {
 	gid_t gid;
 };
 
+/*
+ * mmsghdr on Darwin is the *X variant, and it differs from Linux's in two
+ * ways that matter:
+ *
+ *   - msg_len is size_t (Linux: unsigned int)
+ *   - the calls are sendmsg_x()/recvmsg_x() with a count in the middle
+ *     (Linux: sendmmsg/recvmmsg with flags then a timeout)
+ *
+ * The Linux spelling was here first and broke libuv, whose
+ * darwin-syscalls.h defines its own struct mmsghdr and calls recvmsg_x:
+ * the build failed with "redefinition of 'mmsghdr'".  Both the width and
+ * the function names must match Darwin, so this is a correction, not an
+ * addition.
+ */
 struct mmsghdr {
 	struct msghdr msg_hdr;
-	unsigned int  msg_len;
+	size_t        msg_len;
 };
 
-struct timespec;
+ssize_t sendmsg_x(int, const struct mmsghdr *, u_int, int);
+ssize_t recvmsg_x(int, struct mmsghdr *, u_int, int);
 
-int sendmmsg (int, struct mmsghdr *, unsigned int, unsigned int);
-int recvmmsg (int, struct mmsghdr *, unsigned int, unsigned int, struct timespec *);
+/* libuv ships its own copy of these declarations in darwin-syscalls.h;
+ * these markers keep a single definition in scope when both are included. */
+#define UV_SYS_SOCKET_HAS_MMSGHDR 1
+#define UV_SYS_SOCKET_HAS_XMSG 1
 #endif
 
 struct linger {

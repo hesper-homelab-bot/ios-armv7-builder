@@ -11,8 +11,15 @@ struct kevent {
 	uint32_t  fflags;
 	intptr_t  data;
 	void     *udata;
-	uint64_t  ext[4];	/* XNU >= 3248 (macOS 10.12 / iOS 10) */
 };
+/* [ios-armv7] sizeof(struct kevent) MUST stay 20: the iOS 10.3.3 (XNU 3248,
+   armv7) kernel reads the 32-bit kevent ABI with 20-byte strides and NO
+   ext[] tail.  A `uint64_t ext[4]` tail (52-byte stride) makes the kernel
+   misparse every change after the first one as garbage: libuv/ares submit
+   N>1 changelists and the kernel echoes the ext[] bytes back as bogus
+   ident=0 EV_ERROR events (bad-fd aborts, SIGBUS; wall #14, 2026-11-11).
+   Rule: multi-element runtime probes only -- a 1-change probe cannot
+   detect a stride mismatch (the first element is always aligned). */
 
 #define EV_SET(kevp, a, b, c, d, e, f) do {		\
 	struct kevent *__kevp = (kevp);			\

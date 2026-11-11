@@ -1,12 +1,15 @@
 # Node 22.23.4（armv7 / iOS 10.3.3）移植专项
 
-> **2026-11-11 03:30 更新：Phase 2 主体完成。** 全部 13 道墙攻克，
-> 诊断已移除的 node_final 全冒烟 6/6 通过
-> （--version、42×3、TypedArray、Buffer、JSON、require('fs')），
-> 已安装为 /var/mobile/tools/node/bin/node.real + jitless wrapper。
-> 墙 #12（blob fixup 11415 处）与墙 #13（torque host 布局字面量，
-> force_32bit_output 重生成）为本阶段两大根因级发现，细节见
-> BUILD-STATE (w)-(ae)。
+> **2026-11-11 08:45 更新：Phase 2/3 完成——全清单验证 + 打包收库。**
+> 14 道墙全部攻克（#12 blob fixup 11415 处、#13 torque force_32bit_output、
+> #14 sysroot kevent 52B→20B 内核 ABI），VERIFY.md 全清单在设备上通过
+> （含 http roundtrip、curl 客户端互验、outbound HTTP/DNS/https 200、
+> ESM、SHA-256 精确向量、pbkdf2 线程池、os.cpus P101AP×2）。
+> 产物：node4_22.23.4-1_iphoneos-arm.deb（dpkg 安装验证 ✓）。
+> 补丁集：node/patches/（010-060 + shims/ + snapshot/ + link-node.sh），
+> sysroot 正本修正 sysroot-overlay/usr/include/sys/event.h。
+> 唯一已知限制：设备不能执行 JIT 代码（内存模型固有），wrapper 强制
+> --jitless；no-jitless 崩溃为墙 #15（记录在案，不在目标内）。
 
 
 > 工具链通用规则（env、归档、thumb、原子雷区、部署三件套、探针模板）见

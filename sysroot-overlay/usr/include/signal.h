@@ -165,19 +165,14 @@ typedef struct {
 #define si_syscall __si_fields.__sigsys.si_syscall
 #define si_arch    __si_fields.__sigsys.si_arch
 
-struct __siginfo;
 struct sigaction {
 	union {
 		void (*sa_handler)(int);
-		void (*sa_sigaction)(int, struct __siginfo *, void *);
+		void (*sa_sigaction)(int, siginfo_t *, void *);
 	} __sa_handler;
 	sigset_t sa_mask;
 	int sa_flags;
 };
-#define sa_handler   __sa_handler.sa_handler
-#define sa_sigaction __sa_handler.sa_sigaction
-#define sa_handler   __sigaction_u.sa_handler
-#define sa_sigaction __sigaction_u.sa_sigaction
 #define sa_handler   __sa_handler.sa_handler
 #define sa_sigaction __sa_handler.sa_sigaction
 

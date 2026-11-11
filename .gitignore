@@ -10,3 +10,7 @@ sftp-server/test/__pycache__/
 # Device-specific operating notes.  Never published: what is installed on my iPad 4,
 # how it differs from the released defaults, and how to undo any of it.
 DEVICE.md
+
+# node port: large device-generated snapshot blobs are re-generable via
+# node/patches/snapshot/README.md procedure; keep only sources in git.
+node/patches/snapshot/embedded_S_v10.txt

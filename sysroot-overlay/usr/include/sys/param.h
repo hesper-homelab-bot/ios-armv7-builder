@@ -21,7 +21,7 @@
 #define MAXLOGNAME 255
 #define MAXPATHLEN 1024
 #define NBBY 8
-#define NGROUPS 32
+#define NGROUPS 16	/* xnu syslimits.h: NGROUPS_MAX=16; _ucred embeds cr_groups[NGROUPS] */
 #define CANBSIZ 255
 #define NOFILE 256
 #define NCARGS 131072

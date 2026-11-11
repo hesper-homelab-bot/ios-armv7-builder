@@ -6,21 +6,11 @@
 #define SIGSTKSZ 8192
 #endif
 
-#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-typedef int greg_t, gregset_t[18];
-typedef struct sigcontext {
-	unsigned long trap_no, error_code, oldmask;
-	unsigned long arm_r0, arm_r1, arm_r2, arm_r3;
-	unsigned long arm_r4, arm_r5, arm_r6, arm_r7;
-	unsigned long arm_r8, arm_r9, arm_r10, arm_fp;
-	unsigned long arm_ip, arm_sp, arm_lr, arm_pc;
-	unsigned long arm_cpsr, fault_address;
-} mcontext_t;
-#else
-typedef struct {
-	unsigned long __regs[21];
-} mcontext_t;
-#endif
+/* musl's Linux mcontext_t (a sigcontext by value, two spellings) is left out
+ * on purpose: Darwin defines mcontext_t in <ucontext.h> as a POINTER to the
+ * _STRUCT_MCONTEXT block, and the two cannot coexist -- a second typedef of
+ * the same name is a hard "typedef redefinition with different type" error.
+ * Nothing in this sysroot reads sigcontext. */
 
 struct sigaltstack {
 	void *ss_sp;
@@ -28,14 +18,12 @@ struct sigaltstack {
 	size_t ss_size;
 };
 
-typedef struct __ucontext {
-	unsigned long uc_flags;
-	struct __ucontext *uc_link;
-	stack_t uc_stack;
-	mcontext_t uc_mcontext;
-	sigset_t uc_sigmask;
-	unsigned long long uc_regspace[64];
-} ucontext_t;
+/*
+ * ucontext_t is deliberately NOT defined here.  musl declares it in
+ * bits/signal.h with a Linux sigcontext inside; on Darwin ucontext_t belongs
+ * to <ucontext.h> alone (the arm32 _STRUCT_MCONTEXT layout), and two
+ * definitions of struct __ucontext are a hard error.
+ */
 
 #define SA_NOCLDSTOP  1
 #define SA_NOCLDWAIT  2
@@ -150,6 +138,36 @@ typedef struct __ucontext {
 #define SIGUSR2 31
 #undef SIGIOT
 #define SIGIOT 6
+
+/*
+ * SIGPWR does not exist on Darwin: the Linux table assigns it 30, which
+ * Darwin uses for SIGUSR1.  Leaving it defined made the two macros collide
+ * and broke Node's src/api/utils.cc with "duplicate case value '30'"
+ * (it switches over every SIG* it knows, and two names mapping to one
+ * number is a hard error in a case list).  Same story for SIGPOLL, which
+ * Linux aliases to SIGIO (29) -- Darwin's SIGIO is 23 and SIGPOLL is not
+ * provided at all.
+ *
+ * Undefining rather than redefining is deliberate: the identifiers must
+ * disappear so that #ifdef SIGPWR takes the false branch, exactly as it
+ * does on a real iOS SDK.
+ */
+#undef SIGPWR
+#undef SIGPOLL
+
+/*
+ * SIGSTKFLT is Linux-only (16 there) and collides with Darwin's SIGURG,
+ * which is also 16.  Node switches over every SIG* name it finds, so the
+ * collision is a hard "duplicate case value '16'" error rather than a
+ * silent misbehaviour.  Darwin has no stack-fault signal: the identifier
+ * must not exist.
+ *
+ * SIGUNUSED is likewise a Linux alias (of SIGSYS in musl, but 31 in the
+ * Linux table) with no Darwin counterpart.
+ */
+#undef SIGSTKFLT
+#undef SIGUNUSED
+
 #undef SIG_BLOCK
 #define SIG_BLOCK 1
 #undef SIG_UNBLOCK

@@ -1,0 +1,80 @@
+--- /tmp/orig/node-v22.23.4/tools/v8_gypfiles/toolchain.gypi	2026-10-21 03:59:17.000000000 +0800
++++ tools/v8_gypfiles/toolchain.gypi	2026-11-09 06:35:06.617266369 +0800
+@@ -183,9 +183,45 @@
+         },
+       }],
+       ['v8_target_arch=="arm"', {
++        # Both arm defines live in ONE list: gyp keeps only the last
++        # 'defines' key of a block, so a second key silently drops the first
++        # (this cost a full rebuild cycle when V8_TARGET_ARCH_ARM was lost
++        # that way and every ARM file failed with "undeclared kArmCmp").
+         'defines': [
+           'V8_TARGET_ARCH_ARM',
+-        ],
++          # Relaxes v8config.h's host/target consistency #error for host
++          # toolset compiles that see arm target defines on an x64 host.
++          'V8_HOST_TOOLS_CROSS_BUILD',
++          # The decisive lever for the cross snapshot: the arm32 target has
++          # 4-byte tagged fields (kTaggedSize=4 natively), and the host
++          # toolset -- mksnapshot, torque, the torque-generated object layout
++          # asserts -- must agree, or the heap constants split into two
++          # inconsistent worlds (C++ sizeof = 8-based here, Torque layouts =
++          # 4-based) and mksnapshot dies at
++          #     Check failed: IsAligned(size_in_bytes, kTaggedSize)
++          # on the first arm32-only size (e.g. EnumCache::kSize = 12).
++          # V8_COMPRESS_POINTERS is exactly V8's mechanism for a 4-byte
++          # tagged heap on a 64-bit host: it sets kTaggedSize=4, Tagged_t=
++          # uint32_t on this toolset, matching both the target and the -m32
++          # torque output.  (Host raw pointers stay 8 via kSystemPointerSize;
++          # that separation is what pointer compression is for.)
++          #
++          # HOST TOOLSET ONLY: the target arm32 already gets kTaggedSize=4
++          # from sizeof(void*)=4, and V8_COMPRESS_POINTERS on a 32-bit
++          # target is an error (the 4GiB cage constants need a 64-bit
++          # size_t) -- which is exactly how the first attempt failed, when
++          # the define leaked to both toolsets and every target torque
++          # file died on v8-internal.h:124.
++        ],
++        # Why V8_TARGET_ARCH_ARM must be global: the HOST toolset also
++        # compiles the arm codegen backend (obj.host/v8_compiler/.../backend/
++        # arm/*.o) and those files need the kArm* opcodes that
++        # <compiler/backend/instruction-codes.h> emits only under this macro.
++        # The consequence -- host tools claiming a 32-bit target while being
++        # x64 programs -- is absorbed in src/common/globals.h: its
++        # TAGGED_SIZE_8_BYTES now follows the host pointer size when
++        # V8_HOST_TOOLS_CROSS_BUILD is set, so both sides satisfy the
++        # (kTaggedSize == 8) == TAGGED_SIZE_8_BYTES assertion.
+         'conditions': [
+           [ 'arm_version==7 or arm_version=="default"', {
+             'defines': [
+@@ -304,6 +340,18 @@
+             ],
+           }],  # _toolset=="target"
+         ],
++        'target_conditions': [
++          ['_toolset=="host"', {
++            'defines': [
++              'V8_COMPRESS_POINTERS',
++              # GetPtrComprCage() returns nullptr without one of the cage
++              # variants, and Isolate::Isolate() then dereferences the null
++              # cage base ("segfault at 8" inside Isolate::Isolate, verified
++              # in gdb).  The shared cage is the modern spelling.
++              'V8_COMPRESS_POINTERS_IN_SHARED_CAGE',
++            ],
++          }],
++        ],
+       }],  # v8_target_arch=="arm"
+       ['v8_target_arch=="arm64"', {
+         'defines': [
+@@ -621,7 +669,10 @@
+       ['(OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
+          or OS=="netbsd" or OS=="mac" or OS=="android" or OS=="qnx") and \
+         (v8_target_arch=="arm" or v8_target_arch=="ia32" or \
+-         v8_target_arch=="ppc")', {
++         v8_target_arch=="ppc") and OS!="ios"', {
++        # iOS armv7 cross build: the host toolset must stay 64-bit native
++        # (mksnapshot/torque run on the build machine); -m32 there needs
++        # 32-bit libstdc++ headers that this host does not have.
+         'target_conditions': [
+           ['_toolset=="host"', {
+             'conditions': [

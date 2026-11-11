@@ -1,3 +1,10 @@
+#ifndef _PTHREAD_H_IOS_OVERLAY
+#define _PTHREAD_H_IOS_OVERLAY
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Darwin (iOS 10, 32-bit armv7) pthread types and declarations.
  *
@@ -16,6 +23,7 @@
 #define _PTHREAD_H
 
 #include <sys/types.h>
+#include <pthread/qos.h>   /* QoS classes; the SDK pulls these in implicitly */
 #include <time.h>
 
 #define __PTHREAD_ONCE_SIZE__		8
@@ -165,3 +173,51 @@ int	pthread_attr_setstacksize(pthread_attr_t *, size_t);
 int	pthread_attr_getstacksize(const pthread_attr_t *, size_t *);
 
 #endif
+
+/*
+ * pthread_threadid_np -- Darwin's global unique thread id (not the pthread
+ * handle).  Present in libSystem; verified on device 2026-11-07 (probe
+ * returned a plausible tid, rc=0).  V8/abseil sysinfo uses it.
+ */
+int	pthread_threadid_np(pthread_t, unsigned long long *);
+
+/* Darwin extensions used by abseil (verified on device 2026-11-07: both
+ * resolve from libSystem; the probe segfaulted only because it passed
+ * NULL cond/mutex to the relative wait, which dereferences them). */
+struct sched_param;
+int	pthread_cond_timedwait_relative_np(pthread_cond_t *,
+	    pthread_mutex_t *, const struct timespec *);
+int	pthread_getschedparam(pthread_t, int *, struct sched_param *);
+int	pthread_setschedparam(pthread_t, int, const struct sched_param *);
+
+/* Darwin _np introspection.  pthread_get_stackaddr_np and
+ * mach_port_deallocate were both verified on device (2026-11-07). */
+/* Standard POSIX fork handlers.  This header replaces musl's wholesale,
+ * so every standard entry point has to be re-declared; pthread_atfork was
+ * missed until c-ares hit it.  Verified on device: returns 0. */
+int	pthread_atfork(void (*prepare)(void), void (*parent)(void),
+	    void (*child)(void));
+
+void *	pthread_get_stackaddr_np(pthread_t);
+size_t	pthread_get_stacksize_np(pthread_t);
+int	pthread_jit_write_protect_np(int);
+
+/*
+ * Thread naming.  The Darwin signatures are NOT the Linux ones:
+ *
+ *     Darwin: int pthread_setname_np(const char *name);
+ *     Linux:  int pthread_setname_np(pthread_t, const char *name);
+ *
+ * libuv calls the one-argument form on Darwin
+ * (thread.c: pthread_setname_np(namebuf)), so the Linux spelling would
+ * silently select the wrong overload.
+ *
+ * Verified on device (2026-11-08): pthread_setname_np("probe") returned 0.
+ */
+int	pthread_getname_np(pthread_t, char *, size_t);
+int	pthread_setname_np(const char *);
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* _PTHREAD_H_IOS_OVERLAY */

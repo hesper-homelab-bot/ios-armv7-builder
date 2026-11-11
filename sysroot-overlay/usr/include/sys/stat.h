@@ -1,5 +1,10 @@
 #ifndef _SYS_STAT_H
 #define _SYS_STAT_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <bits/alltypes.h>
 #define __NEED_mode_t
@@ -114,5 +119,20 @@ int fchownat(int, const char *, uid_t, gid_t, int);
 /* (futimesat() is declared by <sys/time.h>, which this file does not include --
    adding it here would conflict.) */
 int futimens(int, const struct timespec *);
+
+/*
+ * Darwin special timestamp values for utimensat()/futimens(): "set to
+ * now" and "leave this one alone" instead of a literal time.  musl, whose
+ * sys/stat.h this overlay replaces, declares the functions without these.
+ */
+#ifndef UTIME_NOW
+#define UTIME_NOW	-1
+#define UTIME_OMIT	-2
+#endif
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

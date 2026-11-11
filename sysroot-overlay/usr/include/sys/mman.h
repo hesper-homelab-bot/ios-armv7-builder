@@ -101,4 +101,6 @@ int munlockall(void);
 }
 #endif
 
+#include <mach/vm_statistics.h>  /* VM_MAKE_TAG, as on Apple */
+
 #endif
