@@ -79,14 +79,17 @@ apt-get install lsof              # /var/mobile/tools/lsof
 apt-get install node4             # /usr/local/bin/node (jitless wrapper)
 ```
 
-Those five are what this repository publishes. `dropbear4` and `openssh4` are
-**not** in it — they are distributed as assets on the
-[Releases page](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
-instead, so that the packages which replace or shadow system SSH components
-never arrive through a routine `apt-get upgrade`. Install those by hand:
+All seven packages this repository builds are in it — including `dropbear4`
+and `openssh4`, which at first shipped only as
+[release assets](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
+(`make-repo.sh` publishes every `out/*.deb`, and the repo now carries the two
+SSH packages as well). That removes the old release-only guard, so keep the
+reason it existed in mind: these are the packages that replace or shadow
+system SSH components, and an `apt-get upgrade` can now update them — re-check
+ports and re-load the daemon after such an upgrade. The release assets stay
+up for manual installs:
 
 ```sh
-dpkg -i dropbear4_2026.94-1_iphoneos-arm.deb
 dpkg -i openssh4_10.6p2-1_iphoneos-arm.deb
 sudo launchctl load -w /Library/LaunchDaemons/com.hesper.osshd.plist
 ```
@@ -101,8 +104,9 @@ the failure that caused the old warning.
 `dropbear/make-deb.sh` takes `DROPBEAR_PORT=` (plus `DROPBEAR_EXTRA_ARGS=` for
 an extra `-p`) for the same reason. Both default to 22.
 
-Adding them to the repo is a deliberate decision (`scripts/make-repo.sh` would
-do it), not an oversight.
+Which packages the repository carries is simply what `scripts/make-repo.sh`
+finds under `out/` at generation time — there is no allowlist; remove a
+`.deb` from `out/` before regenerating if you do not want it published.
 
 The *libraries* stay untouched: `/usr/lib/libcrypto.dylib` and the shared
 cache are what `sshd` and the rest of iOS are linked against, and replacing
