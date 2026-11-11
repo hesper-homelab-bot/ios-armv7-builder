@@ -99,3 +99,19 @@ ssh root@<device> 'cd /var/mobile/scratch && rm -f probe && cp probe.new probe &
 | SIGSYS | 内核拒绝系统调用（如 Linux cacheflush） |
 | SIGSEGV @ 小地址 | 空指针/未初始化表 |
 | SIGILL | thumb 位缺失或栈耗尽后的野跳 |
+
+
+## sysroot 结构体的运行时 ABI（wall #14 教训，2026-11-11）
+
+编译期能过 != 运行时 ABI 正确。sysroot 是手搓的：每个**与内核交互的
+结构体**（ioctl/kevent/socket option/……）都要用**多元素探针**在设备上
+验证，而不是只看编译+单元素调用。已有先例：
+
+- `sys/event.h` struct kevent 曾带 `uint64_t ext[4]`（52B 步长），
+  iOS 10.3.3 armv7 内核实际按 20B 无 ext 读——libuv/ares 的 changelist
+  在第 2+ 个 change 起全错（坏 fd、EINVAL abort、SIGBUS）。
+  已删 ext 并留注释（sizeof 必须 =20）。
+
+规则：新增/修改 sysroot 头里与 syscall 相关的结构体时，
+编译一个多元素探针（≥2 个元素走完整 syscall 路径）在设备上跑通
+才算数。单元素探针测不出 stride 错位（第 1 个永远对齐）。
