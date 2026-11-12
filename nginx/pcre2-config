@@ -1,0 +1,20 @@
+#!/bin/sh
+# Fake pcre2-config for the cross build.
+#
+# nginx auto-detects PCRE2 in two steps: first a bare `-lpcre2-8` link probe,
+# then -- if that fails -- `pcre2-config --prefix/--cflags/--libs8`.  The
+# first probe cannot succeed when cross-compiling (the archive is not on the
+# host's default search path), but the second is a documented extension point
+# that lets us point nginx at the privately built static archive without
+# patching auto/lib/pcre/conf.
+#
+# nginx only reads --prefix, --cflags and --libs8 here.
+PCRE_DIR="${NGX_PCRE2_DIR:-$HOME/ios-tool/nginx-src/pcre2-ios}"
+
+case "$1" in
+    --prefix) echo "$PCRE_DIR" ;;
+    --cflags) echo "-I$PCRE_DIR/src" ;;
+    --libs8)  echo "$PCRE_DIR/.libs/libpcre2-8.a" ;;
+    --version) echo "10.42" ;;
+    *) exit 1 ;;
+esac

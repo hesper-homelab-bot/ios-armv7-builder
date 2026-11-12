@@ -132,6 +132,8 @@ fi
 }
 
 cd "$MOSHSRC"
+python3 "$root/mosh/patch-mosh.py"   # early detach + locale (see patches file)
+
 # bake-value fixes (config.status regeneration undoes direct config.h edits)
 sed -i 's|D\["HAVE_MACH_ABSOLUTE_TIME"\]=" 1"|D["HAVE_MACH_ABSOLUTE_TIME"]=" 0"|' config.status
 ./config.status src/include/config.h >/dev/null
@@ -139,6 +141,11 @@ grep -q '#define HAVE_PTHREAD' src/include/config.h || \
     printf '\n#define HAVE_PTHREAD 1\n' >> src/include/config.h
 sed -i 's|^#define HAVE_PLEDGE 1$|/* #undef HAVE_PLEDGE -- OpenBSD-only syscall; the probe lied again */|' \
     src/include/config.h
+
+# NOTE: protobuf/mosh both need feature macros; configure must receive
+# CPPFLAGS=-D_POSIX_C_SOURCE=200809L on its COMMAND LINE (automake bakes
+# CPPFLAGS into src/Makefile at configure time; `make CPPFLAGS=...` is
+# silently ignored).  Both configure invocations above already pass it.
 
 make -j"$(nproc)" >/dev/null
 
