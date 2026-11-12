@@ -19,6 +19,9 @@ What is inside:
 | `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
 | `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); ships the `com.hesper.osshd` daemon, defaulting to port 22 |
 | `node/` | **Node.js 22.23.4** (V8 12.4) — the first full Node runtime for armv7 iOS, jitless by force of the device memory model, with a real embedded code blob + startup snapshot from a custom arm32-capable `mksnapshot` |
+| `wget/` | **GNU wget 1.25.0** with HTTPS, statically linked against the OpenSSL 4 build |
+| `git/` | **git 2.51.2** — the first working git for armv7 iOS; static zlib (cross-built here) + libcurl + OpenSSL; clone/fetch/push over HTTPS verified on device |
+| `vim/` | **Vim 9.1** (huge, no GUI) linked against the device's own libncursesw, with the full runtime tree |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -77,9 +80,10 @@ apt-get install tmux              # /usr/bin/tmux
 apt-get install openssl4 curl4    # /var/mobile/openssl4, /var/mobile/tools
 apt-get install lsof              # /var/mobile/tools/lsof
 apt-get install node4             # /usr/local/bin/node (jitless wrapper)
+apt-get install wget4 git vim     # /var/mobile/tools/{wget,git,vim}
 ```
 
-All seven packages this repository builds are in it — including `dropbear4`
+All ten packages this repository builds are in it — including `dropbear4`
 and `openssh4`, which at first shipped only as
 [release assets](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
 (`make-repo.sh` publishes every `out/*.deb`, and the repo now carries the two
@@ -147,6 +151,9 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | OpenSSH 10.6p2 | runs as a LaunchDaemon with publickey auth, `scp` up **and** down, and `sftp` `get`/`put`/`ls` all working. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7` |
 | lsof 4.99.7 | `lsof -p $$`, full enumeration (every PID, correct paths/users/pipes), `lsof -nP -i` with TCP states, `-i :port`; other users' processes with `sudo`. Replaces the 4.78 that fails with "Cannot allocate memory" on every PID |
 | Node.js 22.23.4 | `node --version` → v22.23.4; `-e` JS execution; HTTP roundtrip server; curl ↔ node interop; outbound HTTP/HTTPS/DNS; ESM imports; SHA-256 known-answer vectors; `pbkdf2` on the threadpool; `os.cpus()` = P101AP × 2. JIT is impossible on this device (W^X), so the wrapper forces `--jitless` |
+| wget 1.25.0 | `wget --version`; HTTPS GET to example.com returns the page body (static OpenSSL 4 + `/etc/ssl/cert.pem`) |
+| git 2.51.2 | `git --version`; `init -b main` → `add` → `commit` → `log`/`status`/`fsck` all green; `clone --depth 1` over HTTPS (gitee mirror, 35 s incl. TLS) with `http.sslCAInfo` shipped in `/var/mobile/tools/etc/gitconfig`. github.com is unreachable from the test network, not from git |
+| Vim 9.1 | `vim --version` (huge, `+multibyte`, no GUI); scripted edit (`-es` + `syntax` + substitute + `wq`) writes correctly; runtime found under `/var/mobile/tools/share/vim/vim91` |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not

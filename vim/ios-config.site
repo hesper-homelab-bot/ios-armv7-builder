@@ -1,0 +1,168 @@
+# config.site for cross-building Vim for armv7 iOS 10 (iPad 4) on Linux.
+#
+# Usage:  CONFIG_SITE=/path/to/ios-config.site ./configure --host=armv7-apple-darwin ...
+#
+# Why a config.site and not --cache-file: autoconf *rewrites* the cache file at
+# the end of every run, folding in whatever the probes discovered, so a
+# hand-edited cache survives exactly one run.  config.site is sourced after the
+# cache and therefore always wins.  (Same reasoning as ../wget/ios-config.site.)
+#
+# Why Vim needs its own corrections on top of the wget ones:
+#
+#   The cross driver links with `-undefined dynamic_lookup`, so *every* link
+#   test autoconf performs succeeds, whether or not the symbol exists on iOS.
+#   Vim has no --enable-cross-guesses knob for the important ones and instead
+#   calls AC_MSG_ERROR("cross-compiling: please set 'vim_cv_...'") the moment a
+#   run-test cannot execute.  Those are hard failures, not warnings.
+#
+#   The second class of lie runs the other way round: a run-test that cannot
+#   execute is optimistically folded into "no", and Vim then compiles a
+#   workaround for a bug the platform does not have (BROKEN_TOUPPER,
+#   STAT_IGNORES_SLASH, ...).  Those produce a binary that misbehaves rather
+#   than one that fails to build, so they are worse.
+
+# ---------------------------------------------------------------- rlimits --
+# Vim's configure runs an "infinite recursion" stack probe; harmless, and it is
+# a compile+link test rather than a run test on Darwin.
+
+# ============================================================ run-tests ======
+# Each of these is a Vim *hard error* under cross-compilation.  Every answer
+# below is what the system under test (an iPad 4 on iOS 10.3.3, Darwin 16.7)
+# actually does, i.e. the same answer a native build would have measured.
+
+# toupper()/tolower() work on ASCII on Darwin.  Answering "yes" here would
+# define BROKEN_TOUPPER and make Vim use its own slow case tables.
+vim_cv_toupper_broken=no
+
+# getcwd() is the real syscall, not a system("sh -c pwd") emulation: the
+# test poisons the environment with IFS=pwd and expects getcwd() to survive.
+# Darwin's getcwd(3) is implemented on top of __getcwd() and is immune.
+vim_cv_getcwd_broken=no
+
+# stat("dir/") on Darwin follows the trailing slash and succeeds for a
+# directory, so the slash is *not* ignored.
+vim_cv_stat_ignores_slash=no
+
+# Darwin's memmove/memcpy handle overlapping regions the way C requires
+# (memcpy's behaviour on overlap is undefined but Darwin's is a plain forward
+# copy, which is what the probe measures).  Answering "yes" to all three keeps
+# Vim from installing its own byte-at-a-time fallbacks.
+vim_cv_memmove_handles_overlap=yes
+vim_cv_bcopy_handles_overlap=yes
+vim_cv_memcpy_handles_overlap=yes
+
+# terminfo vs termcap: this decides whether Vim talks the compiled terminfo
+# database or the old termcap text file.  The device's libncursesw is
+# ncurses 5.7 (see /usr/include/ncurses.h: NCURSES_VERSION "5.7"), and ncurses
+# always provides a terminfo implementation (tgetent()/tgoto() are the
+# termcap compatibility layer over it).  The probe calls tgoto("%p1%d",0,1)
+# and expects the string "1"; measured against the device's libncursesw it
+# returns "1" (the %p1 stack manipulation is what makes it non-trivial).
+# "yes" => TERMINFO defined, which is what iOS wants: the device ships
+# /usr/share/terminfo and modern TERM values (xterm-256color) have no termcap
+# entry at all.
+vim_cv_terminfo=yes
+
+# tgetent() returns 0 for an unknown terminal in ncurses 5.7 (it returns
+# 0 when the entry cannot be found, 1 on success, -1 when the terminfo
+# database itself is unreadable).  Vim only uses this to decide whether it
+# may trust a 0 return as "no such terminal"; "zero" is the correct answer
+# for ncurses.
+vim_cv_tgetent=zero
+
+# timer_create():  the run test cannot execute while cross-compiling, and
+# AC_MSG_WARN (not ERROR) is the fallback, so it silently becomes "no".
+# iOS 10 has no timer_create at all -- it is not in libSystem -- so "no" is
+# also the truthful answer.  Vim then falls back to its own SIGALRM/select
+# based timers, which is what a native iOS build gets too.
+vim_cv_timer_create=no
+vim_cv_timer_create_with_lrt=no
+
+# ====================================================== link-test lies =======
+# These succeed in the cross link because of -undefined dynamic_lookup even
+# though the symbols are absent from the device's libSystem.  Left at "yes",
+# Vim compiles a call that dyld aborts on the first time it is reached.
+
+# X11: we build --disable-gui/--without-x, but configure's X probes would
+# still like to link -lX11.  The cc-wrapper ignores -lX11 from the link line,
+# so without these the build "succeeds" and then dies at runtime on the first
+# X call.  --without-x already covers the GUI; this covers the X clipboard
+# helper.
+ac_cv_lib_X11_main=no
+ac_cv_header_X11_X11_h=no
+ac_cv_func_XSetWMShellTitle=no
+
+# gpm / sysmouse: Linux console mouse, --disable-gpm/--disable-sysmouse cover
+# the feature, these cover the library probe.
+ac_cv_lib_gpm_Gpm_Open=no
+ac_cv_header_gpm_h=no
+
+# SVR4 pty helpers: iOS 10 has posix_openpt/grantpt/unlockpt/ptsname (they are
+# in libSystem) but NOT the SVR4 pty *device* range, and Vim's probe tries to
+# use them from an AC_RUN_IFELSE that cannot execute cross.  Keep them off so
+# Vim uses openpty()/forkpty(), which iOS definitely has.
+# (See tmux/build.sh: the device's libSystem exports _forkpty and _openpty.)
+
+# libcanberra / selinux / smack / ACL: not on iOS.
+ac_cv_lib_canberra_ca_context_create=no
+ac_cv_header_canberra_h=no
+
+# iconv: iOS 10 does not export iconv_open (verified on the device with a
+# minimal program: dyld "Symbol not found: _iconv_open"; it lives in
+# libiconv, which is not part of libSystem).  Vim only uses iconv for
+# 'charconvert' / mbyte-to-mbyte conversion, which is meaningless here.
+ac_cv_func_iconv=no
+ac_cv_func_iconv_open=no
+ac_cv_func_iconv_close=no
+ac_cv_header_iconv_h=no
+
+# ============================================ GNU-isms musl declares, iOS lacks
+# Same trap as in ../wget/ios-config.site: musl's headers declare these, so the
+# build is clean and the failure is a dyld abort at first use.  The sysroot is
+# musl-derived, so the declarations are visible even though libSystem has no
+# such symbols.
+ac_cv_func_memrchr=no
+ac_cv_func_strchrnul=no
+ac_cv_func_secure_getenv=no
+ac_cv_func___secure_getenv=no
+ac_cv_func_issetugid=yes
+
+# eaccess/faccessat and friends: glibc-only, absent from iOS 10 libSystem.
+ac_cv_func_eaccess=no
+ac_cv_func_faccessat=no
+ac_cv_func_fstatat=no
+ac_cv_func_futimens=no
+ac_cv_func_utimensat=no
+ac_cv_have_decl_strchrnul=no
+
+# posix_spawn really does work on the device (verified with a file-actions
+# addopen probe: rc=0, child ran, stdout redirected).  Vim does not use it,
+# but configure's probes are cheaper to answer once.
+ac_cv_func_posix_spawn=yes
+ac_cv_func_posix_spawnp=yes
+ac_cv_have_decl_posix_spawn=yes
+ac_cv_have_decl_posix_spawnp=yes
+
+# ================================================================= headers ===
+# <paths.h> is BSD/glibc; the musl-derived sysroot has no such header, and
+# claiming it exists makes the build stop on "file not found".
+ac_cv_header_paths_h=no
+
+# sys/sysctl.h: the sysroot carries a hand-adapted Darwin sys/sysctl.h
+# (sysroot-overlay/usr/include/sys/sysctl.h, copied field-for-field from
+# xnu-3789.70.16) with CTL_HW / HW_USERMEM / sysctl() all present, and Vim
+# uses it for the total-memory figure in ":version".  Say "yes".
+#
+# WALL (2026-11-12): answering "no" here -- on the assumption that a
+# musl-derived sysroot has no sysctl.h -- does NOT merely drop the feature.
+# os_unix.c guards the *include* with
+#     #if defined(HAVE_SYS_SYSCTL_H) && defined(HAVE_SYSCTL)
+# but guards the *use* with `#ifdef HAVE_SYSCTL` alone.  With the header
+# answer forced to "no" and the function probe answering "yes", the use block
+# still compiles while the declaration never arrives, and the build stops at
+#     os_unix.c:577:11: error: use of undeclared identifier 'CTL_HW'
+#     os_unix.c:583:6: error: call to undeclared function 'sysctl'
+# Never override a HAVE_*_H answer to "no" unless the corresponding HAVE_<func>
+# is off as well; Vim does not keep those two guards in sync.
+ac_cv_header_sys_sysctl_h=yes
+ac_cv_header_sys_syslimits_h=no
