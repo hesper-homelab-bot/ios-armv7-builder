@@ -70,9 +70,13 @@ export IOS_SYSROOT=$HOME/ios-tmux-builder/tmp/sysroot IOS_STUBDIR=$HOME/ios-tool
 export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib
 ~/ios-tmux-builder/tools/cc-wrapper.sh -O1 -o /tmp/probe /tmp/probe.c [额外 .o/.a]
-scp /tmp/probe root@<device>:/var/mobile/scratch/probe.new
-ssh root@<device> 'cd /var/mobile/scratch && rm -f probe && cp probe.new probe && \
+scp /tmp/probe mobile@<device>:/var/mobile/scratch/probe.new
+ssh mobile@<device> 'cd /var/mobile/scratch && rm -f probe && cp probe.new probe && \
   chmod 755 probe && chown mobile:mobile probe && ldid -S probe && ./probe'
+
+> **默认以 mobile 会话验证**（与用户日常身份一致；root 能绕过的权限坑
+> 全被掩盖，/dev/bpf* 事件是教训）。需要 root 的操作（dpkg -i、chmod 设备
+> 节点）显式切 root 并在汇报中注明。
 ```
 
 ## 6. 设备连接
