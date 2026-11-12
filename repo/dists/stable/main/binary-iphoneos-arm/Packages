@@ -133,6 +133,36 @@ Description: lsof (LiSt Open Files) for armv7 iOS 10+
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: lsof 4.99.7
 
+Package: nmap
+Version: 7.95-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/n/nmap/nmap_7.95-1_iphoneos-arm.deb
+Size: 9599596
+MD5sum: d0ebf6512cf5434c369172f4088b288b
+SHA1: 4be4337c2b3fbb0347b2354e02705ca1d6413681
+SHA256: aa13761cc5c3b53e8afdc8ce4d7d46693bf229b7078b14d06cca9683106b2640
+Section: Networking
+Priority: optional
+Homepage: https://nmap.org/
+Description: Nmap 7.95 for armv7 iOS 10+ (connect scan verified)
+ Nmap 7.95 for armv7 iOS 10.x with ncat.  Everything is
+ statically linked (libpcap, OpenSSL 4, zlib, pcre2, lua, libdnet,
+ liblinear); installs under /var/mobile/tools, nothing in /usr is
+ touched.
+ .
+ Verified on an iPad 4: --iflist enumerates interfaces, TCP connect scan
+ (-sT) reports open ports correctly.  Wi-Fi interfaces refuse
+ promiscuous mode, so raw-packet scans (-sS/-sU) may need USB/ethernet
+ or simply may not work; -sT works.
+ .
+ Data files ship in /var/mobile/tools/share/nmap.  Run as root for
+ anything beyond unprivileged connect scans.  Add /var/mobile/tools to
+ your PATH, or call it by absolute path.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: Nmap 7.95
+
 Package: node4
 Version: 22.23.4-1
 Architecture: iphoneos-arm

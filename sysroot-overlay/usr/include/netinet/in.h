@@ -276,3 +276,39 @@ struct group_source_req {
 #endif
 
 #endif /* _NETINET_IN_H */
+
+/* ---- IPv6 protocol constants missing from musl (values are the universal
+ * IANA/XNU ones, probed against xnu-3789.70.16 bsd/netinet/in.h). ---- */
+#ifndef IPPROTO_HOPOPTS
+#define IPPROTO_HOPOPTS		0
+#endif
+#ifndef IPPROTO_ROUTING
+#define IPPROTO_ROUTING		43
+#endif
+#ifndef IPPROTO_FRAGMENT
+#define IPPROTO_FRAGMENT	44
+#endif
+#ifndef IPPROTO_ICMPV6
+#define IPPROTO_ICMPV6		58
+#endif
+#ifndef IPPROTO_NONE
+#define IPPROTO_NONE		59
+#endif
+#ifndef IPPROTO_DSTOPTS
+#define IPPROTO_DSTOPTS		60
+#endif
+/* Cisco/GXS IGRP (XNU spells it IPPROTO_IGRP 88) */
+#ifndef IPPROTO_IGRP
+#define IPPROTO_IGRP		88
+#endif
+/* Common Address Redundancy Protocol (Apple's value; nmap reports it) */
+#ifndef IPPROTO_CARP
+#define IPPROTO_CARP		112
+#endif
+/* RFC 3692 experimentation (nmap labels locally-scoped protocols) */
+#ifndef IPPROTO_LOCAL
+#define IPPROTO_LOCAL		253
+#endif
+
+/* pull in the IPv6 socket-option constants (XNU keeps them in in6.h) */
+#include <netinet/in6.h>

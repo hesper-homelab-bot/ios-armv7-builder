@@ -28,3 +28,11 @@ struct sockaddr_un {
 #define LOCAL_PEEREUUID		0x005
 
 #endif
+
+/* BSD macro (4.3BSD/netns, also in Darwin's sys/un.h): length of a
+ * sockaddr_un that only fills sun_path up to its NUL.  Pure arithmetic
+ * on the caller's struct; libdnet/nmap call it. */
+#ifndef SUN_LEN
+#define SUN_LEN(ptr) ((sizeof(*(ptr)) - sizeof((ptr)->sun_path))	\
+		      + strlen((ptr)->sun_path))
+#endif

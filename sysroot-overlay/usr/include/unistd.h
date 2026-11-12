@@ -121,8 +121,8 @@ int getopt(int, char *const[], const char *);
  * includes BOTH <unistd.h> and <getopt.h> (tcpdump.c was the first) fail
  * with conflicting-types.  Forward-declare the struct instead. */
 struct option;
-int getopt_long(int, char *const[], const char *, const struct option *, int *);
-int getopt_long_only(int, char *const[], const char *, const struct option *, int *);
+int getopt_long(int, char **, const char *, const struct option *, int *);
+int getopt_long_only(int, char **, const char *, const struct option *, int *);
 extern char *optarg;
 extern int optind, opterr, optopt;
 

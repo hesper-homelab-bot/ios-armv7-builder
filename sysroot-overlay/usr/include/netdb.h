@@ -20,25 +20,7 @@ struct addrinfo {
 	struct addrinfo *ai_next;
 };
 
-#define AI_PASSIVE     0x0001
-#define AI_CANONNAME   0x0002
-#define AI_NUMERICHOST 0x0004
-#define AI_V4MAPPED    0x0008
-#define AI_ALL         0x0010
-#define AI_ADDRCONFIG  0x0020
-#define AI_NUMERICSERV 0x0400
 
-#define EAI_BADFLAGS   -1
-#define EAI_NONAME     -2
-#define EAI_AGAIN      -3
-#define EAI_FAIL       -4
-#define EAI_NODATA     -5
-#define EAI_FAMILY     -6
-#define EAI_SOCKTYPE   -7
-#define EAI_SERVICE    -8
-#define EAI_MEMORY     -10
-#define EAI_SYSTEM     -11
-#define EAI_OVERFLOW   -12
 
 struct hostent {
     char *h_name;
@@ -102,13 +84,6 @@ const char *gai_strerror(int);
 int getnameinfo(const struct sockaddr *__restrict, socklen_t,
     char *__restrict, socklen_t, char *__restrict, socklen_t, int);
 
-#define NI_NUMERICHOST 1
-#define NI_NUMERICSERV 2
-#define NI_NOFQDN      4
-#define NI_NAMEREQD    8
-#define NI_DGRAM       16
-#define NI_MAXHOST     1025
-#define NI_MAXSERV     32
 
 #define HOST_NOT_FOUND 1
 #define TRY_AGAIN      2
@@ -125,14 +100,64 @@ void endnetent(void);
 void endprotoent(void);
 void endservent(void);
 
+
+/* Darwin: h_errno is a plain global in libSystem (legacy resolver API).
+   Guarded so a threading layer can still override it with a macro.
+   NOTE: kept inside the extern "C" block -- libpcap's pcap/socket.h
+   includes this header inside its own extern "C", and a bare
+   declaration outside would flip h_errno's linkage between the two
+   inclusion contexts (C++: declaration of 'h_errno' has a different
+   language linkage). */
+#if !defined(h_errno)
+extern int h_errno;
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
 
-/* Darwin: h_errno is a plain global in libSystem (legacy resolver API).
-   Guarded so a threading layer can still override it with a macro. */
-#if !defined(h_errno)
-extern int h_errno;
-#endif
+/* ---- getaddrinfo/getnameinfo constants: APPLE/Darwin values, NOT the
+ * glibc/musl ones musl ships.  Probe-verified on the device (2026-11-12):
+ * NI_NUMERICHOST=1 returns the HOSTNAME (it is NI_NOFQDN on Darwin), =2
+ * returns the numeric address; a non-numeric string with AI_NUMERICHOST
+ * fails with rc=8 = EAI_NONAME here, while musl spells EAI_NONAME -2.
+ * Source of record: apple-oss-distributions/Libinfo lookup.subproj/netdb.h. ---- */
+
+#define EAI_ADDRFAMILY  1
+#define EAI_AGAIN       2
+#define EAI_BADFLAGS    3
+#define EAI_FAIL        4
+#define EAI_FAMILY      5
+#define EAI_MEMORY      6
+#define EAI_NODATA      7
+#define EAI_NONAME      8
+#define EAI_SERVICE     9
+#define EAI_SOCKTYPE    10
+#define EAI_SYSTEM      11
+#define EAI_BADHINTS    12
+#define EAI_PROTOCOL    13
+#define EAI_OVERFLOW    14
+#define EAI_MAX         15
+
+#define NI_NOFQDN       0x00000001
+#define NI_NUMERICHOST  0x00000002
+#define NI_NAMEREQD     0x00000004
+#define NI_NUMERICSERV  0x00000008
+#define NI_DGRAM        0x00000010
+#define NI_WITHSCOPEID  0x00000020
+
+#define AI_PASSIVE      0x00000001
+#define AI_CANONNAME    0x00000002
+#define AI_NUMERICHOST  0x00000004
+#define AI_ALL          0x00000100
+#define AI_V4MAPPED_CFG 0x00000200
+#define AI_ADDRCONFIG   0x00000400
+#define AI_V4MAPPED     0x00000800
+#define AI_NUMERICSERV  0x00001000
+#define AI_UNUSABLE     0x10000000
+
+/* Apple keeps the buffer sizes here too (Libinfo netdb.h). */
+#define NI_MAXHOST 1025
+#define NI_MAXSERV 32
