@@ -21,11 +21,38 @@ STUBDIR="${IOS_STUBDIR:?IOS_STUBDIR not set}"
 DYLIBS="${IOS_DYLIBS:-}"
 
 mode_compile=0
-for a in "$@"; do case "$a" in -c|-S|-E) mode_compile=1;; esac; done
+mode_dep=0
+for a in "$@"; do case "$a" in -c|-S|-E) mode_compile=1;; -M|-MM|-MD|-MMD) mode_dep=1;; esac; done
+
+TGT=(-target armv7-apple-ios10.3 -isysroot "$SYSROOT")
+
+# __ARM_EABI__ is the GNU/EABI spelling that says "this target follows the
+# ARM EABI (AAPCS) procedure-call ABI".  clang does not define it for
+# Apple triples -- Apple's toolchains predate the macro and their ABI is
+# AAPCS by construction -- but V8's src/codegen/arm/constants-arm.h has a
+# hard #error when a 32-bit ARM target lacks it, and Apple's armv7 *is*
+# a conformant EABI target.  Defining it here is a statement of fact, not
+# a workaround: the whole port rests on the armv7 ABI being EABI.
+EARGS=(-D__ARM_EABI__)
+
+# Dependency-scan invocations (-M/-MM/...) must pass through untouched:
+# in compile mode clang's -o would name the *dependency output file*, and
+# in link mode this script would "compile every source and link it",
+# poisoning every scanned object with an ASCII dependency list (nsock's
+# makefile.dep rule was the first victim).  Keep the target triplet and
+# the EABI define, hand the rest straight to clang (stdout lands in the
+# caller's redirection, e.g. nsock's makefile.dep).
+if [ $mode_dep = 1 ]; then
+  exec "$REAL_CLANG" "${TGT[@]}" "${EARGS[@]}" "$@"
+fi
 
 FRAMEWORKS=()
 OUTPUT=a.out; HAS_OUTPUT=0
 SRCS=(); OBJS=(); CFLAGS=(); LDARGS=()
+
+TGT=(-target armv7-apple-ios10.3 -isysroot "$SYSROOT")
+
+
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -66,16 +93,7 @@ if [ -z "$OUTPUT" ] || [ "$OUTPUT" = a.out ]; then
   else OUTPUT=a.out; fi
 fi
 
-TGT=(-target armv7-apple-ios10.3 -isysroot "$SYSROOT")
 
-# __ARM_EABI__ is the GNU/EABI spelling that says "this target follows the
-# ARM EABI (AAPCS) procedure-call ABI".  clang does not define it for
-# Apple triples -- Apple's toolchains predate the macro and their ABI is
-# AAPCS by construction -- but V8's src/codegen/arm/constants-arm.h has a
-# hard #error when a 32-bit ARM target lacks it, and Apple's armv7 *is*
-# a conformant EABI target.  Defining it here is a statement of fact, not
-# a workaround: the whole port rests on the armv7 ABI being EABI.
-EARGS=(-D__ARM_EABI__)
 
 if [ $mode_compile -eq 1 ]; then
   if [ $HAS_OUTPUT -eq 1 ]; then

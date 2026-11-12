@@ -26,6 +26,7 @@ What is inside:
 | `tcpdump/` | **tcpdump 4.99.5** — live packet capture on `en0` verified (captured real SSH traffic); needs root, Wi-Fi refuses promiscuous mode with a warning |
 | `sqlite/` | **sqlite3 3.54.1** (32-bit) — direct amalgamation build, no configure; WAL/FTS-capable, fully static |
 | `jq/` | **jq 1.7.1** statically linked with oniguruma 6.9.10 — `test()` regex verified, UTF-8 round-trips |
+| `nmap/` | **Nmap 7.95** (nmap + ncat) — the most invasive port: five bundled libraries, libdnet backend surgery, OpenSSL 4 opaque-struct patches, and a cc-wrapper fix for `-MM` dependency scanning |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -86,9 +87,10 @@ apt-get install lsof              # /var/mobile/tools/lsof
 apt-get install node4             # /usr/local/bin/node (jitless wrapper)
 apt-get install wget4 git vim     # /var/mobile/tools/{wget,git,vim}
 apt-get install sqlite3 jq tcpdump # /var/mobile/tools/{sqlite3,jq,tcpdump}
+apt-get install nmap               # /var/mobile/tools/{nmap,ncat} + share/nmap
 ```
 
-All ten packages this repository builds are in it — including `dropbear4`
+All fourteen packages this repository builds are in it — including `dropbear4`
 and `openssh4`, which at first shipped only as
 [release assets](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
 (`make-repo.sh` publishes every `out/*.deb`, and the repo now carries the two
@@ -162,6 +164,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | tcpdump 4.99.5 | `tcpdump --version`, `-D` lists en0/en2/awdl0/utun0; live capture `-i en0 -c 2 -n -q port 22` received packets by filter with 0 dropped (as root; Wi-Fi declines promiscuous mode with a warning) |
 | sqlite3 3.54.1 | `--version` (32-bit); CREATE/INSERT/`sum()`/`PRAGMA journal_mode=wal` (real WAL on disk)/`.schema`/SELECT with WHERE all green |
 | jq 1.7.1 | `--version`; `.a[1]`, `reduce range(100)`, `add` over 20000 values, `test("f..h")` regex (oniguruma), UTF-8 `café` round-trip, `sort` |
+| Nmap 7.95 | `--version`; `--iflist` enumerates interfaces (lo0/en0/en2/awdl0/utun0); `-sT -n -p 22,22226 127.0.0.1` reports `22/tcp open ssh` + `22226/tcp open` in 0.17 s (data files shipped; Wi-Fi declines promiscuous mode) |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not

@@ -573,3 +573,18 @@ __REDIR(recvmmsg, __recvmmsg_time64);
 #define IP_TOS          3       /* Darwin (BSD): IP options byte */
 /* ===== end DARWIN_OVERRIDES ===== */
 #endif
+
+/* BSD routing socket MIB levels for sysctl(CTL_NET, PF_ROUTE, ...).
+ * Values are the universal 4.4BSD/XNU ones (xnu bsd/sys/socket.h); musl's
+ * socket.h has PF_ROUTE but not these, and libdnet's route-bsd.c needs
+ * NET_RT_DUMP to walk the kernel routing table. */
+#ifndef NET_RT_DUMP
+#define NET_RT_DUMP		1
+#define NET_RT_FLAGS		2
+#define NET_RT_IFLIST		3
+#define NET_RT_STAT		4
+#define NET_RT_TRASH		5
+#define NET_RT_IFLIST2		6
+#define NET_RT_DUMP2		7
+#define NET_RT_MAXID		10
+#endif
