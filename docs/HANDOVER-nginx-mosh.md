@@ -57,6 +57,37 @@ APT repo 当前 **15 包**(mosh 已入库;nginx 完成后 16)。
 3. README 补章节、make-repo、commit、release(问用户:并入 batch 还是
    单独 tag)
 
+## 手机端(Termius)连接问题——排查链与未完事项
+
+**现象演进**(用户手机,iPhone 192.168.31.78):
+1. `sh: mosh-server: command not found` —— 非交互 ssh 不读 /etc/profile;
+   修法:`ln -sf /var/mobile/tools/bin/mosh-server /usr/bin/mosh-server`
+   (+mosh-client 软链)。**设备侧已修好。**
+2. 连上后界面卡住 → `network is unreachable`。
+
+**排查链**(tcpdump + 进程监控 + 崩溃报告,全部实测):
+- 手机向设备 60001 盲发 UDP(4ms 间隔,数千包)无回包 —— 发的是**缓存会话**
+  (App 重连逻辑用记住的 IP:port:key)
+- 设备侧 ps 抓不到 mosh-server 进程(监控 40 秒全 0)—— 带非交互 ssh 复现
+  时 server 却存活(掩盖了问题:**非交互 ssh 不带 pty**)
+- **真凶(对照实验复现)**:Termius 的 ssh 带 pty,读完 MOSH CONNECT 后关闭
+  ssh 通道 → dropbear 清理整个 pty 会话进程组 → mosh-server 被杀。宿主机
+  OpenSSH 同样流程不杀(对照实验:同流程 iPad alive=0 / 宿主机 alive=2)
+- 修复:`mosh/patch-mosh.py` 的 **early detach**(mosh-server main 第一行
+  setsid + SIGHUP ignore);上游的 fork()/exit(0) detach 不够——子进程仍在
+  同组。patch 后 ssh -tt 复现:server 存活(90221)✅
+- 历史干扰:早期还有一次 dyld 崩溃(崩溃报告:InternalMetadata 符号缺失,
+  protobuf 静态库问题)已随重编消失;调试用的信号审计 patch 已移除
+
+**明日验证步骤**(务必以 mobile 会话):
+1. Termius 删掉旧会话条目(清掉缓存的 60001)→ 全新连接
+2. 设备侧同时挂监控:`for 300s: ps mosh 进程 + tcpdump -i en0 udp
+   portrange 60000-61000`——三步断点(ssh 起没起 server / UDP 到没到 /
+   server 回没回)任何一步都看得见
+3. 若 Termius 仍重试旧缓存:检查 App 的会话设置(有无 --server= 绝对路径
+   选项:`/var/mobile/tools/bin/mosh-server new`)
+4. 交互验证可用主机 mosh-client(带 tty 尺寸的 python pty 法)直连设备当前会话
+
 ## 本日通用教训(已进 docs/toolchain.md §8)
 
 - musl 头的 Linux 值穿马甲(ioctl/_IOW、netdb NI_/AI_/EAI_)
