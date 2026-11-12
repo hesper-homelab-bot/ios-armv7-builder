@@ -133,6 +133,36 @@ Description: lsof (LiSt Open Files) for armv7 iOS 10+
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: lsof 4.99.7
 
+Package: mosh
+Version: 1.4.0-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/m/mosh/mosh_1.4.0-1_iphoneos-arm.deb
+Size: 3431182
+MD5sum: 2ef9f49fa2f3627d6a8092ff8583f094
+SHA1: e4652abc1f63794e2dfe1c7c7fe8aff0b4217ad1
+SHA256: 77337eab173fcf620b9656e6186625f0dade14f7d1e7903867b6c39c8c1d7685
+Section: Networking
+Priority: optional
+Homepage: https://mosh.org/
+Description: Mosh 1.4.0 for armv7 iOS 10+ (roaming SSH, UDP 60000-61000)
+ Mosh 1.4.0 for armv7 iOS 10.x: mosh-server + mosh-client, statically
+ linked against libprotobuf 3.20.3 and OpenSSL 4.  Installs under
+ /var/mobile/tools; nothing in /usr is touched.
+ .
+ mosh survives roaming, suspend and IP changes over UDP 60000-61000 --
+ the point of having it on a tablet that switches networks.  Run from a
+ client machine:
+   mosh --server="/var/mobile/tools/bin/mosh-server new" mobile@<device>
+ (the  launcher itself is a perl script; iOS has no perl, so the
+ --server= form or a /usr/local/bin symlink is required).
+ .
+ The device has no locale support; this build treats the missing locale
+ as UTF-8 (probe-verified; mosh never transcodes server-side).
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: Mosh 1.4
+
 Package: nmap
 Version: 7.95-1
 Architecture: iphoneos-arm
