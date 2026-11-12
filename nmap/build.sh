@@ -51,6 +51,12 @@
 #     (the header exists, the syscall does not) -> HAVE_EPOLL is #undef'd in
 #     nsock/include/nsock_config.h; nsock falls back to kqueue, which the
 #     iOS kernel genuinely provides.
+#  8b. musl's sys/socket.h also #define'd SO_BINDTODEVICE (25) -- a Linux
+#     only sockopt the iOS kernel answers with EAFNOSUPPORT.  nbase's
+#     socket_bindtodevice() is #ifdef-guarded on that macro, so every scan
+#     logged "Setting of SO_BINDTODEVICE failed ... (42)" twice.  The macro
+#     is now removed from the sysroot header (Darwin does source-interface
+#     selection with IP_BOUND_IF instead) and the warning is gone.
 #  8. The deepest one: musl's bits/ioctl.h defined _IO/_IOR/_IOW/_IOWR with
 #     LINUX semantics, so every BSD header that builds ioctl numbers with
 #     those macros (net/bpf.h's BIOCSETIF, sockio.h's SIOCAIFADDR, ...)

@@ -267,7 +267,9 @@ struct linger {
 #define SO_SECURITY_ENCRYPTION_TRANSPORT        23
 #define SO_SECURITY_ENCRYPTION_NETWORK          24
 
-#define SO_BINDTODEVICE 25
+/* SO_BINDTODEVICE removed: it is a Linux-only sockopt (the iOS kernel
+ * answers EAFNOSUPPORT, and nbase/nsock log a scary "bind failed" for
+ * every scan).  Source-interface selection on Darwin uses IP_BOUND_IF. */
 
 #define SO_ATTACH_FILTER        26
 #define SO_DETACH_FILTER        27

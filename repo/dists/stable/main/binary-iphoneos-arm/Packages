@@ -139,10 +139,10 @@ Architecture: iphoneos-arm
 Maintainer: Hesper <hesperup@users.noreply.github.com>
 Depends: firmware (>= 10.3)
 Filename: pool/main/n/nmap/nmap_7.95-1_iphoneos-arm.deb
-Size: 9599596
-MD5sum: d0ebf6512cf5434c369172f4088b288b
-SHA1: 4be4337c2b3fbb0347b2354e02705ca1d6413681
-SHA256: aa13761cc5c3b53e8afdc8ce4d7d46693bf229b7078b14d06cca9683106b2640
+Size: 9599526
+MD5sum: 9d5f00e131e19fd1a8acd81057fdd80e
+SHA1: dd4326155f75051e752f5e1d9e29f157737464e0
+SHA256: 959a42bfdea40c8f222d5707177633a7863bc1efb9e521d3f7039967572059e2
 Section: Networking
 Priority: optional
 Homepage: https://nmap.org/
