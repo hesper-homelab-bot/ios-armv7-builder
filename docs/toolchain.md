@@ -115,3 +115,23 @@ ssh root@<device> 'cd /var/mobile/scratch && rm -f probe && cp probe.new probe &
 规则：新增/修改 sysroot 头里与 syscall 相关的结构体时，
 编译一个多元素探针（≥2 个元素走完整 syscall 路径）在设备上跑通
 才算数。单元素探针测不出 stride 错位（第 1 个永远对齐）。
+
+## 8. sysroot 头的"Linux 值穿马甲"雷区（nmap 移植 2026-11-12）
+
+musl 头里凡是**数值常量**（ioctl request、netdb 的 NI_/AI_/EAI_、协议号）
+都默认是 **Linux/glibc 值**，与 Darwin ABI 经常不同，且差异是静默的：
+
+- `bits/ioctl.h` 的 `_IOW` 系宏是 Linux 编码 → 所有"用宏构造"的 BSD ioctl
+  （BIOCSETIF、SIOCAIFADDR…）拿到垃圾 request code，值还随 include 顺序漂移
+  （先 include ioccom.h 就对，后 include 就错——两次编译结果不同的怪象之源）。
+  已改为直接 include `sys/ioccom.h`（BSD 语义）+ Darwin tty 值无条件覆盖。
+- `netdb.h` 的 `NI_NUMERICHOST` Linux=1 / Darwin=2：传 1 时设备返回的是
+  **主机名**（Darwin 的 1 是 NI_NOFQDN），不是错误，更阴险。EAI_* 符号也
+  全不同（Darwin EAI_NONAME=8，musl=-2）。已按 Apple Libinfo 正本重写。
+- 判据固化：**两次探针结果不同 → 先怀疑宏依赖 include 顺序**；打印宏的
+  数值（`printf("%lx", (unsigned long)BIOCSETIF)`）比猜测快十倍。
+
+另外：cc-wrapper 现在对 `-M/-MM/-MD/-MMD` 直接透传 clang。此前的行为
+（当作普通 flag 走编译+链接）会让 clang 把**依赖清单写进 .o**（ASCII
+毒化），nsock 的 makefile.dep 规则是第一个受害者。排查手段：`file *.o`
+看见 "ASCII text" 即中毒，删掉重编。
