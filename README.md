@@ -55,6 +55,22 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 
 (cd node && ./build.sh)         # Node 22.23.4; the load-bearing recipe is node/patches/ + docs/node.md
 ./node/make-deb.sh              # node4 .deb: jitless wrapper + signed binary
+
+# ---- the 2026-11 application batch ----
+./wget/make-deb.sh              # wget4 .deb (build was already in the tree)
+(cd libpcap  && ./build.sh)     # libpcap 1.10.5 -> out/libpcap-1.10.5/armv7; needs gh to fetch XNU headers once
+(cd tcpdump  && ./build.sh)     # tcpdump 4.99.5 (discovers ../libpcap-* itself)
+./tcpdump/make-deb.sh
+(cd git      && ./build.sh)     # git 2.51.2: hand-written config.mak + static zlib/curl/openssl
+./git/make-deb.sh
+(cd vim      && ./build.sh)     # Vim 9.1 (huge) against the device's libncursesw
+./vim/make-deb.sh
+(cd sqlite   && ./build.sh)     # sqlite3 3.54.1: direct amalgamation, no configure
+./sqlite/make-deb.sh
+(cd jq       && ./build.sh)     # jq 1.7.1 + oniguruma 6.9.10, both static
+./jq/make-deb.sh
+(cd nmap     && ./build.sh)     # nmap 7.95 + ncat; wall list in nmap/build.sh
+./nmap/make-deb.sh
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
@@ -722,6 +738,70 @@ One build-system note: Node's own build system cannot run unmodified against
 this hand-made sysroot, so the load-bearing recipe is the patch set plus the
 link script described in `docs/node.md`; `node/build.sh` (whose header states
 its own prepared/proven status) assembles the same steps.
+
+## The 2026-11 application batch
+
+Eight packages added in one sweep — wget 1.25.0, git 2.51.2, Vim 9.1,
+sqlite3 3.54.1, jq 1.7.1, libpcap 1.10.5, tcpdump 4.99.5 and nmap 7.95
+(+ncat).  All shipped as
+[release assets](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases/tag/apps-20261112)
+and in the APT repo.  The per-package wall lists live in each build script;
+the ones worth reading:
+
+**git** — three walls, all now encoded in `git/build.sh`:
+- building from a Linux host, git's `config.mak.uname` assumes the *target*
+  is Linux and bakes in Linux-only features (sync_file_range, procfs,
+  getrandom, `-Wl,-rpath`); each is overridden in a hand-written config.mak
+- the cc-wrapper drops `-lz` from the link line (it assumes libSystem
+  re-exports zlib — true on macOS, false on iOS 10): the static libz.a is
+  put on the link line explicitly, and this repo cross-builds its first zlib
+- the sysroot pthread.h shipped Apple's *documented* `PTHREAD_CANCEL_*`
+  values; the iOS 10.3 kernel only accepts `{0,1}` (DISABLE is **0**, not 2)
+  — probed live and fixed, with a warning comment not to "fix" it back
+
+**tcpdump + libpcap** — the device has real `/dev/bpf*` devices, but Apple
+ships no userland `<net/bpf.h>`: the sysroot now carries the XNU
+(xnu-3789.70.16, the iOS 10.3 kernel) version plus the two stub headers it
+needs.  tcpdump 4.99.5 has no `--with-pcap`; it discovers a sibling
+`../libpcap-X.Y.Z` tree.  Its configure then #defines four `HAVE_PCAP_*`
+APIs that libpcap 1.10.5 does not actually have (the link probes all pass
+under `-undefined dynamic_lookup`) — tcpdump dies on the *packet path* only,
+which makes the trap nasty.  config.h #undefs them, checked against the
+libpcap.a symbol table.
+
+**nmap** — the most invasive port: five bundled libraries, each with its own
+problem (pcre2 needs host autoreconf and `--disable-shared`; five archives
+are plain GNU ar and invisible to ld64; libdnet's route/arp/eth backends are
+Linux-picked and are pointed at the BSD ones; nsock's engine table picks up
+epoll from a header probe).  Two are especially reusable lessons:
+- nsock's `makefile.dep` rule runs `$(CC) -MM`; the cc-wrapper used to
+  forward that to a full compile+link, so clang wrote the *dependency list*
+  into every scanned .o (ASCII poison, invisible until `file *.o`).  The
+  wrapper now passes `-M/-MM/-MD/-MMD` through untouched.
+- musl's `bits/ioctl.h` defined `_IOW`-family macros with *Linux* encoding,
+  so every BSD header building ioctl numbers with them got garbage — and the
+  value depended on include order.  It now includes `<sys/ioccom.h>` (BSD
+  semantics), and the sysroot's `netdb.h` carries the Libinfo `NI_/AI_/EAI_`
+  values (`NI_NUMERICHOST` is **2** on Darwin, not 1; with 1 the device
+  returns the hostname instead of an error).
+
+**jq** — libtool's "moved library" relink logic chokes on a DESTDIR-harvested
+`libonig.la`; harvest the bare `.a` + headers into a clean directory instead.
+Also: jq's `builtin.c` redirects `exp10` to Apple's `__exp10`, which musl's
+math.h does not declare — probe-verified live that the symbol exists, then
+declared in the sysroot.
+
+**vim** — straightforward against the device's own libncursesw (same
+mechanism as tmux); the runtime tree ships in the package.
+
+**wget** — the build was already sitting in the tree; only the .deb was
+missing.  A reminder that a working build that never got packaged helps
+nobody.
+
+Everything from this batch was verified *as the mobile user* on an iPad 4 —
+which caught the `/dev/bpf*` permission issue (root-only after every boot;
+the device's selfheal script now opens them up) that root-only testing had
+been masking all along.
 
 ## Fetching a Darwin header without guessing
 
