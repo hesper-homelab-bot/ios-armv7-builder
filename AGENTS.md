@@ -21,4 +21,7 @@
 2. `~/scratch/node-research/BUILD-STATE.md` 是 node 的权威流水账（仓库外），
    docs/node.md 只保留**提炼后的当前状态**，细节引用流水账。
 3. 设备部署一律走部署三件套 + 新文件名（见 docs/toolchain.md §5）。
+3.5. **ssh 默认用 mobile**（`ssh ipad`）；root（`ssh root@ipad`）只用于
+    dpkg 安装、改设备权限等系统级操作，且要在汇报里点名。理由：用户日常
+    也是 mobile，root 下能跑通的探针会掩盖权限问题（/dev/bpf* 事件教训）。
 4. 用户级准则若需修订 → 改 `~/.dsh/AGENTS.md`，不要在本仓库重复。
