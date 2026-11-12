@@ -24,6 +24,8 @@ What is inside:
 | `vim/` | **Vim 9.1** (huge, no GUI) linked against the device's own libncursesw, with the full runtime tree |
 | `libpcap/` | **libpcap 1.10.5** with working live BPF capture (`/dev/bpf*` on the device); needs an XNU `net/bpf.h` that this repo now carries in `sysroot-overlay/` |
 | `tcpdump/` | **tcpdump 4.99.5** — live packet capture on `en0` verified (captured real SSH traffic); needs root, Wi-Fi refuses promiscuous mode with a warning |
+| `sqlite/` | **sqlite3 3.54.1** (32-bit) — direct amalgamation build, no configure; WAL/FTS-capable, fully static |
+| `jq/` | **jq 1.7.1** statically linked with oniguruma 6.9.10 — `test()` regex verified, UTF-8 round-trips |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -83,6 +85,7 @@ apt-get install openssl4 curl4    # /var/mobile/openssl4, /var/mobile/tools
 apt-get install lsof              # /var/mobile/tools/lsof
 apt-get install node4             # /usr/local/bin/node (jitless wrapper)
 apt-get install wget4 git vim     # /var/mobile/tools/{wget,git,vim}
+apt-get install sqlite3 jq tcpdump # /var/mobile/tools/{sqlite3,jq,tcpdump}
 ```
 
 All ten packages this repository builds are in it — including `dropbear4`
@@ -157,6 +160,8 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | git 2.51.2 | `git --version`; `init -b main` → `add` → `commit` → `log`/`status`/`fsck` all green; `clone --depth 1` over HTTPS (gitee mirror, 35 s incl. TLS) with `http.sslCAInfo` shipped in `/var/mobile/tools/etc/gitconfig`. github.com is unreachable from the test network, not from git |
 | Vim 9.1 | `vim --version` (huge, `+multibyte`, no GUI); scripted edit (`-es` + `syntax` + substitute + `wq`) writes correctly; runtime found under `/var/mobile/tools/share/vim/vim91` |
 | tcpdump 4.99.5 | `tcpdump --version`, `-D` lists en0/en2/awdl0/utun0; live capture `-i en0 -c 2 -n -q port 22` received packets by filter with 0 dropped (as root; Wi-Fi declines promiscuous mode with a warning) |
+| sqlite3 3.54.1 | `--version` (32-bit); CREATE/INSERT/`sum()`/`PRAGMA journal_mode=wal` (real WAL on disk)/`.schema`/SELECT with WHERE all green |
+| jq 1.7.1 | `--version`; `.a[1]`, `reduce range(100)`, `add` over 20000 values, `test("f..h")` regex (oniguruma), UTF-8 `café` round-trip, `sort` |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not

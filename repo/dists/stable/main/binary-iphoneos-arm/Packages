@@ -80,6 +80,31 @@ Description: Git 2.51.2 for armv7 iOS 10+ (fully static)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Git 2.51
 
+Package: jq
+Version: 1.7.1-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/j/jq/jq_1.7.1-1_iphoneos-arm.deb
+Size: 395874
+MD5sum: c74541b3cd43831a877f4194dbbe9503
+SHA1: 4aaf73fc148910ba3dc6b2a58225ba0abf3a1c58
+SHA256: 5297e3e6ec5092745eba2da7edfc27d234bcba7d59fc66c6fd304f5cf2812c0e
+Section: Utilities
+Priority: optional
+Homepage: https://jqlang.github.io/jq/
+Description: jq 1.7.1 for armv7 iOS 10+ (oniguruma regex, verified)
+ jq 1.7.1 command-line JSON processor for armv7 iOS 10.x, statically
+ linked with oniguruma 6.9.10 (the test() and match() builtins work).
+ Installs to /var/mobile/tools/jq; nothing in /usr is touched.
+ .
+ Verified on an iPad 4: filters, reduce over 100k elements, regex test(),
+ UTF-8 round-trip, sort.  Pairs well with curl4 and sqlite3.
+ .
+ Add /var/mobile/tools to your PATH, or call it by absolute path.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: jq 1.7
+
 Package: lsof
 Version: 4.99.7-1
 Architecture: iphoneos-arm
