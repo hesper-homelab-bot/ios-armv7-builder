@@ -69,6 +69,32 @@ struct kevent {
 #define NOTE_FORK	0x40000000
 #define NOTE_EXEC	0x20000000
 #define NOTE_TRACK	0x00000001
+/* The remaining Darwin NOTE_* flags.  nginx's kqueue module needs
+   NOTE_TRIGGER for its EVFILT_USER notify path (ngx_kqueue_notify_init()),
+   and without these the module does not compile at all.
+
+   NOTE_TRIGGER is 0x01000000 on Darwin; this is NOT the Linux/FreeBSD
+   value, and a wrong constant here is silent -- kevent() would simply never
+   deliver the user event.  Verified on the device (iOS 10.3.3, XNU 3248
+   armv7) with /tmp probe: EVFILT_USER EV_ADD, EVFILT_USER + 0x01000000,
+   and the resulting wakeup all succeeded, with sizeof(struct kevent)==20. */
+#define NOTE_TRIGGER	0x01000000
+#define NOTE_FFNOP	0x00000000
+#define NOTE_FFAND	0x40000000
+#define NOTE_FFOR	0x80000000
+#define NOTE_FFCOPY	0xc0000000
+#define NOTE_FFCTRLMASK	0xc0000000
+#define NOTE_FFLAGSMASK	0x00ffffff
+#define NOTE_TRACKERR	0x00000002
+#define NOTE_CHILD	0x00000004
+#define NOTE_PCTRLMASK	0xf0000000
+#define NOTE_PDATAMASK	0x000fffff
+#define NOTE_EXITSTATUS	0x04000000
+#define NOTE_REAP	0x10000000
+#define NOTE_SIGNAL	0x08000000
+#define NOTE_VM_PRESSURE	0x80000000
+#define NOTE_VM_PRESSURE_TERMINATE	0x40000000
+#define NOTE_VM_PRESSURE_SUDDEN_TERMINATE 0x20000000
 
 int kqueue(void);
 int kevent(int kq, const struct kevent *changelist, int nchanges,

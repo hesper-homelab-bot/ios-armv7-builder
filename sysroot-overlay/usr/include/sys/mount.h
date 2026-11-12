@@ -12,8 +12,14 @@
  * xnu-3789.70.16 bsd/sys/mount.h (__DARWIN_STRUCT_STATFS64).
  */
 
+#include <sys/cdefs.h>		/* __BEGIN_DECLS / __END_DECLS below */
 #include <sys/types.h>
 #include <sys/socket.h>		/* sa_family_t */
+/* struct statfs embeds char f_mntonname[MAXPATHLEN]; Darwin's mount.h
+   gets the constant from sys/param.h.  Ours must include it too, or
+   every consumer of <sys/mount.h> fails with "undeclared identifier
+   MAXPATHLEN" (nginx's own core sources were the first to hit it). */
+#include <sys/param.h>
 
 #define MFSNAMELEN	15	/* length of fs type name, not inc. null */
 #define MFSTYPENAMELEN	16	/* length of fs type name including null */
