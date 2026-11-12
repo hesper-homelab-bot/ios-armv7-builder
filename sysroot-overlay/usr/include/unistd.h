@@ -116,8 +116,13 @@ char *getpass(const char *);
  * when something includes <unistd.h> and calls getopt -- which is exactly how
  * Dropbear's bundled scp.c failed to compile. */
 int getopt(int, char *const[], const char *);
-int getopt_long(int, char *const[], const char *, const void *, int *);
-int getopt_long_only(int, char *const[], const char *, const void *, int *);
+/* getopt_long's 4th parameter is struct option (defined in <getopt.h>).
+ * It used to be declared here as const void *, which made every file that
+ * includes BOTH <unistd.h> and <getopt.h> (tcpdump.c was the first) fail
+ * with conflicting-types.  Forward-declare the struct instead. */
+struct option;
+int getopt_long(int, char *const[], const char *, const struct option *, int *);
+int getopt_long_only(int, char *const[], const char *, const struct option *, int *);
 extern char *optarg;
 extern int optind, opterr, optopt;
 

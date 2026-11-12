@@ -22,6 +22,8 @@ What is inside:
 | `wget/` | **GNU wget 1.25.0** with HTTPS, statically linked against the OpenSSL 4 build |
 | `git/` | **git 2.51.2** — the first working git for armv7 iOS; static zlib (cross-built here) + libcurl + OpenSSL; clone/fetch/push over HTTPS verified on device |
 | `vim/` | **Vim 9.1** (huge, no GUI) linked against the device's own libncursesw, with the full runtime tree |
+| `libpcap/` | **libpcap 1.10.5** with working live BPF capture (`/dev/bpf*` on the device); needs an XNU `net/bpf.h` that this repo now carries in `sysroot-overlay/` |
+| `tcpdump/` | **tcpdump 4.99.5** — live packet capture on `en0` verified (captured real SSH traffic); needs root, Wi-Fi refuses promiscuous mode with a warning |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -154,6 +156,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | wget 1.25.0 | `wget --version`; HTTPS GET to example.com returns the page body (static OpenSSL 4 + `/etc/ssl/cert.pem`) |
 | git 2.51.2 | `git --version`; `init -b main` → `add` → `commit` → `log`/`status`/`fsck` all green; `clone --depth 1` over HTTPS (gitee mirror, 35 s incl. TLS) with `http.sslCAInfo` shipped in `/var/mobile/tools/etc/gitconfig`. github.com is unreachable from the test network, not from git |
 | Vim 9.1 | `vim --version` (huge, `+multibyte`, no GUI); scripted edit (`-es` + `syntax` + substitute + `wq`) writes correctly; runtime found under `/var/mobile/tools/share/vim/vim91` |
+| tcpdump 4.99.5 | `tcpdump --version`, `-D` lists en0/en2/awdl0/utun0; live capture `-i en0 -c 2 -n -q port 22` received packets by filter with 0 dropped (as root; Wi-Fi declines promiscuous mode with a warning) |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
