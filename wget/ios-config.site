@@ -1,0 +1,226 @@
+# config.site for cross-building GNU wget (and other autoconf/gnulib
+# programs) for armv7 iOS 10 on Linux.
+#
+# Usage:
+#     CONFIG_SITE=/path/to/ios-config.site ./configure ...
+#
+# Why a config.site and not --cache-file:
+#
+#   --cache-file is the obvious way to force these values, but autoconf
+#   *rewrites* the cache file at the end of every run ("updating cache
+#   ..."), folding in whatever the probes discovered.  A hand-edited cache
+#   therefore survives exactly one configure run: the next one reloads the
+#   values the probes guessed and the fixes silently disappear.  A
+#   config.site is sourced after the cache, so it always wins.
+#
+# Why any of this is needed:
+#
+#   The kit links with `-undefined dynamic_lookup`, so ld64 accepts a call
+#   to any symbol, and autoconf's link test -- which asks only "did the link
+#   succeed?" -- answers yes for functions iOS has never had.  The runtime
+#   probes are just as bad in the other direction: they cannot execute while
+#   cross-compiling, so gnulib falls back to a pessimistic guess and then
+#   compiles a workaround for a bug the platform does not have.
+#
+#   Left alone, the guesses make the build fail in confusing places:
+#   lib/fseeko.c dies on "#error Please port gnulib fseeko.c" because every
+#   platform branch in it is keyed on glibc/BSD FILE internals that a
+#   musl-derived <stdio.h> does not have.
+
+# ---------------------------------------------------------------- functions --
+# Link-test false positives: glibc-only or Linux-only, absent on iOS 10.
+# With these off, gnulib compiles its own (correct) fallbacks; with them on,
+# the prototype is never declared and the build stops at "call to undeclared
+# function".
+ac_cv_func_eaccess=no
+ac_cv_func_faccessat=no
+ac_cv_func_fstatat=no
+ac_cv_func_futimesat=no
+ac_cv_func_fchmodat=no
+ac_cv_func_fchownat=no
+ac_cv_func_linkat=no
+ac_cv_func_mkdirat=no
+ac_cv_func_mknodat=no
+ac_cv_func_readlinkat=no
+ac_cv_func_renameat=no
+ac_cv_func_symlinkat=no
+ac_cv_func_unlinkat=no
+ac_cv_func_utimensat=no
+ac_cv_func_futimens=no
+ac_cv_func_openat=no
+ac_cv_func_rawmemchr=no
+ac_cv_func_pipe2=no
+ac_cv_func_eventfd=no
+ac_cv_func_accept4=no
+ac_cv_func_recvmmsg=no
+ac_cv_func_sendmmsg=no
+ac_cv_func_closefrom=no
+ac_cv_func_getpass_r=no
+ac_cv_func_getaddrinfo_a=no
+ac_cv_func_error=no
+ac_cv_func_error_at_line=no
+ac_cv_lib_error_at_line=no
+
+# Windows-only.  _set_invalid_parameter_handler does not exist anywhere on
+# iOS, but the link test says it does -- which pulls gnulib's msvc-inval.c
+# and msvc-nothrow.c into the build, and msvc-nothrow.c includes <windows.h>
+# unconditionally, so the build dies on a missing Windows header.
+# vfork: musl does not declare it and iOS does not export it (verified on
+# the device: a program that calls vfork prints its line before the call and
+# then dies silently, the classic dyld "Symbol not found" abort).  gnulib's
+# lib/spawni.c guards the vfork() call with #if HAVE_VFORK and falls back to
+# fork(), so answering "no" here is all that is needed -- but the link test
+# says yes, so it must be said explicitly or spawni.c fails to compile.
+ac_cv_func_vfork=no
+ac_cv_func__vfork=no
+ac_cv_func_seteuid=no
+ac_cv_func_setegid=no
+
+# utimens/lutimens are glibc-only; iOS has futimes/utimes instead and gnulib
+# emulates the *at-style calls on top of them.
+ac_cv_func_utimens=no
+ac_cv_func_lutimens=no
+
+# <paths.h> is a BSD/glibc header that musl does not ship.  gnulib's spawni.c
+# and a few others include it when HAVE_PATHS_H, so claiming it exists makes
+# the build stop on "fatal error: 'paths.h' file not found".
+ac_cv_header_paths_h=no
+
+# wmempcpy is a GNU extension; musl declares mempcpy but not the wide-char
+# variant, so gnulib must supply its own (lib/wmempcpy.c).
+ac_cv_func_wmempcpy=no
+
+# group_member() is a GNU extension that iOS does not have.  The link test
+# says otherwise, which leaves wget's utils.c calling a function that gnulib
+# then does not bother to compile; answering "no" makes gnulib build
+# lib/group-member.c and declare it in its <unistd.h>.
+ac_cv_func_group_member=no
+
+# RAND_egd was removed in OpenSSL 3/4 (it was deprecated for years and is
+# gone in the 4.x tree this build links against).  The probe only looks for
+# the symbol and finds something, so the call survives into src/openssl.c and
+# fails to compile.
+ac_cv_func_RAND_egd=no
+ac_cv_func_RAND_egd_bytes=no
+
+# SSLv3_client_method is gone in OpenSSL 4 as well.  wget guards the call
+# with #ifndef OPENSSL_NO_SSL3_METHOD, a macro that modern OpenSSL does not
+# define, so the call is compiled in.  (Handled in build.sh with an extra
+# -D, because it is a header-level macro rather than a configure probe.)
+
+# ---- GNU extensions that musl declares but iOS does not export --------------
+# These are the same trap as eaccess()/rawmemchr() above, but they are declared
+# in the *headers*, so the build compiles cleanly and fails at runtime instead.
+# musl's string.h declares memrchr, strchrnul, mempcpy, stpcpy and stpncpy
+# because they are GNU extensions the GNU libc has; iOS 10 has none of them.
+#
+#   memrchr        -> dyld: Symbol not found: _memrchr.  Reached through
+#                     wget's URL/cookie parsing (src/url.c, src/http.c), so it
+#                     crashes on any relative-URL redirect follow, not just at
+#                     startup -- http.test/pyd.org redirect chains hit it.
+#   strchrnul      -> same failure mode.
+#   secure_getenv  -> glibc-only guard; gnulib uses it when present.
+# Answering "no" makes gnulib compile its own (correct) implementations from
+# lib/memrchr.c, lib/strchrnul.c, lib/mempcpy.c, lib/stpcpy.c and lib/stpncpy.c.
+ac_cv_func_memrchr=no
+ac_cv_func_strchrnul=no
+ac_cv_func_mempcpy=no
+ac_cv_func_stpcpy=no
+ac_cv_func_stpncpy=no
+ac_cv_func_secure_getenv=no
+ac_cv_have_decl_strchrnul=no
+ac_cv_have_decl_mempcpy=no
+ac_cv_have_decl_stpcpy=no
+ac_cv_have_decl_memrchr=no
+
+# __secure_getenv is a glibc internal (it backs the POSIX secure_getenv).
+# musl declares __secure_getenv, Darwin/OS X has a different spelling, so
+# gnulib's lib/secure_getenv.c goes down the glibc branch and calls a function
+# that musl does not declare -> "call to undeclared function".
+# With this off it uses the issetugid() branch, which is the right one for OS X
+# (and for musl, which lives in the same branch per gnulib's own comment).
+ac_cv_func___secure_getenv=no
+ac_cv_func_issetugid=yes
+
+# iconv: musl declares it and the link test passes, but iOS 10 does not export
+# iconv_open (verified on the device: a minimal iconv_open("UTF-8","ISO-8859-1")
+# program aborts with "dyld: lazy symbol binding failed: Symbol not found:
+# _iconv_open").  It lives in libiconv, which is not part of libSystem.
+#
+# wget's --disable-iri turns off ENABLE_IRI, but src/url.c guards its use with
+# HAVE_ICONV instead, so the encoding-conversion path stays compiled.  Answering
+# "no" here is what actually removes it; the affected feature is
+# --remote-encoding/--locale, which is meaningless without iconv anyway.
+ac_cv_func_iconv=no
+ac_cv_func_iconv_open=no
+ac_cv_func_iconv_close=no
+ac_cv_header_iconv_h=no
+# wget does not use autoconf's spelling here: it runs its own probing macro,
+# which caches the answer in am_cv_func_iconv.  Setting only the ac_cv_* form
+# leaves am_cv_func_iconv=yes and HAVE_ICONV stays 1.
+am_cv_func_iconv=no
+
+ac_cv_func__set_invalid_parameter_handler=no
+
+# posix_spawn: Darwin HAS a working posix_spawn (verified on the device: it
+# spawns /bin/ps and returns 0).  Keep it -- do NOT let gnulib replace it,
+# because gnulib's own implementation (lib/spawni.c) is built on vfork(),
+# confstr() and _CS_PATH, none of which exist on iOS 10, and it fails to
+# compile with "call to undeclared function 'vfork'".
+#
+# The *_np file-action helpers, however, really are absent, and gnulib likes
+# to declare them from its own spawn.h shim; leaving them on would produce
+# calls that dyld aborts on at first use.
+ac_cv_func_posix_spawn=yes
+ac_cv_func_posix_spawnp=yes
+ac_cv_have_decl_posix_spawn=yes
+ac_cv_have_decl_posix_spawnp=yes
+ac_cv_func_posix_spawn_file_actions_addchdir=no
+ac_cv_func_posix_spawn_file_actions_addchdir_np=no
+ac_cv_header_sys_eventfd_h=no
+# confstr exists on iOS (verified on device) but musl does not declare it,
+# and gnulib's spawni.c needs the declaration; rely on _PATH_DEFPATH instead.
+ac_cv_func_confstr=no
+ac_cv_have_decl_confstr=no
+
+# ...and the runtime "does posix_spawn actually work here" probes.  They
+# cannot run while cross-compiling, and gnulib turns any non-yes answer into
+# REPLACE_POSIX_SPAWN=1 -- i.e. it compiles lib/spawni.c, which needs vfork,
+# confstr, seteuid and _CS_PATH and does not build at all.
+#
+# Verified on the device (iPad 4, iOS 10.3.3) with a small program against
+# this same sysroot: posix_spawnp("ps", ...) with a file-actions addopen
+# returned 0, the child ran, and stdout was redirected correctly.  So the
+# system implementation is good and gnulib's replacement is not wanted.
+gl_cv_func_posix_spawn_works=yes
+gl_cv_func_posix_spawn_secure_exec=yes
+gl_cv_func_posix_spawnp_secure_exec=yes
+gl_cv_func_posix_spawn_file_actions_addopen_works=yes
+gl_cv_func_posix_spawn_file_actions_addclose_works=yes
+gl_cv_func_posix_spawn_file_actions_adddup2_works=yes
+
+# ------------------------------------------------- runtime (cannot-execute) --
+# These probes compile a program and run it.  Cross-compiling, gnulib cannot
+# run them, so it guesses -- and its guesses are wrong for Darwin in ways
+# that break the build rather than the behaviour.
+
+# fflush on an input stream works on Darwin.  Answering anything other than
+# *yes makes gnulib set REPLACE_FSEEKO=1 and compile lib/fseeko.c.
+gl_cv_func_fflush_stdin=yes
+
+# ungetc works on Darwin.  Answering otherwise, combined with host_os=darwin,
+# sets gl_ftello_broken_after_ungetc=yes -> REPLACE_FTELLO=1 -> lib/ftello.c,
+# which pokes at glibc's FILE internals and cannot compile.
+gl_cv_func_ungetc_works=yes
+
+gl_cv_func_fseeko=yes
+gl_cv_func_ftello=yes
+gl_cv_func_ftello_works=yes
+gl_cv_func_lseek_pipe=yes
+
+# off_t is 64-bit in this sysroot (typedef _Int64 in bits/alltypes.h), but
+# the probe cannot run; a "no" here makes gnulib treat the platform as a
+# 32-bit-Windows-style large-file problem and turn on the fseeko/ftello
+# replacements above.
+gl_cv_type_off_t_64=yes
+gl_cv_var_stdin_large_offset=yes

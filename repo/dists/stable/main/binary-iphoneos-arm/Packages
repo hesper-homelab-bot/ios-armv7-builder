@@ -47,6 +47,39 @@ Description: Dropbear SSH server and client for armv7 iOS 10+ (port 22)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Dropbear SSH 2026.94
 
+Package: git
+Version: 2.51.2-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/g/git/git_2.51.2-1_iphoneos-arm.deb
+Size: 16819066
+MD5sum: c56af73ec64cc9593b0a23ab2243f135
+SHA1: eaa218132bf0ee151eb2806aaf389962e62c43a9
+SHA256: 7f97bf93860196a5b450c2275171fc8a0a2dff73be29ed01bc7a5f84b8142c11
+Section: Development
+Priority: optional
+Homepage: https://git-scm.com/
+Description: Git 2.51.2 for armv7 iOS 10+ (fully static)
+ Git 2.51.2 for armv7 iOS 10.x.  Everything is statically linked
+ (zlib, libcurl, OpenSSL 4.0.3), so there are no runtime library
+ dependencies.  Installs under /var/mobile/tools; nothing in /usr is
+ touched.
+ .
+ Add /var/mobile/tools/bin to your PATH (or source
+ /var/mobile/tools/env.sh), then set your identity once:
+   git config --global user.name "you"
+   git config --global user.email "you@example.org"
+ .
+ Working: init/add/commit/log/diff/status/branch/merge/rebase, clone,
+ fetch and push over HTTPS (git-remote-http) and file://, git-shell.
+ Not built (no perl on the device): git-send-email, gitweb, cvsserver.
+ .
+ HTTPS certificate verification needs SSL_CERT_FILE=/etc/ssl/cert.pem
+ (see /var/mobile/tools/env.sh).
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: Git 2.51
+
 Package: lsof
 Version: 4.99.7-1
 Architecture: iphoneos-arm
@@ -179,4 +212,68 @@ Description: Terminal multiplexer - windows, panes, detachable sessions
 Author: Nicholas Marriott <nicholas.marriott@gmail.com>
 Depiction: https://github.com/hesper-homelab-bot/ios-tmux-builder
 Name: tmux
+
+Package: vim
+Version: 9.1.0000-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/v/vim/vim_9.1.0000-1_iphoneos-arm.deb
+Size: 7556962
+MD5sum: 764b35227236e75b1e6b28926a785b97
+SHA1: f32e7cc724f4cad7909af5924d505b7113c1d7c3
+SHA256: 6382b8b88f401efc64a53da43aaed9114db62b96058e06b1e5b7f407a37700db
+Section: Editors
+Priority: optional
+Homepage: https://www.vim.org/
+Description: Vim 9.1 terminal editor for armv7 iOS 10+ (huge, +multi_byte)
+ Terminal Vim 9.1.0000 for armv7 iOS 10.x, built with --with-features=huge
+ and +multi_byte, no GUI and no X11.  Links the device's own libSystem and
+ /usr/lib/libncursesw.5.dylib, so no shared libraries are bundled.
+ .
+ Installs to /var/mobile/tools: bin/{vim,vi,ex,view,vimdiff,rview,rvim,vimtutor,xxd}
+ and the complete runtime under share/vim/vim91.  Because vim is
+ built with prefix=/var/mobile/tools, it finds that runtime automatically -- no $VIM,
+ no $VIMRUNTIME and no --cmd are needed.  Add /var/mobile/tools/bin to your PATH.
+ .
+ syntax/, indent/ and ftplugin/ are complete (697/161/307 files).  doc/ is
+ trimmed to keep the package small, so :help has only a partial offline
+ manual; the tags file is regenerated for whatever is retained.
+ .
+ Working: terminal editing, multibyte/UTF-8, syntax highlighting, filetype
+ detection, indenting, folding, spell checking, ctags/tags, vim9script, netrw,
+ diff mode, persistent undo, terminfo-based termcap.  Not built: GUI, X11,
+ clipboard providers, netbeans, cscope, channel/job (no +channel/+terminal),
+ and all embedded interpreters (perl/python/ruby/lua/tcl) -- the device has
+ none of them.  :terminal and :job are therefore unavailable; use tmux for
+ multiple panes instead.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: Vim 9.1 (terminal)
+
+Package: wget4
+Version: 1.25.0-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/w/wget4/wget4_1.25.0-1_iphoneos-arm.deb
+Size: 2023232
+MD5sum: e40a1494034aabe6f926d36c422823a3
+SHA1: fc60c7b7d8fd288cac0ad2e18eb72ad2b34d4784
+SHA256: b0dbafcc36bcb9b4eb8935a028dded4717aab432e26d2a70a061e060f919116b
+Section: Networking
+Priority: optional
+Homepage: https://www.gnu.org/software/wget/
+Description: GNU wget for armv7 iOS 10+ (static OpenSSL 4)
+ GNU wget 1.25.0 for armv7 iOS 10.x, statically linked against
+ OpenSSL 4.0.3.  Installs to /var/mobile/tools/wget, so it does not
+ replace the system binary that sshd and the rest of iOS may expect.
+ .
+ Working: HTTP, HTTPS, FTP (anonymous), cookies, redirects, POST,
+ --spider, --limit-rate, recursive retrieval.  Add /var/mobile/tools to
+ your PATH, or call it by absolute path.
+ .
+ Set SSL_CERT_FILE=/etc/ssl/cert.pem to verify HTTPS certificates; see
+ /var/mobile/tools/env.sh.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: GNU Wget 1.25
 

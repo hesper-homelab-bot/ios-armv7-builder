@@ -1,7 +1,6 @@
 tmp/
 out/
 pkg/
-wget/
 
 # build byproducts from sftp-server/
 sftp-server/*.o
