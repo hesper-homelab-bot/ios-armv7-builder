@@ -119,6 +119,11 @@ int fchownat(int, const char *, uid_t, gid_t, int);
 /* (futimesat() is declared by <sys/time.h>, which this file does not include --
    adding it here would conflict.) */
 int futimens(int, const struct timespec *);
+/* fstatat() is another libSystem function musl's sys/stat.h never declares
+   (it lives in musl's fcntl.h only as the at-variants of open).  nginx's
+   configure probes for it, and every nc(1)-style tool that walks a directory
+   with dirfd wants it.  Darwin's prototype matches the POSIX one. */
+int fstatat(int, const char *, struct stat *, int);
 
 /*
  * Darwin special timestamp values for utimensat()/futimens(): "set to

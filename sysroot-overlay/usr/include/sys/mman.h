@@ -33,6 +33,9 @@ extern "C" {
 
 #include <features.h>
 #include <bits/alltypes.h>
+/* NULL is used by every mmap() call site; upstream musl gets it
+   transitively, the hand-made sysroot did not. */
+#include <stddef.h>
 
 #define MAP_FAILED ((void *)-1)
 

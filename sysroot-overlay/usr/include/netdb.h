@@ -2,6 +2,10 @@
 #define _NETDB_H
 
 #include <features.h>
+/* Upstream musl includes <stddef.h> here, which is what makes NULL
+   available to callers (nginx's getaddrinfo() probe uses NULL in its
+   argument list).  The hand-made sysroot dropped it. */
+#include <stddef.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
