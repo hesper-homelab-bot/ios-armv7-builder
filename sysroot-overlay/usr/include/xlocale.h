@@ -27,6 +27,26 @@
 #include <locale.h>   /* locale_t, uselocale(), newlocale(), duplocale() */
 #include <stdlib.h>   /* MB_CUR_MAX                                   */
 
+/*
+ * locale_t must exist no matter how we got here.
+ *
+ * musl's <locale.h> only asks bits/alltypes.h for locale_t when one of
+ * _POSIX_SOURCE / _POSIX_C_SOURCE / _XOPEN_SOURCE / _GNU_SOURCE /
+ * _BSD_SOURCE is defined.  libc++ (LLVM 15 headers) reaches this file from
+ * <ios> -> <__locale> line 37 for the __APPLE__ case, i.e. *before* any of
+ * those feature macros is in play, so the type is not defined yet and every
+ * prototype below fails with "unknown type name 'locale_t'".  (Observed
+ * building protobuf 3.20.3: the very first C++ TU that pulls in <string>
+ * dies.)  Declaring it here is not a workaround -- Apple's own <xlocale.h>
+ * always provided locale_t -- it just makes this stub independent of
+ * include order.  <bits/alltypes.h> guards with __DEFINED_locale_t, so a
+ * later <locale.h> re-definition is harmless.
+ */
+#ifndef __DEFINED_locale_t
+#define __NEED_locale_t
+#include <bits/alltypes.h>
+#endif
+
 /* Apple's <xlocale.h> spelled the current-locale MB_CUR_MAX this way. */
 #ifndef MB_CUR_MAX_L
 #define MB_CUR_MAX_L(loc) MB_CUR_MAX
