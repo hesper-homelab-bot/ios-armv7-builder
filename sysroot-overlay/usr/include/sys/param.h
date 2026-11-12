@@ -48,3 +48,31 @@
 #include <limits.h>
 
 #endif
+
+/* ---- BSD IN_CLASS* address-classification macros (libpcap needs them;
+ * 4.3BSD keeps them in <sys/param.h>, which is where pcap.c looks).  Pure
+ * arithmetic on the address value -- no kernel ABI involved.  Values are
+ * the universal 4.4BSD / XNU ones. ---- */
+#include <sys/types.h>
+#ifndef IN_CLASSA
+#define IN_CLASSA(a)		((((in_addr_t)(a)) & 0x80000000) == 0)
+#define IN_CLASSA_NET		0xff000000
+#define IN_CLASSA_NSHIFT	24
+#define IN_CLASSA_HOST		0x00ffffff
+#define IN_CLASSA_MAX		128
+
+#define IN_CLASSB(a)		((((in_addr_t)(a)) & 0xc0000000) == 0x80000000)
+#define IN_CLASSB_NET		0xffff0000
+#define IN_CLASSB_NSHIFT	16
+#define IN_CLASSB_HOST		0x0000ffff
+#define IN_CLASSB_MAX		65536
+
+#define IN_CLASSC(a)		((((in_addr_t)(a)) & 0xe0000000) == 0xc0000000)
+#define IN_CLASSC_NET		0xffffff00
+#define IN_CLASSC_NSHIFT	8
+#define IN_CLASSC_HOST		0x000000ff
+
+#define IN_CLASSD(a)		((((in_addr_t)(a)) & 0xf0000000) == 0xe0000000)
+#define IN_CLASSD_NET		0xf0000000
+#define IN_MULTICAST(a)		IN_CLASSD(a)
+#endif

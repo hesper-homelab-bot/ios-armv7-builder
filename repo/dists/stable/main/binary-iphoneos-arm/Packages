@@ -188,6 +188,64 @@ Description: OpenSSL 4 command line tool (armv7 iOS 10+)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: OpenSSL 4
 
+Package: sqlite3
+Version: 3.54.1-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/s/sqlite3/sqlite3_3.54.1-1_iphoneos-arm.deb
+Size: 1505644
+MD5sum: a060938bd3e66628d9074ce29472eb53
+SHA1: c2095fe2df3e839ea09259d0a7d7c8aec69220df
+SHA256: de344bee9e533654bb34145b9ccee872003a7e7e90d290f2433e6ed5ae9d4d3e
+Section: Development
+Priority: optional
+Homepage: https://sqlite.org/
+Description: SQLite 3.54.1 command-line shell for armv7 iOS 10+
+ SQLite 3.54.1 for armv7 iOS 10.x, built from the upstream
+ amalgamation (sqlite3.c + shell.c) and fully static -- there are no
+ runtime library dependencies at all, not even zlib.
+ .
+ Installs the shell as /var/mobile/tools/bin/sqlite3 plus the static
+ library (libsqlite3.a) and headers (sqlite3.h, sqlite3ext.h) under
+ /var/mobile/tools.  Nothing in /usr is touched, so the system's own
+ libsqlite3.dylib that iOS components link against is left alone.
+ .
+ Built with FTS5, R-tree, JSON, math functions, dbstat and column
+ metadata enabled.  Extension loading (dlopen) is compiled out: iOS will
+ not load unsigned code anyway.
+ .
+ Add /var/mobile/tools/bin to your PATH (or source
+ /var/mobile/tools/env.sh).
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: SQLite 3.54
+
+Package: tcpdump
+Version: 4.99.5-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/t/tcpdump/tcpdump_4.99.5-1_iphoneos-arm.deb
+Size: 568416
+MD5sum: f5a8c1859a967952753057c21c69897d
+SHA1: 3680d6f9a7b64d694b5762c191de1cc389342894
+SHA256: 9c548d75a44847d16ccb9970ac723db3e620e13474ba90f3acee8768efbd8768
+Section: Networking
+Priority: optional
+Homepage: https://www.tcpdump.org/
+Description: tcpdump 4.99.5 for armv7 iOS 10+ (BPF capture verified)
+ tcpdump 4.99.5 for armv7 iOS 10.x with live packet capture working
+ over the device's /dev/bpf* devices.  Installs to /var/mobile/tools/tcpdump;
+ nothing in /usr is touched.
+ .
+ Run as root to capture: /var/mobile/tools/tcpdump -i en0 -c 10 -n port 443.
+ Wi-Fi interfaces refuse promiscuous mode (BIOCPROMISC is unsupported);
+ tcpdump prints a warning and captures normally.
+ .
+ Add /var/mobile/tools to your PATH, or call it by absolute path.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: tcpdump 4.99
+
 Package: tmux
 Version: 3.8-1
 Architecture: iphoneos-arm
