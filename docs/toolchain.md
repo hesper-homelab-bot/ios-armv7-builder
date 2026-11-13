@@ -307,3 +307,46 @@ configure 刚跑完时 **config.status 比 stamp-h1 新**，于是第一次 make
 - automake 的 `Makefile: config.status` 规则会在首次 make 时重新生成
   Makefile——**对 Makefile 的 sed 修正必须紧跟 touch**（同 §10
   config.h 的教训）。
+
+## 14. netstat 移植：自备 ABI + 设备实测闭环（2026-11-13）
+
+### 14.1 为什么不移植公开 netstat（Apple/FreeBSD）
+Apple network_cmds（network_cmds-481.20.1）和 FreeBSD netstat 都 include
+`sys/socketvar.h` / `netinet/tcp_var.h` 等内核私有头，这些头在 iOS 10.3.3
+sysroot 里**不存在**。移植它们的第一件事就是补全这些头，工作量等同于自备 ABI。
+我们的选择：直接抄内核导出结构（`xinpgen`/`xinpcb`/`xtcpcb`/`xsocket`/`otcpcb`），
+用探针在设备上实测锚定每个字段偏移，**静态断言钉死尺寸**，编译期即失败不产出垃圾。
+
+### 14.2 四轮探针链（每轮落盘、与 lsof 交叉验证）
+| 探针 | 目的 | 关键发现 |
+|---|---|---|
+| `probe1` | MIB 可见性、链步长、首尾 xinpgen | TCP 524B、UDP/raw 320B、xinpgen 24B 算术闭合 |
+| `probe2` | 字段偏移（端口、地址、状态、proto/family、rcv/snd） | 端口/状态/协议全对，地址存 v4-compat 形式（::a.b.c.d）非 ::ffff |
+| `probe3` | v4-compat 地址修正（前 12 字节为零即视为 v4） | 地址修正后与 lsof 完美对齐 |
+| `probe4` | IFLIST2 消息链结构（RTM_IFINFO2 + RTM_NEWADDR） | IFP sockaddr_dl 在 IFINFO2 里带名字+MAC，NEWADDR 仅带 IFA/NETMASK |
+
+### 14.3 关键 ABI 静态断言（netstat.c 编译期钉死）
+```c
+typedef char _assert_xig[(sizeof(struct xig) == 24) - 1];
+typedef char _assert_xso[(sizeof(struct xso) == 100) - 1];
+typedef char _assert_inpcb[(sizeof(struct inpcb_compat) == 208) - 1];
+typedef char _assert_otcpcb[(sizeof(struct otcpcb) == 204) - 1];
+typedef char _assert_xinpcb[(sizeof(struct xinpcb_e) == 320) - 1];
+typedef char _assert_xtcpcb[(sizeof(struct xtcpcb_e) == 524) - 1];
+typedef char _assert_tstate[(offsetof(struct xtcpcb_e, tp.t_state) == 244) - 1];
+```
+内核若升级导致结构变化，**编译直接报错**，不会产出错误输出。
+
+### 14.4 输出格式（按 BSD/Darwin 习惯）
+- `-t`：仅活跃 TCP，带 `(state)` 列
+- `-a`：含 LISTEN + UDP/raw，`*.port` 通配、`tcp4/tcp6` 双栈标注
+- `-r`：`default` 标注、Netif 由 IFP sockaddr_dl 解出、`Expire`=剩余秒
+- `-i`：13 个接口全显示（名字、MTU、MAC、统计、IPv4/6 地址）
+
+### 14.5 审计门禁
+`tools/check-undefined.sh`：**23/23 undefined 符号全解自 device libSystem**（纯 tbd 桩）。
+无 libios-compat.a 依赖、无平台框架、无私钥路径。
+
+### 14.6 sysroot 补全
+仅 `sysroot-overlay/usr/include/net/if.h` 补 `struct ifa_msghdr`（7 字段，xnu-3789.70.16 逐字复制，
+`[device-verified 2026-11-13]` 注记）。无需 `in_pcb.h`/`tcp_var.h`/`socketvar.h` 等私有头。
