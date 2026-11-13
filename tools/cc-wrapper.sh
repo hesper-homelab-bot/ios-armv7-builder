@@ -120,6 +120,19 @@ if [ "${#FRAMEWORKS[@]}" -gt 0 ]; then
 fi
 
 export LD_LIBRARY_PATH="${IOS_LD_LIBRARY_PATH:-}:${LD_LIBRARY_PATH:-}"
+# Compat stubs (sysroot-overlay/usr/lib/libios-compat.a, built by
+# tools/sysroot-overlay-compat/build-ios-compat.sh): symbols that static
+# libraries drag in but iOS 10.3.3 does not provide (recvmmsg/sendmmsg from
+# OpenSSL's socket helpers, terminfo from mosh).  Appended LAST -- after the
+# caller's own archives -- because ld64 resolves archives positionally: a
+# member of libcrypto.a scanned late can reference recvmmsg, and only a
+# stub archive after it can satisfy that.  Stubs fail gracefully (ENOSYS /
+# curses ERR) instead of the alternative, which is dyld killing the process
+# at launch or on first use.  Unreferenced members are never pulled.
+COMPAT_ARCHIVE="$SYSROOT/../../sysroot-overlay/usr/lib/libios-compat.a"
+COMPAT=()
+[ -f "$COMPAT_ARCHIVE" ] && COMPAT+=("$COMPAT_ARCHIVE")
+
 exec "$LD64" -arch armv7 -platform_version ios 10.3 10.3 \
   -undefined dynamic_lookup -L"$STUBDIR" -lSystem \
-  -e _main -o "$OUTPUT" "${OBJS[@]}" "${EXTRA[@]}" "${LDARGS[@]}"
+  -e _main -o "$OUTPUT" "${OBJS[@]}" "${EXTRA[@]}" "${LDARGS[@]}" "${COMPAT[@]}"

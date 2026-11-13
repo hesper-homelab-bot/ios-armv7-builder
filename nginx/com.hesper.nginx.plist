@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.hesper.nginx</string>
+
+	<!-- Runs as mobile, not root: nginx listens on 8080 (>1024) and its whole
+	     prefix lives under /var/mobile/tools/nginx, so it never needs root.
+	     Keeping it unprivileged matches the deploy rule in AGENTS.md -- a
+	     root-run daemon hides permission problems that a user-run one
+	     exposes immediately. -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>/var/mobile/.local/bin/nginx-daemon.sh</string>
+	</array>
+
+	<key>UserName</key>
+	<string>mobile</string>
+
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+
+	<!-- The wrapper re-execs the master with `daemon off;` so launchd has a
+	     foreground process to supervise; KeepAlive then restarts nginx if it
+	     ever exits.  nginx's own logs stay in the prefix (error.log /
+	     access.log); these two only capture what happens before nginx opens
+	     them. -->
+	<key>StandardErrorPath</key>
+	<string>/var/mobile/tools/nginx/logs/daemon.err</string>
+	<key>StandardOutPath</key>
+	<string>/var/mobile/tools/nginx/logs/daemon.log</string>
+</dict>
+</plist>

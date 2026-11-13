@@ -46,6 +46,8 @@ mkdir -p "$w/DEBIAN" \
          "$w$PREFIX/bin" "$w$PREFIX/conf" "$w$PREFIX/logs" \
          "$w$PREFIX/share/nginx/html" \
          "$w$PREFIX/tmp/client_body" "$w$PREFIX/tmp/proxy" \
+         "$w/var/mobile/.local/bin" \
+         "$w/Library/LaunchDaemons" \
          "$w/usr/share/doc/nginx4"
 
 cat > "$w/DEBIAN/control" <<CTRL
@@ -97,6 +99,23 @@ mkdir -p "$PREFIX/logs" "$PREFIX/tmp/client_body" "$PREFIX/tmp/proxy"
 chown -R mobile:mobile "$PREFIX" 2>/dev/null || true
 chmod 0755 "$PREFIX/bin/nginx" 2>/dev/null || true
 
+# The daemon runs as mobile (UserKeepAlive/UserName in the plist), so the
+# wrapper it execs must be readable and executable by that user, and the
+# LaunchDaemon plist must be root-owned or launchd ignores it.
+chown mobile:mobile /var/mobile/.local/bin/nginx-daemon.sh 2>/dev/null || true
+chmod 0755 /var/mobile/.local/bin/nginx-daemon.sh 2>/dev/null || true
+chown root:wheel /Library/LaunchDaemons/com.hesper.nginx.plist 2>/dev/null || true
+chmod 0644 /Library/LaunchDaemons/com.hesper.nginx.plist 2>/dev/null || true
+
+# Load the daemon explicitly.  On iOS 10 a plist merely appearing in
+# /Library/LaunchDaemons/ is NOT picked up: verified on the device, the job
+# stayed absent from `launchctl list` until `launchctl load` was run by hand.
+# (The dropbear package gets away without this because its plist predates
+# this work and was loaded once, long ago.)
+if command -v launchctl >/dev/null 2>&1; then
+    launchctl load -w /Library/LaunchDaemons/com.hesper.nginx.plist >/dev/null 2>&1 || true
+fi
+
 exit 0
 POST
 chmod 0755 "$w/DEBIAN/postinst"
@@ -107,6 +126,15 @@ cat > "$w/DEBIAN/prerm" <<'PRE'
 # keep a deleted binary mapped.  Best effort: never fail an uninstall.
 set -e
 PREFIX=/var/mobile/tools/nginx
+
+# Unload the LaunchDaemon first.  Without this, KeepAlive simply restarts the
+# master we are about to kill, and the uninstall appears to fail (the binary
+# stays running from a deleted path).  `launchctl remove` is the correct verb
+# for a job loaded from a plist file.
+if command -v launchctl >/dev/null 2>&1; then
+    launchctl remove com.hesper.nginx >/dev/null 2>&1 || true
+fi
+
 if [ -x "$PREFIX/bin/nginx" ] && [ -f "$PREFIX/logs/nginx.pid" ]; then
     "$PREFIX/bin/nginx" -p "$PREFIX" -c "$PREFIX/conf/nginx.conf" -s quit \
         >/dev/null 2>&1 || true
@@ -117,6 +145,16 @@ chmod 0755 "$w/DEBIAN/prerm"
 
 sign "$NGINX_BIN" "$w$PREFIX/bin/nginx"
 chmod 0755 "$w$PREFIX/bin/nginx"
+
+# The daemon wrapper and its LaunchDaemon.  nginx daemonises itself, so
+# launchd can only supervise it through a wrapper that re-execs the master
+# with `daemon off;` -- the same arrangement as com.hesper.dropbear.
+# There is no launchctl call in postinst: iOS's launchd scans
+# /Library/LaunchDaemons/ itself, which is how the dropbear package works.
+cp "$here/nginx-daemon.sh" "$w/var/mobile/.local/bin/nginx-daemon.sh"
+chmod 0755 "$w/var/mobile/.local/bin/nginx-daemon.sh"
+cp "$here/com.hesper.nginx.plist" "$w/Library/LaunchDaemons/com.hesper.nginx.plist"
+chmod 0644 "$w/Library/LaunchDaemons/com.hesper.nginx.plist"
 
 cp "$here/nginx.conf" "$w$PREFIX/conf/nginx.conf"
 # mime.types and other conf fragments come from the upstream source tree; the
