@@ -22,7 +22,10 @@ binaries=()
 for b in "$root"/out/*-armv7 "$root"/out/*-armv7-*; do
     [ -f "$b" ] && binaries+=("$b")
 done
-while IFS= read -r f; do binaries+=("$f"); done < <(
+while IFS= read -r f; do
+        # only check Mach-O executables (skip shell scripts, text files, etc.)
+        file -b "$f" 2>/dev/null | grep -q "Mach-O" && binaries+=("$f")
+    done < <(
     find /tmp/audit-hist -type f \( -name git -o -name sqlite3 -o -name node \
         -o -name node.real -o -name wget -o -name tmux -o -name tcpdump \
         -o -name openssl -o -name vim -o -name xxd \) 2>/dev/null)

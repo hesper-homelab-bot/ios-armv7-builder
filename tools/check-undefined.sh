@@ -32,16 +32,22 @@ NM="${NM:-llvm-nm-21}"
 
 wl="$(mktemp)"; undef="$(mktemp)"; trap 'rm -f "$wl" "$undef"' EXIT
 
-# 1. whitelist from every tbd stub + device-verified symbol lists
-#    (probe-symbols.sh output lands in tools/sysroot/device-exports/)
-shopt -s nullglob
-for t in "$here/../tmp/stubs/"*.tbd "$HOME/ios-tool/"*.tbd \
-         "$here/sysroot/device-exports/"*.txt; do
-    # an empty list file makes grep exit 1 (no match) -- must not kill the
-    # script under set -e
-    grep -oE '\b_[A-Za-z0-9_$]+' "$t" >> "$wl" || true
-done
-sort -u "$wl" -o "$wl"
+# 1. whitelist from every tbd stub + device-verified symbol lists + libios-compat.a
+    #    (probe-symbols.sh output lands in tools/sysroot/device-exports/)
+    shopt -s nullglob
+    for t in "$here/../tmp/stubs/"*.tbd "$HOME/ios-tool/"*.tbd \
+             "$here/sysroot/device-exports/"*.txt; do
+        # an empty list file makes grep exit 1 (no match) -- must not kill the
+        # script under set -e
+        grep -oE '\b_[A-Za-z0-9_$]+' "$t" >> "$wl" || true
+    done
+    # libios-compat.a is a Darwin flat archive; extract symbols with llvm-nm
+    # T=text, D=data, B=bss, S=common, R=readonly data -- all resolvable at link
+    if [ -f "$here/../sysroot-overlay/usr/lib/libios-compat.a" ]; then
+        "$NM" "$here/../sysroot-overlay/usr/lib/libios-compat.a" 2>/dev/null \
+            | awk '/ [TDBSR] / {print $3}' >> "$wl"
+    fi
+    sort -u "$wl" -o "$wl"
 
 # 2. undefined symbols of the binary (llvm-nm -u prints bare symbol names)
 "$NM" -u "$BIN" 2>/dev/null | grep -v '^ *$' | sort -u > "$undef"
@@ -60,6 +66,14 @@ while IFS= read -r sym; do
     # operator new/delete family and __cxa_/gxx personality -- all resolved
     # from the device's libc++ at launch (the cxx wrapper's design).
     if grep -qE 'St[0-9]|cxxabiv|^__ZTISt|^__ZTSSt|^__ZTVSt|^__ZTTSt|^__ZTI[a-z]$|^__ZTS[a-z]$|^__Zdl|^__ZdaPv|^__Znwm|^__Znam|^___cxa_|^___gxx_' <<< "$sym"; then
+        n_ok=$((n_ok+1)); continue
+    fi
+    # libSystem C++ wrapper functions (mangled C functions from libSystem that
+    # appear in C++ code). The C versions are in the device libSystem/shared
+    # cache; the C++ mangled names are emitted by clang when C++ code calls
+    # them. Common ones observed in node.js build: sysctl, sched_yield,
+    # backtrace, backtrace_symbols, getsectiondata, NSGetEnviron.
+    if grep -qE '^__Z[0-9]+(sysctl|sched_yield|backtrace_symbols|backtrace|getsectiondata|NSGetEnviron)' <<< "$sym"; then
         n_ok=$((n_ok+1)); continue
     fi
     # caller-supplied escape hatch (use sparingly, document why)
