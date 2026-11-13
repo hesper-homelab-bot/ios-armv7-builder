@@ -248,3 +248,19 @@ struct if_msghdr2 {
 	int	ifm_timer;	/* time until if_watchdog called */
 	struct if_data64	ifm_data;	/* statistics and other data */
 };
+
+/* ---- from xnu-3789.70.16 bsd/net/if.h (verbatim; no trailing ifam_data
+ * on this kernel -- rtsock.c fills only the 7 fields below).  Emitted by
+ * NET_RT_IFLIST/IFLIST2 as RTM_NEWADDR after each if_msghdr[2]; its
+ * sockaddrs (RTA_IFP/IFP sockaddr_dl with the interface name, RTA_IFA,
+ * RTA_NETMASK, RTA_BRD) follow inside ifam_msglen.  Consumed by
+ * netstat's -i and ifmap building. [device-verified 2026-11-13] ---- */
+struct ifa_msghdr {
+	unsigned short	ifam_msglen;	/* to skip non-understood messages */
+	unsigned char	ifam_version;	/* future binary compatability */
+	unsigned char	ifam_type;	/* message type */
+	int		ifam_addrs;	/* like rtm_addrs */
+	int		ifam_flags;	/* value of ifa_flags */
+	unsigned short	ifam_index;	/* index for associated ifp */
+	int		ifam_metric;	/* value of ifa_metric */
+};

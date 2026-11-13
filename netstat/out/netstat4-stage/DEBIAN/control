@@ -1,0 +1,10 @@
+Package: netstat4
+Version: 1.0-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Description: netstat for iOS 10.3.3 armv7
+ Shows active Internet connections, routing tables, and interface statistics.
+ Built from device-verified ABI (xinpgen/xinpcb/xtcpcb offsets measured on
+ xnu-3789.70.16). Supports -a -t -u -r -i flags, numeric output.
+Section: net
+Priority: optional
