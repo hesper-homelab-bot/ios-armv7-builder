@@ -163,6 +163,22 @@ Description: Mosh 1.4.0 for armv7 iOS 10+ (roaming SSH, UDP 60000-61000)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Mosh 1.4
 
+Package: netstat4
+Version: 1.0-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/n/netstat4/netstat4_1.0-1_iphoneos-arm.deb
+Size: 7626
+MD5sum: 63bb6ca1e4e45e8bf241d1848e0d6700
+SHA1: 8841d978dd0d01f652d968f236bd50b373e47c58
+SHA256: 2829d4bd6a9ba3d0d508ec5769a4248f05d19ff3a1ee08fc66697df7c5ffca49
+Section: net
+Priority: optional
+Description: netstat for iOS 10.3.3 armv7
+ Shows active Internet connections, routing tables, and interface statistics.
+ Built from device-verified ABI (xinpgen/xinpcb/xtcpcb offsets measured on
+ xnu-3789.70.16). Supports -a -t -u -r -i flags, numeric output.
+
 Package: nginx4
 Version: 1.26.3-5
 Architecture: iphoneos-arm
