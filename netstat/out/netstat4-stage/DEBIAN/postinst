@@ -1,5 +1,0 @@
-#!/bin/sh
-set -e
-BIN="/var/mobile/tools/bin/netstat"
-[ -x "$BIN" ] && ldid -e "$BIN" >/dev/null 2>&1 || true
-exit 0
