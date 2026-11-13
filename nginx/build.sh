@@ -275,9 +275,40 @@ unset_macro NGX_HAVE_TAINTED_NONE
 #     more expensive to debug than the small throughput loss.
 unset_macro NGX_HAVE_SENDFILE
 
+# pwritev: the compiled-only probe sets NGX_HAVE_PWRITEV, but iOS 10.3.3's
+# XNU has no pwritev syscall (device-verified 2026-11-13 via
+# tools/probe-symbols.sh -- dyld rejected the reference).  Without this,
+# nginx's file-write path carries an undefined _pwritev and dies on first
+# use; with it, nginx uses the plain write path.
+unset_macro NGX_HAVE_PWRITEV
+
 # --- poll(2): present on iOS and used outside the event loop --------------
 set_macro NGX_HAVE_POLL 1
 set_macro NGX_HAVE_POLL_H 1
+
+# --- setproctitle(): declared in the sysroot, absent from the device -------
+# Wall #5 (found 2026-11-13 on the device, not by reading source).
+#
+# sysroot-overlay/usr/include/unistd.h declares setproctitle() for other
+# consumers, and auto/unix's probe only *compiles* its test program
+# (ngx_feature_run=no), so a declaration alone is enough to set
+# NGX_HAVE_SETPROCTITLE=1.  ngx_setproctitle.h then maps ngx_setproctitle()
+# onto the libc symbol, which iOS libSystem does not export -- verified on
+# the device: `nm -g /usr/lib/libSystem.B.dylib | grep setproctitle` is
+# empty.  The link succeeds (flat namespace leaves it undefined) and the
+# failure only appears at runtime, where dyld kills every *worker*:
+#
+#     dyld: Symbol not found: _setproctitle
+#       Referenced from: .../bin/nginx
+#       Expected in: flat namespace
+#
+# The master survives, logs "using the kqueue event method", then the worker
+# dies immediately -- nginx appears to exit 0 with no listening socket.
+#
+# Clearing the macro selects the NGX_DARWIN branch of ngx_setproctitle.h,
+# which uses nginx's own env-based implementation in ngx_setproctitle.c
+# (no libc symbol needed).
+unset_macro NGX_HAVE_SETPROCTITLE
 
 # --- Darwin/BSD facts the run-probes could not establish ------------------
 set_macro NGX_DARWIN 1
@@ -298,5 +329,9 @@ file objs/nginx || true
 mkdir -p "$root/out"
 cp objs/nginx "$root/out/nginx-$NGINX_VERSION-armv7"
 ldid -S "$root/out/nginx-$NGINX_VERSION-armv7" 2>/dev/null || true
+# Post-link audit (see mosh/build.sh and toolchain.md §9): every undefined
+# symbol must resolve from a device dylib.  Would have caught the
+# _setproctitle dyld death at build time.
+"$root/tools/check-undefined.sh" "$root/out/nginx-$NGINX_VERSION-armv7"
 echo "==> $root/out/nginx-$NGINX_VERSION-armv7"
 echo "    next: ./nginx/make-deb.sh"

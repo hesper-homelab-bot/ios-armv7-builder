@@ -739,6 +739,50 @@ this hand-made sysroot, so the load-bearing recipe is the patch set plus the
 link script described in `docs/node.md`; `node/build.sh` (whose header states
 its own prepared/proven status) assembles the same steps.
 
+## mosh 1.4.0 — roaming SSH over UDP (2026-11-13)
+
+Mosh (mobile shell) keeps a terminal session alive across roaming and
+sleeping clients: one short ssh exchanges the key, then everything rides a
+ UDP stream that survives IP changes and long disconnections.  On the iPad
+this is the difference between Termius reconnecting from scratch on every
+wake and a session that simply continues.
+
+Device-verified end to end: `mosh-server` survives the ssh channel closing
+(the one thing dropbear's pty teardown used to kill), binds its UDP socket
+on the SSH_CONNECTION IPv4, and a real Termius client holds a working
+session.  The wall list lives in `mosh/build.sh`; the ones that mattered:
+
+- **release URL**: the tag is `mosh-1.4.0`, not `v1.4.0` — a wrong prefix
+  returns 404, `curl -f` turns that into exit 22, and a wiped source tree
+  cannot re-download
+- **autoconf probes lie four different ways under cross-compilation**:
+  protoc (PATH-only lookup — `export PROTOC`), OpenSSL (pkg-config silently
+  answers with the HOST library — set `PKG_CONFIG_LIBDIR`), `AC_CHECK_LIB`
+  (a bare `-lcrypto` cannot link — pre-seed the autoconf cache variables),
+  and feature-macro pairing (wcwidth is XSI: `_XOPEN_SOURCE=700` must
+  accompany `_POSIX_C_SOURCE`)
+- **`config.h` regenerates on every make**; header corrections go into the
+  `config.h.in` *template*, plus the autotools regen chain (aclocal /
+  autoconf / autoheader) must be quashed by equalizing mtimes — otherwise
+  the first make discards every fix (toolchain.md §10/§13)
+- **`HAVE_PLEDGE` must be undefined, not 0**: mosh tests it with `#ifdef`,
+  so even a value of 0 compiles the OpenBSD-only `pledge()` call in
+- **`-DNDEBUG` must match the protobuf library** (built with NDEBUG by its
+  configure default): otherwise InternalMetadata's out-of-line destructor
+  is referenced but provided by no archive member, and dyld kills the
+  forked server on the first message destruction
+- **zlib is linked by explicit archive path** (`$ZLIB/libz.a`): the
+  cc-wrapper drops `-lz` (assuming it lives in libSystem — it does not) and
+  the `-L`+`-lz` search does not resolve through the wrapper chain
+- **six symbols ship as graceful stubs** (`libios-compat.a`): recvmmsg /
+  sendmmsg (no such syscalls in iOS 10.3.3's XNU, dragged in by OpenSSL's
+  static socket helpers) and the terminfo quartet (no ncurses on iOS);
+  they return ENOSYS / curses ERR instead of dying
+
+The post-link symbol audit (`tools/check-undefined.sh`) and the
+device-probe whitelist generator (`tools/probe-symbols.sh`) came out of
+this port; every build now runs the audit as a gate.
+
 ## The 2026-11 application batch
 
 Eight packages added in one sweep — wget 1.25.0, git 2.51.2, Vim 9.1,
