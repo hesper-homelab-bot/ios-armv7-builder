@@ -10,7 +10,8 @@
 | nginx | 1.26.3-5 | **服务化完成**:launchd 守护(com.hesper.nginx)、postinst 自动 load、gzip 实测 200 |
 | mosh | 1.4.0-4 | **真机验证完成**:Termius 手机连接正常(用户 2026-11-13 确认) |
 
-APT repo:nginx 16 包 + mosh 已入库。
+APT repo:**16 包**。Release:**apps-20261113(单独 tag,用户 2026-11-13 拍板)**,
+16 个 deb 全量上传:https://github.com/hesper-homelab-bot/ios-armv7-builder/releases/tag/apps-20261113
 
 ## mosh 当天修掉的五层雷(全部设备实测定位)
 
