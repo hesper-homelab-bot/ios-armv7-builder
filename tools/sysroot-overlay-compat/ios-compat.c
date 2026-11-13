@@ -116,6 +116,42 @@ int utimensat(int dirfd, const char *path, const struct timespec times[2],
     return utimes(path, tv);
 }
 
+/* futimens -- map onto futimes.  iOS 10.3.3 lacks this. */
+int futimens(int fd, const struct timespec times[2])
+{
+    struct timeval tv[2];
+    if (times == NULL) {
+        tv[0].tv_sec = 0; tv[0].tv_usec = 0;
+        tv[1] = tv[0];
+    } else {
+        tv[0].tv_sec = times[0].tv_sec; tv[0].tv_usec = times[0].tv_nsec / 1000;
+        tv[1].tv_sec = times[1].tv_sec; tv[1].tv_usec = times[1].tv_nsec / 1000;
+    }
+    return futimes(fd, tv);
+}
+
+/* getsectiondata_64 -- the 64-bit variant; iOS 10 armv7 only has the
+ * 32-bit variant in the shared cache.  Map to the 32-bit one.
+ * getsectiondata is a dyld export, declare it. */
+extern void *getsectiondata(const struct mach_header *mh, const char *segname,
+                            const char *sectname, unsigned long *size);
+void *getsectiondata_64(const struct mach_header *mh, const char *segname,
+                        const char *sectname, unsigned long *size)
+{
+    return getsectiondata(mh, segname, sectname, size);
+}
+
+/* __NSGetEnviron -- returns the process environment pointer.
+ * iOS 10's libSystem exports this; musl-style headers may declare it
+ * with wrong linkage. Provide a direct alias to the real symbol.
+ * C name is `__NSGetEnviron` (2 underscores) → Mach-O `___NSGetEnviron`.
+ * Also provide `___NSGetEnviron` (3 underscores) for callers that
+ * reference the mangled name directly. */
+extern char **environ;
+char **__NSGetEnviron(void) { return environ; }
+char **___NSGetEnviron(void) { return environ; }
+char **_NSGetEnviron(void) { return environ; }
+
 /* ns_get16 / ns_get32 -- BIND-8 resolver wire helpers, exact 2-liners.
  * iOS 10's libresolv does not export them; OpenSSH's getrrsetbyname.o
  * references them. */
@@ -150,6 +186,24 @@ char PC = 0, *UP = 0, *BC = 0;
 
 /* _sysinfo -- Linux syscall, no Darwin equivalent with those semantics. */
 int sysinfo(void *info) { (void)info; errno = ENOSYS; return -1; }
+
+/* BLAS level-1 routines -- pulled by nmap via net-snmp/libsmi; absent on
+ * iOS 10.3.3.  Stubs return 0/ENOSYS so callers can handle gracefully
+ * (nmap only uses these for non-critical internal math). [fleet-audit 2026-11-13] */
+double daxpy_(int *n, double *da, double *dx, int *incx, double *dy, int *incy) { (void)n; (void)da; (void)dx; (void)incx; (void)dy; (void)incy; return 0; }
+double ddot_(int *n, double *dx, int *incx, double *dy, int *incy) { (void)n; (void)dx; (void)incx; (void)dy; (void)incy; return 0; }
+double dnrm2_(int *n, double *x, int *incx) { (void)n; (void)x; (void)incx; return 0; }
+void dscal_(int *n, double *da, double *dx, int *incx) { (void)n; (void)da; (void)dx; (void)incx; }
+
+/* _NSGetExecutablePath -- musl-style headers declare this returning int;
+ * Darwin's real one returns char*.  Our probe failed to compile until
+ * corrected; the device DOES export it.  Provide a stub that returns the
+ * actual executable path (empty = let caller fall back). [probe 2026-11-13] */
+int _NSGetExecutablePath(char *buf, uint32_t *buflen) {
+    if (!buf || !buflen) return -1;
+    *buflen = 0;
+    return -1;
+}
 
 /* ___res_state -- the sysroot's musl-style resolv.h maps the _res macro to
  * this; iOS 10's libinfo does not export it.  OpenSSH's getrrsetbyname.o
