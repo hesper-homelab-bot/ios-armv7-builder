@@ -81,15 +81,15 @@ Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Git 2.51
 
 Package: jq
-Version: 1.7.1-1
+Version: 1.7.1-2
 Architecture: iphoneos-arm
 Maintainer: Hesper <hesperup@users.noreply.github.com>
 Depends: firmware (>= 10.3)
-Filename: pool/main/j/jq/jq_1.7.1-1_iphoneos-arm.deb
-Size: 395874
-MD5sum: c74541b3cd43831a877f4194dbbe9503
-SHA1: 4aaf73fc148910ba3dc6b2a58225ba0abf3a1c58
-SHA256: 5297e3e6ec5092745eba2da7edfc27d234bcba7d59fc66c6fd304f5cf2812c0e
+Filename: pool/main/j/jq/jq_1.7.1-2_iphoneos-arm.deb
+Size: 396684
+MD5sum: adf5ce40437a39540587062efadc3f85
+SHA1: 767f7dfac0a6c8ae0c2d95c58c11d38145bef072
+SHA256: 3a56b8f8992ebf2e74eddcf1f7dab121c784ccb55ad7d32503d32eea78571f61
 Section: Utilities
 Priority: optional
 Homepage: https://jqlang.github.io/jq/
@@ -134,15 +134,15 @@ Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: lsof 4.99.7
 
 Package: mosh
-Version: 1.4.0-1
+Version: 1.4.0-4
 Architecture: iphoneos-arm
 Maintainer: Hesper <hesperup@users.noreply.github.com>
 Depends: firmware (>= 10.3)
-Filename: pool/main/m/mosh/mosh_1.4.0-1_iphoneos-arm.deb
-Size: 3431182
-MD5sum: 2ef9f49fa2f3627d6a8092ff8583f094
-SHA1: e4652abc1f63794e2dfe1c7c7fe8aff0b4217ad1
-SHA256: 77337eab173fcf620b9656e6186625f0dade14f7d1e7903867b6c39c8c1d7685
+Filename: pool/main/m/mosh/mosh_1.4.0-4_iphoneos-arm.deb
+Size: 3487944
+MD5sum: cd165d6dd9e5f76ea200cb6c67174fbe
+SHA1: c10307a70e555ad41aa50341a3db524cb24505dd
+SHA256: 588db75114ac9ddd7ab4ec285e47bdec4de56f9b01164cc50d22f85bdcce918d
 Section: Networking
 Priority: optional
 Homepage: https://mosh.org/
@@ -162,6 +162,38 @@ Description: Mosh 1.4.0 for armv7 iOS 10+ (roaming SSH, UDP 60000-61000)
  as UTF-8 (probe-verified; mosh never transcodes server-side).
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Mosh 1.4
+
+Package: nginx4
+Version: 1.26.3-5
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/n/nginx4/nginx4_1.26.3-5_iphoneos-arm.deb
+Size: 2230920
+MD5sum: f7024ecff85ce3ffc02638df7312f880
+SHA1: c5d32749934e83ebed9e5e57e42a05e2b4e81679
+SHA256: f2f86c29e2ad2790db51259677829971cddda4c943ecb4cb072f8692d0df7b58
+Section: Networking
+Priority: optional
+Homepage: https://nginx.org/
+Description: nginx 1.26.3 for armv7 iOS 10+ (kqueue, static OpenSSL 4)
+ nginx 1.26.3 cross-compiled for armv7 iOS 10.x, using the iOS
+ kqueue event engine and statically linked against PCRE2, zlib and
+ OpenSSL 4.0.3.  Installs to /var/mobile/tools/nginx so it does not touch
+ any system path.
+ .
+ Working: static files, index, autoindex, gzip, rewrite/return, TLS, and
+ the HTTP proxy module.  Built without the FastCGI/uwsgi/SCGI/gRPC/mail
+ modules and without HTTP basic auth (iOS libSystem does not export
+ crypt(3)).
+ .
+ Ships a minimal nginx.conf listening on port 8080 with its document root
+ at /var/mobile/tools/nginx/share/nginx/html.  Start it as the mobile user:
+   /var/mobile/tools/nginx/bin/nginx
+ and check it with
+   curl http://127.0.0.1:8080/
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: nginx 1.26
 
 Package: nmap
 Version: 7.95-1
