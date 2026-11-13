@@ -24,6 +24,7 @@ What is inside:
 | `vim/` | **Vim 9.1** (huge, no GUI) linked against the device's own libncursesw, with the full runtime tree |
 | `libpcap/` | **libpcap 1.10.5** with working live BPF capture (`/dev/bpf*` on the device); needs an XNU `net/bpf.h` that this repo now carries in `sysroot-overlay/` |
 | `tcpdump/` | **tcpdump 4.99.5** — live packet capture on `en0` verified (captured real SSH traffic); needs root, Wi-Fi refuses promiscuous mode with a warning |
+| `netstat/` | **netstat 1.0** — device-verified ABI (xinpgen/xinpcb/xtcpcb offsets measured on xnu-3789.70.16); `-a -t -u -r -i` all functional; 23/23 audit green |
 | `sqlite/` | **sqlite3 3.54.1** (32-bit) — direct amalgamation build, no configure; WAL/FTS-capable, fully static |
 | `jq/` | **jq 1.7.1** statically linked with oniguruma 6.9.10 — `test()` regex verified, UTF-8 round-trips |
 | `nmap/` | **Nmap 7.95** (nmap + ncat) — the most invasive port: five bundled libraries, libdnet backend surgery, OpenSSL 4 opaque-struct patches, and a cc-wrapper fix for `-MM` dependency scanning |
@@ -71,6 +72,8 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 ./jq/make-deb.sh
 (cd nmap     && ./build.sh)     # nmap 7.95 + ncat; wall list in nmap/build.sh
 ./nmap/make-deb.sh
+(cd netstat  && ./build.sh)     # netstat 1.0: hand-rolled from device-measured xinpgen/xinpcb/xtcpcb ABI
+./netstat/make-deb.sh
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
@@ -104,9 +107,10 @@ apt-get install node4             # /usr/local/bin/node (jitless wrapper)
 apt-get install wget4 git vim     # /var/mobile/tools/{wget,git,vim}
 apt-get install sqlite3 jq tcpdump # /var/mobile/tools/{sqlite3,jq,tcpdump}
 apt-get install nmap               # /var/mobile/tools/{nmap,ncat} + share/nmap
+apt-get install netstat4            # /var/mobile/tools/bin/netstat
 ```
 
-All fourteen packages this repository builds are in it — including `dropbear4`
+All seventeen packages this repository builds are in it — including `dropbear4`
 and `openssh4`, which at first shipped only as
 [release assets](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases)
 (`make-repo.sh` publishes every `out/*.deb`, and the repo now carries the two
@@ -181,6 +185,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | sqlite3 3.54.1 | `--version` (32-bit); CREATE/INSERT/`sum()`/`PRAGMA journal_mode=wal` (real WAL on disk)/`.schema`/SELECT with WHERE all green |
 | jq 1.7.1 | `--version`; `.a[1]`, `reduce range(100)`, `add` over 20000 values, `test("f..h")` regex (oniguruma), UTF-8 `café` round-trip, `sort` |
 | Nmap 7.95 | `--version`; `--iflist` enumerates interfaces (lo0/en0/en2/awdl0/utun0); `-sT -n -p 22,22226 127.0.0.1` reports `22/tcp open ssh` + `22226/tcp open` in 0.17 s (data files shipped; Wi-Fi declines promiscuous mode) |
+| netstat 1.0 | `-a/-t/-u/-r/-i` all pass; active TCP/ESTABLISHED/CLOSE_WAIT/LISTEN, UDP/raw, routes (`default` via en0, Expire in seconds), 13 interfaces with MAC/IPv4/IPv6/stats; cross-checked with `lsof` and `ipconfig` |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
