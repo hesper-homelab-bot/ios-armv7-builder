@@ -122,7 +122,7 @@ int utimensat(int dirfd, const char *path, const struct timespec times[2],
 unsigned int ns_get16(const unsigned char *src) {
     return ((unsigned int)src[0] << 8) | (unsigned int)src[1];
 }
-unsigned int ns_get32(const unsigned char *src) {
+unsigned long ns_get32(const unsigned char *src) {
     return ((unsigned int)src[0] << 24) | ((unsigned int)src[1] << 16) |
            ((unsigned int)src[2] << 8)  |  (unsigned int)src[3];
 }
@@ -150,3 +150,16 @@ char PC = 0, *UP = 0, *BC = 0;
 
 /* _sysinfo -- Linux syscall, no Darwin equivalent with those semantics. */
 int sysinfo(void *info) { (void)info; errno = ENOSYS; return -1; }
+
+/* ___res_state -- the sysroot's musl-style resolv.h maps the _res macro to
+ * this; iOS 10's libinfo does not export it.  OpenSSH's getrrsetbyname.o
+ * (DNSSEC host-key verification, off by default) references it through the
+ * macro.  A zeroed static state is the correct "resolver not initialised"
+ * answer: BIND callers check the RES_INIT flag first and bail out. */
+#include <resolv.h>
+static struct __res_state ios_compat_res;
+/* C-level name is __res_state (two underscores): the Apple ABI prepends one
+ * more at the Mach-O symbol level, producing the ___res_state that the
+ * musl-style header's _res macro references.  Writing three underscores in
+ * C yields FOUR at symbol level -- the exact mistake this comment replaces. */
+struct __res_state *__res_state(void) { return &ios_compat_res; }

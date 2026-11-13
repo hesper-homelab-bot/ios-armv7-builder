@@ -106,6 +106,25 @@ print("    patched sftp-server.c: 3 *at() flags -> 0")
 PY
 fi
 
+# port-net.c's SSH_TUN_FREEBSD branch (configure's *-*-darwin* case defines
+# it -- macOS opens tunnels the FreeBSD way) includes <net/if.h> and then
+# uses SIOCSIFFLAGS/SIOCGIFFLAGS.  The sysroot's net/if.h does NOT pull in
+# sys/sockio.h (Darwin's does), so the ioctl request macros are undeclared.
+# iOS has no /dev/tun* anyway -- the branch is dead code here -- but it must
+# still compile.  One include fixes it (idempotent).
+if ! grep -q 'iOS: sockio for SIOC' openbsd-compat/port-net.c; then
+    python3 - openbsd-compat/port-net.c <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+old = "#ifdef SSH_TUN_FREEBSD\n#include <sys/socket.h>\n#include <net/if.h>"
+assert old in s, "port-net.c: SSH_TUN_FREEBSD include block not found"
+s = s.replace(old, old + "\n#include <sys/sockio.h> /* iOS: sockio for SIOC* (net/if.h does not pull it in) */", 1)
+open(p, "w").write(s)
+print("    patched port-net.c: include sys/sockio.h")
+PY
+fi
+
 # ---------------------------------------------------------------------------
 # Configure.
 #
@@ -156,6 +175,19 @@ CFLAGS="-DDISABLE_SHADOW -DOPENSSL_API_COMPAT=0x10100000L" \
     --without-ldns --without-prngd-socket \
     --disable-strip \
     >/dev/null
+
+# Archive resolution fix (2026-11-13, refined): bcrypt_pbkdf.o lives in
+# libopenbsd-compat.a and references blf_enc from blowfish.o in the SAME
+# archive.  ld64 scans each archive exactly ONCE -- bcrypt_pbkdf.o is pulled
+# because libssh.a (earlier) needed it, and the resulting blf_enc undefined
+# finds no later archive: re-appending -lopenbsd-compat does NOT help (same
+# archive, already scanned).  Naming blowfish.o as an explicit OBJECT does:
+# object files are always loaded, never positionally skipped.  This is the
+# path that decrypts passphrase-protected private keys.
+sed -i 's|^LIBS=\(.*\)$|LIBS=\1 openbsd-compat/blowfish.o|' Makefile
+grep -q "openbsd-compat/blowfish.o" Makefile || {
+    echo "LIBS blowfish.o sed did not apply" >&2; exit 1
+}
 
 make -j"$(nproc)" >/dev/null
 
@@ -228,6 +260,18 @@ if bad:
     sys.exit(1)
 print("    no iOS-absent symbols left undefined")
 PY
+
+# Whitelist-mode audit (tools/check-undefined.sh): complements the ABSENT
+# gate above, which only reports symbols a hand-maintained list already
+# knows about -- that list never knew about blf_enc, so a whole release
+# shipped with it undefined.  Anything not provably device-provided fails
+# the build here.
+for p in sshd sshd-session sshd-auth ssh ssh-add ssh-keygen ssh-agent \
+         ssh-keyscan ssh-keysign ssh-pkcs11-helper ssh-sk-helper \
+         scp sftp sftp-server; do
+    [ -f "$p" ] || continue
+    "$root/tools/check-undefined.sh" "$p"
+done
 
 mkdir -p "$root/out"
 for p in sshd sshd-session sshd-auth ssh ssh-add ssh-keygen ssh-agent \
