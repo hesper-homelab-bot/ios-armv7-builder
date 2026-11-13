@@ -260,14 +260,14 @@ Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Node.js 22
 
 Package: openssh4
-Version: 10.6p2-1
+Version: 10.6p2-2
 Architecture: iphoneos-arm
 Maintainer: Hesper <hesperup@users.noreply.github.com>
-Filename: pool/main/o/openssh4/openssh4_10.6p2-1_iphoneos-arm.deb
-Size: 13561158
-MD5sum: ecce21108c37d70e810d393665dcf5dc
-SHA1: fb24162a97e7f907a61c532761388f2ce759e2cb
-SHA256: b158700149ac3f0e33adbaec35a3cb7bbae6093f192873d0f98919ed88ffa897
+Filename: pool/main/o/openssh4/openssh4_10.6p2-2_iphoneos-arm.deb
+Size: 13641380
+MD5sum: 37f9fb7b798177a28ab53f1969164a93
+SHA1: fc849817de3a28570b914da85cf92b888a394f48
+SHA256: e3d3736f7a6ede488df11eab81f2f3ceaff0ed5c5df7338d763b7a5ac8e5a9b5
 Section: Networking
 Priority: optional
 Homepage: https://www.openssh.com/

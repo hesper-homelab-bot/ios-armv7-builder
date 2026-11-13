@@ -42,6 +42,15 @@ ac_cv_func_strtonum=no
 # unused code: sshkey.c calls it when *decrypting* an encrypted private key, so
 # without this pin an `ssh -i key` would abort at runtime instead of working.
 ac_cv_func_bcrypt_pbkdf=no
+# Blowfish primitives: the compile-only AC_CHECK_FUNCS probe accepts a bare
+# declaration, so configure "finds" them and blowfish.c's
+#   #if !HAVE_BCRYPT_PBKDF && (!HAVE_BLOWFISH_INITSTATE || ...) 
+# compiles to an EMPTY object -- the shipped binaries then reference
+# _blf_enc with nothing behind it (fleet audit 2026-11-13).  None of these
+# exist on iOS; pinning them makes OpenSSH build its own blowfish.c.
+ac_cv_func_Blowfish_initstate=no
+ac_cv_func_Blowfish_expand0state=no
+ac_cv_func_blf_enc=no
 
 # b64_ntop()/b64_pton() are in <resolv.h> on BSD but iOS 10 exports neither.
 ac_cv_func_b64_ntop=no
