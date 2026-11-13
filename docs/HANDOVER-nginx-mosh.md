@@ -1,4 +1,4 @@
-# HANDOVER: nginx + mosh 移植 —— 已完成(2026-11-13)
+# HANDOVER: nginx + mosh + netstat 移植 —— 已完成(2026-11-13)
 
 > 2026-11-12 的交接任务当天全部收尾。本文保留为完成记录；
 > 后续移植的方法论沉淀在 `docs/toolchain.md` §9-§13(必读)。
@@ -9,9 +9,10 @@
 |---|---|---|
 | nginx | 1.26.3-5 | **服务化完成**:launchd 守护(com.hesper.nginx)、postinst 自动 load、gzip 实测 200 |
 | mosh | 1.4.0-4 | **真机验证完成**:Termius 手机连接正常(用户 2026-11-13 确认) |
+| netstat | 1.0-1 | **全模式完成**:-a/-t/-u/-r/-i 全绿，ABI 设备实测锚定，审计 23/23 绿 |
 
-APT repo:**16 包**。Release:**apps-20261113(单独 tag,用户 2026-11-13 拍板)**,
-16 个 deb 全量上传:https://github.com/hesper-homelab-bot/ios-armv7-builder/releases/tag/apps-20261113
+APT repo:**17 包**。Release:**apps-20261113(单独 tag,用户 2026-11-13 拍板)**,
+17 个 deb 全量上传:https://github.com/hesper-homelab-bot/ios-armv7-builder/releases/tag/apps-20261113
 
 ## mosh 当天修掉的五层雷(全部设备实测定位)
 
@@ -35,7 +36,12 @@ APT repo:**16 包**。Release:**apps-20261113(单独 tag,用户 2026-11-13 拍�
 
 ## 遗留(用户点名,下一个任务)
 
-- [ ] **移植 netstat**(HANDOVER 顶部待办节,方向/判据已写)
+- [x] **移植 netstat**(HANDOVER 顶部待办节,方向/判据已写)
+  - **ABI 锚点(全部设备实测闭环)**: xinpgen 24B(xig_len@0,count@4) → TCP 条目 524B(xinpcb@4 + otcpcb@212 + xsocket@416) → UDP/raw 320B(xinpcb@4 + xsocket@212)
+  - **关键偏移(静态断言钉死)**: inp_fport/lport@20/22(网络序)、v4 地址存 v4-compat 形式 @96/@112、t_state@244、xso_protocol/family/rcv/snd@436/440/464/488
+  - **四轮探针**: probe1(MIB 可见性+链步长)→ probe2(字段+状态对照 lsof)→ probe3(v4-mapped 地址修正)→ probe4(IFLIST2 消息链结构)
+  - **输出格式**: BSD/Darwin 风格(*.port 通配、tcp4/tcp6、default 路由、剩余秒 Expire、接口名+MAC+计数)
+  - **审计**: check-undefined.sh 23/23 绿(纯 libSystem 符号)
 
 ## 遗留(2026-11-13 全量审计后记录)
 
