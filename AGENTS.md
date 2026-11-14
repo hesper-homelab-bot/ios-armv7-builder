@@ -15,6 +15,7 @@
 | `docs/HANDOVER-nginx-mosh.md` | **明日入口**:nginx/mosh 移植交接(状态、断点、剩余) |
 | `docs/debugserver.md` | 活体调试（设备 debugserver + 主机 lldb-21） |
 | `docs/p7zip.md` | p7zip 17.05 移植专项（makefile 选型、打包、设备验收） |
+| `docs/porting-backlog.md` | 移植候选队列（进行中/已立项/待表态/远期/判死，状态流转） |
 | `DEVICE.md` | 设备全书（英文编号节；**gitignored，私有**，勿提交勿外发） |
 
 ## 本仓库工作规则
