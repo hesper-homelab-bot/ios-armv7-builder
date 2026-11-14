@@ -16,8 +16,10 @@ struct option {
 	int val;
 };
 
-int getopt_long(int, char **, const char *, const struct option *, int *);
-int getopt_long_only(int, char **, const char *, const struct option *, int *);
+/* 设备 libSystem 的真身是 GNU 签名（char *const *）——与 musl 不同。
+   2026-11-14：GNU make 4.4.1 自带 getopt.h（char *const *）与本头冲突。 */
+int getopt_long(int, char *const *, const char *, const struct option *, int *);
+int getopt_long_only(int, char *const *, const char *, const struct option *, int *);
 
 #define no_argument        0
 #define required_argument  1
