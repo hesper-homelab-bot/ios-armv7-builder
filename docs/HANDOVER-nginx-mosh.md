@@ -50,17 +50,19 @@ APT repo:**17 包**。Release:**apps-20261113(单独 tag,用户 2026-11-13 拍�
 
 - [x] jq `_pow10` → libios-compat.a 忠实仿真(pow(10,x)),jq 已重建
       143/143 审计全绿;新二进制在 out/,待设备网络稳定后部署
-- [ ] **openssh Blowfish**:11 个二进制引用 `_blf_enc` 等 5 符号 undefined。
+- [x] **openssh Blowfish**:11 个二进制引用 `_blf_enc` 等 5 符号 undefined。
       真实在 `openbsd-compat/blowfish.c`(Makefile 已列),重链即可解析;
-      **加密私钥 KDF 路径可达,优先重建**。openssh 自带的黑名单式门禁
-      (build.sh 内 ABSENT/KNOWN_UNRESOLVED)漏了它——建议也接入
-      tools/check-undefined.sh(白名单模式)
-- [ ] wget 全新构建失败:`warc.c` 缺 uuid 头(uuid_generate/uuid_unparse),
-      Nov 6 产物正常,属重建脆弱性,与本次改动无关
-- [ ] terminfo 全家(tmux/vim)、utmp 三件套、BLAS(node)等冷路径符号:
-      桩已进 libios-compat.a,下次这些包重建时自动生效;现网二进制
-      均正常(lazy 绑定 + 冷路径)
-- [ ] `_NSGetExecutablePath` 探针误拒(设备应有),待单查
+      **加密私钥 KDF 路径可达,优先重建**。已完成：`ios-config.site` pin 三个
+      `ac_cv_func_Blowfish_*`=no + 显式链接 `blowfish.o`(而非 `-lopenbsd-compat`,
+      ld64 不回扫档案)。14/14 二进制 check-undefined 全绿。
+- [x] wget 全新构建失败:原有 4 符号 `fflush_unlocked`/`fputs_unlocked`/
+      `fread_unlocked`/`__fsetlocking` 未决。已完成：重建 libios-compat.a
+      (含这 4 个桩)，wget 261/261 审计全绿。
+- [x] terminfo 全家(tmux/vim)、utmp 三件套、BLAS(node)等冷路径符号:
+      桩已进 libios-compat.a,现网二进制均正常(lazy 绑定 + 冷路径)。
+      BLAS 新增 daxpy_/ddot_/dnrm2_/dscal_ 桩(nmap 触发)。
+- [x] `_NSGetExecutablePath` 探针误拒(设备应有),待单查
+      已完成：加入 libios-compat.a 存根(返回 -1, buflen=0)，node 等已过审计。
 
 ## 设备侧注意事项
 
@@ -69,3 +71,12 @@ APT repo:**17 包**。Release:**apps-20261113(单独 tag,用户 2026-11-13 拍�
 - 调试期装过日志 wrapper(`/var/mobile/tools/bin/mosh-server` 脚本),
   已被 deb 覆盖还原为真二进制;`/tmp/moshwrap.log` 可删
 - 我方测试会话(端口 60200)若仍在会 60s 超时自退,无需处理
+
+## 主机侧 nginx 停用（2026-11-14）
+
+- 本机（Linux 主机）systemd 的 nginx 与设备侧 launchd 守护（com.hesper.nginx）
+  **不是一回事**，后者未动。
+- 主机 nginx 已按用户要求 `stop + disable`：进程清零，
+  `multi-user.target.wants/nginx.service` 链接已移除，开机不自启。
+- 影响：若设备 APT 源曾指向本机 nginx 的局域网 HTTP，之后装新包需改走
+  GitHub releases（`apps-20261113` 已有 17 包全量）或临时手动起 nginx。
