@@ -20,7 +20,11 @@ _atoi
 _atol
 _atoll
 ___atomic_compare_exchange
+_backtrace
+_backtrace_symbols
+_backtrace_symbols_fd
 _bind
+_bsd_signal
 _bzero
 _calloc
 _cbrt
@@ -41,6 +45,7 @@ _confstr
 _connect
 _cos
 _cosh
+_creat
 _crypt
 _ctime
 ___cxa_allocate_exception
@@ -93,6 +98,7 @@ _execlp
 _execv
 _execve
 _execvp
+__exit
 _exit
 _exp
 ___exp10
@@ -106,6 +112,7 @@ _fchownat
 _fclose
 _fcntl
 _fdim
+_fdopen
 _fdopendir
 _feof
 _feof_unlocked
@@ -123,6 +130,7 @@ ___floatdidf
 ___floatdisf
 ___floatundidf
 ___floatundisf
+_flock
 _flockfile
 _floor
 _floorf
@@ -161,11 +169,13 @@ _gai_strerror
 _getaddrinfo
 _getchar
 _getc_unlocked
+_getcwd
 _getdelim
 _getegid
 _getenv
 _geteuid
 _getgid
+_getgrgid
 _getgrgid_r
 _getgrnam
 _getgrnam_r
@@ -176,6 +186,8 @@ _gethostbyname
 _gethostbyname2
 _gethostname
 _getifaddrs
+_getloadavg
+_getlogin
 _getmntinfo
 _getnameinfo
 _getnetbyname
@@ -224,6 +236,7 @@ _htonl
 _htons
 _hypot
 _if_indextoname
+_if_nametoindex
 _in6addr_any
 _inet_ntoa
 _inet_ntop
@@ -273,6 +286,7 @@ _logb
 __longjmp
 _longjmp
 _lrint
+_lround
 _lseek
 _lstat
 _lutimes
@@ -302,14 +316,18 @@ _mbsinit
 _memchr
 _memcmp
 _memcpy
+_memmem
 _memmove
 _memset
 _memset_pattern16
 _mkdir
 _mkdirat
 _mkdtemp
+_mkfifo
 _mkostemp
+_mktemp
 _mktime
+_mlockall
 _mmap
 ___moddi3
 _modf
@@ -363,6 +381,7 @@ _pthread_attr_destroy
 _pthread_attr_init
 _pthread_attr_setdetachstate
 _pthread_attr_setstacksize
+_pthread_condattr_init
 _pthread_cond_broadcast
 _pthread_cond_destroy
 _pthread_cond_init
@@ -446,6 +465,7 @@ _scandir
 _sched_get_priority_max
 _sched_get_priority_min
 _sched_yield
+_select
 _semaphore_create
 _semaphore_destroy
 _semaphore_signal
@@ -520,6 +540,8 @@ _statvfs
 ___stderrp
 ___stdinp
 ___stdoutp
+_stpcpy
+_strcasecmp
 _strcat
 _strchr
 _strcmp
@@ -530,6 +552,8 @@ _strdup
 _strerror
 _strerror_r
 _strftime
+_strlcat
+_strlcpy
 _strlen
 _strmode
 _strncasecmp
@@ -549,6 +573,7 @@ _strtok
 _strtok_r
 _strtol
 _strtoul
+_strtoull
 _strtoumax
 _swprintf
 _symlink
@@ -589,6 +614,7 @@ ___udivsi3
 _umask
 ___umoddi3
 ___umodsi3
+_uname
 _unlink
 _unlinkat
 _unsetenv
@@ -599,6 +625,7 @@ _user_from_uid
 _usleep
 _utime
 _utimes
+_vasprintf
 _vfprintf
 _vm_deallocate
 _vprintf
@@ -620,6 +647,3 @@ _writev
 _y0
 _y1
 _yn
-_mkfifo
-_mktemp
-_creat

@@ -149,6 +149,23 @@ Description: lsof (LiSt Open Files) for armv7 iOS 10+
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: lsof 4.99.7
 
+Package: make4
+Version: 4.4.1-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/m/make4/make4_4.4.1-1_iphoneos-arm.deb
+Size: 109722
+MD5sum: d405c069c1819cc32ba236d9bd661a94
+SHA1: 97d5ecffe706d3319fa154231e1103023ea080da
+SHA256: dcd413fb06cd0afa34221a7b61423d38f34bfe0c51c3e06835665fbfe9e7049f
+Section: devel
+Priority: optional
+Description: GNU make 4.4.1 for iOS 10.3.3 armv7
+ On-device rebuilds of small projects.  NLS off; eaccess/memrchr gnulib
+ probes forced off (device lacks both -- gnulib supplies replacements);
+ libgnu.a archived with darwin-ar (ld64 ignores GNU archives).  See
+ make/build.sh for the full override list.
+
 Package: mosh
 Version: 1.4.0-4
 Architecture: iphoneos-arm
@@ -452,6 +469,22 @@ Description: Terminal multiplexer - windows, panes, detachable sessions
 Author: Nicholas Marriott <nicholas.marriott@gmail.com>
 Depiction: https://github.com/hesper-homelab-bot/ios-tmux-builder
 Name: tmux
+
+Package: tor4
+Version: 0.4.8.14-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/t/tor4/tor4_0.4.8.14-1_iphoneos-arm.deb
+Size: 3131782
+MD5sum: 208c2aac3e4980d88ce64669144a7fcf
+SHA1: 211b435ce5bdfdcddb85cf0aaf38b22b532af759
+SHA256: fb1b7b7120bf76ca40c6865e6f34b66bf710a62fbde0ca408807f5a527c47464
+Section: net
+Priority: optional
+Description: tor 0.4.8.14 for iOS 10.3.3 armv7
+ Onion router daemon.  Statically linked libevent 2.1.12 + OpenSSL 4.0.3 +
+ zlib 1.3.1; no LZMA/ZSTD; dirauth module off.  DataDir defaults to
+ /var/mobile/tools/tor/data -- set DataDir/SocksPort in your torrc.
 
 Package: vim
 Version: 9.1.0000-1
