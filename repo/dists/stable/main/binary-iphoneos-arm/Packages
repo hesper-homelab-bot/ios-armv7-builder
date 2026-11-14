@@ -168,10 +168,10 @@ Version: 1.0-1
 Architecture: iphoneos-arm
 Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
 Filename: pool/main/n/netstat4/netstat4_1.0-1_iphoneos-arm.deb
-Size: 7626
-MD5sum: 63bb6ca1e4e45e8bf241d1848e0d6700
-SHA1: 8841d978dd0d01f652d968f236bd50b373e47c58
-SHA256: 2829d4bd6a9ba3d0d508ec5769a4248f05d19ff3a1ee08fc66697df7c5ffca49
+Size: 8230
+MD5sum: 58c012cd2a429c3fc660050cc9008d18
+SHA1: c9442a25372a1e9ecc1cd41967743311876cf05e
+SHA256: e0af80f91ac0d5cb8d9aeda3a295d393e2ce0eae34caca1724fd3d1b21845878
 Section: net
 Priority: optional
 Description: netstat for iOS 10.3.3 armv7
@@ -320,6 +320,23 @@ Description: OpenSSL 4 command line tool (armv7 iOS 10+)
  Conflicts: openssl
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: OpenSSL 4
+
+Package: p7zip17
+Version: 17.05-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/p/p7zip17/p7zip17_17.05-1_iphoneos-arm.deb
+Size: 1642524
+MD5sum: 16dcda15f7e0296dcdeacf5d0fc664c3
+SHA1: cc59491886538daf16c939f527db769b292b8596
+SHA256: d410749941eb58c78c6d50bf3ffa6efdbc6f562ec9e72195beb4dacd42ced1a0
+Section: utils
+Priority: optional
+Description: p7zip 17.05 (7z/7za) for iOS 10.3.3 armv7
+ Standalone 7za, all codecs built in: 7z (LZMA/LZMA2), xz, AES-256,
+ gzip, bzip2, zip, tar.  Supersedes the 2007-era p7zip 4.57 in interactive
+ PATHs via /var/mobile/tools/bin symlinks; the old package's dpkg-owned
+ /usr/bin/7z and /usr/bin/7za are left untouched.
 
 Package: sqlite3
 Version: 3.54.1-1
