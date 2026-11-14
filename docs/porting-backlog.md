@@ -22,6 +22,24 @@
   数据列表编译期进头文件）；设备实弹查询验证。
 - **less4 668-1**：ncurses 走 vim 先例（设备 libncursesw.5.dylib 显式
   上链接行）；release tarball 补齐 git 树缺的生成物；设备翻页冒烟过。
+- **tor4 0.4.8.14-1**（2026-11-14 深夜）：全静态栈（libevent 2.1.12 +
+  OpenSSL 4.0.3 + zlib 1.3.1），**249 个未定义符号全部设备实测绑定**；
+  设备 `--version` / `--verify-config` 验收过。踩坑全记录见
+  `tor/build.sh` 注释（ac_cv 压制 20+ 项、configure 探针跑宿主 gcc 的
+  断链事故、iOS 10 的 zlib 不在 libSystem 等四板斧实例）。源：Debian
+  pool 的 tor_0.4.8.14.orig.tar.gz（dist.torproject.org 与 GitHub 镜像
+  均不可用/只有 alpha tag）。
+
+## 挡板（有明确破局点，待下批次）
+
+- **class-dump**：76 个 ObjC 源全部依赖 pch 里的 `<Foundation/Foundation.h>`，
+  而本工具链从未有过 iOS SDK 头（设备不带头文件，sysroot 也没有）——
+  编译期就挡住，与 Mach-O 解析能力无关。
+  **破局点（用户 2026-11-14 指出）**：github.com/xybp888/iOS-SDKs 收录
+  **iPhoneOS10.3.sdk**（与设备精确同版本！），Foundation 头 + 官方全量
+  tbd 符号表可一并解决 class-dump 编译与审计白名单精度；长期看还是
+  手写 sysroot 头（NULL 缺口/getopt 签名/net 头拼装）的官方替代参考。
+  待做：sparse clone 只拉 iPhoneOS10.3.sdk 子目录（文件量大，后台进行）。
 
 ## 已立项待开工（用户 2026-11-14 拍板"先记录"）
 
