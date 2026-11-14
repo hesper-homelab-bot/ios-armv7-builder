@@ -8,8 +8,9 @@
 
 ## 已上线
 
-设备现有 18+ 包（kit 清单见 `repo/pool` 与 AGENTS.md 索引各专项文档）。
-2026-11-14：netstat4 重建（gzip 修复）、p7zip17 上线。
+设备 kit 现有 **24 包**（清单见 `repo/pool` 与 AGENTS.md 索引各专项文档）。
+2026-11-14：netstat4 重建（gzip 修复）、p7zip17、rsync4、whois4、less4、
+make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 
 ## 已上线（2026-11-14 批次，T1 完成）
 
@@ -45,14 +46,8 @@
 
 ## 挡板（无）
 
-## 已立项待开工（用户 2026-11-14 拍板"先记录"）
-
-- **tor**：需 libevent——cc-wrapper 已有 `-levent` 通道（`IOS_PREFIX`）。
-  BigBoss 先例 `fm.was.tor 0.2.6.10` / `Mobile Tor 0.2.2.35`。拉上游新版。
-- **class-dump**：设备端 dump ObjC 类，与 debugserver/lldb 工作流互补；
-  ObjC runtime 设备自带。源码老（code.google 时代），需找可用镜像
-  （github 有 fork 群）。
-- **make**：设备端现场重编小工程；GNU make 极小，零依赖。
+（原"已立项待开工"的 tor / class-dump / make 已于 2026-11-14 深夜全部
+完工上线，条目并入上方已上线节；可行性笔记在各 build.sh 注释。）
 
 ## 待表态（用户未点头，不动）
 
