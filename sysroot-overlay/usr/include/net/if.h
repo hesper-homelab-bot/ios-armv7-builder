@@ -138,7 +138,6 @@ struct ifconf {
 }
 #endif
 
-#endif
 
 /* ---- Darwin-only interface ioctls reference these; musl's if.h lacks
  * them (values/shape from xnu-3789.70.16 bsd/net/if.h; IFNAMSIZ is 16 in
@@ -264,3 +263,4 @@ struct ifa_msghdr {
 	unsigned short	ifam_index;	/* index for associated ifp */
 	int		ifam_metric;	/* value of ifa_metric */
 };
+#endif
