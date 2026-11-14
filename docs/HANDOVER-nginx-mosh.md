@@ -72,11 +72,18 @@ APT repo:**17 包**。Release:**apps-20261113(单独 tag,用户 2026-11-13 拍�
   已被 deb 覆盖还原为真二进制;`/tmp/moshwrap.log` 可删
 - 我方测试会话(端口 60200)若仍在会 60s 超时自退,无需处理
 
-## 主机侧 nginx 停用（2026-11-14）
+## nginx 停用（2026-11-14，设备侧）+ 宿主机误停已复原
 
-- 本机（Linux 主机）systemd 的 nginx 与设备侧 launchd 守护（com.hesper.nginx）
-  **不是一回事**，后者未动。
-- 主机 nginx 已按用户要求 `stop + disable`：进程清零，
-  `multi-user.target.wants/nginx.service` 链接已移除，开机不自启。
-- 影响：若设备 APT 源曾指向本机 nginx 的局域网 HTTP，之后装新包需改走
-  GitHub releases（`apps-20261113` 已有 17 包全量）或临时手动起 nginx。
+- 用户要停的是**设备侧** nginx（com.hesper.nginx，监听 8080）。
+- 宿主机 systemd nginx 被误停，当日已复原：`systemctl enable --now nginx`，
+  active + enabled 双确认。
+- 设备侧：`launchctl unload /Library/LaunchDaemons/com.hesper.nginx.plist`
+  停服务（launchd 无任务、进程清零）；iOS 10 launchd 的 `-w` **未落
+  overrides**（`/var/db/launchd/db/com.apple.launchd/overrides.plist` 不存在），
+  开机不自启靠往 plist 写 `<key>Disabled</key><true/>`（用
+  `/var/mobile/tools/bin/node` 改写——root 非登录 shell 的 PATH 只有
+  /usr/bin:/bin，裸 `node` 找不到）。改前备份：
+  `/var/mobile/.local/etc/backup-nginx/com.hesper.nginx.plist.pre-disable`。
+- 注意：plist 被改 → `dpkg -V nginx4` 会报该文件 md5 不符（预期，非损坏）。
+- 重新启用：去掉 plist 里的 Disabled 键（或恢复备份）后
+  `launchctl load /Library/LaunchDaemons/com.hesper.nginx.plist`。

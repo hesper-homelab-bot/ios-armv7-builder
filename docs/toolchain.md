@@ -350,3 +350,12 @@ typedef char _assert_tstate[(offsetof(struct xtcpcb_e, tp.t_state) == 244) - 1];
 ### 14.6 sysroot 补全
 仅 `sysroot-overlay/usr/include/net/if.h` 补 `struct ifa_msghdr`（7 字段，xnu-3789.70.16 逐字复制，
 `[device-verified 2026-11-13]` 注记）。无需 `in_pcb.h`/`tcp_var.h`/`socketvar.h` 等私有头。
+
+### 14.7 打包：deb 成员必须 gzip（2026-11-14 设备实测）
+首版 deb 被宿主机新版 dpkg-deb 默认压成 `control.tar.zst`/`data.tar.zst`，
+设备 dpkg 1.18.10 报 `unknown compression for member 'control.tar.zst'` 拒装
+（二进制本身和签名都没问题，纯粹是容器压缩格式）。`netstat/make-deb.sh`
+已钉 `dpkg-deb --root-owner-group -Zgzip --build`（与 lsof/make-deb.sh 同款）。
+信号 → 动作：设备 `dpkg -i` 报 unknown compression → `ar t 包.deb` 看成员
+后缀，非 .gz 即在 make-deb.sh 钉 `-Zgzip` 重建。另：GitHub Release
+`apps-20261113` 里的 netstat4 是 zst 版装不上，需换传 gz 版。

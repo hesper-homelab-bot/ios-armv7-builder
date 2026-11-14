@@ -50,10 +50,13 @@ EOF
 chmod 755 "$STAGE/DEBIAN/prerm"
 
 # build deb
-dpkg-deb --build "$STAGE" "$DEB" >/dev/null
+# -Zgzip: 设备 dpkg 1.18.10 不认 zstd 成员（control.tar.zst 报
+#   "unknown compression"，2026-11-14 设备实测）；--root-owner-group 与
+#   lsof/make-deb.sh 同款，载荷归 root:root。
+dpkg-deb --root-owner-group -Zgzip --build "$STAGE" "$DEB" >/dev/null
 echo "Built $DEB"
 dpkg -I "$DEB"
 echo "SHA256: $(sha256sum "$DEB" | cut -d' ' -f1)"
 
-# copy to repo staging (scripts/make-repo.sh picks from out/)
-cp "$DEB" "$ROOT/out/"
+# copy to repo staging (scripts/make-repo.sh scans the REPO-root out/)
+cp "$DEB" "$ROOT/../out/"
