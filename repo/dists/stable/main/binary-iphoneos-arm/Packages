@@ -338,6 +338,22 @@ Description: p7zip 17.05 (7z/7za) for iOS 10.3.3 armv7
  PATHs via /var/mobile/tools/bin symlinks; the old package's dpkg-owned
  /usr/bin/7z and /usr/bin/7za are left untouched.
 
+Package: rsync4
+Version: 3.3.0-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/r/rsync4/rsync4_3.3.0-1_iphoneos-arm.deb
+Size: 261076
+MD5sum: 39f3374b1e379754b9385500a60123e7
+SHA1: 3cb0811e56fe02b85bf5d22423d29e2f120bda12
+SHA256: 15240131009d552c95ede62b3cf38463d88ae2e1c9ca8d1cb61d596545ec698d
+Section: net
+Priority: optional
+Description: rsync 3.3.0 for iOS 10.3.3 armv7
+ Fast incremental file transfer.  popt/zlib bundled in-tree; built without
+ iconv/acl/xattr/xxhash/openssl extras (see rsync/build.sh for the probe
+ overrides).  Over ssh use --rsync-path=/var/mobile/tools/bin/rsync.
+
 Package: sqlite3
 Version: 3.54.1-1
 Architecture: iphoneos-arm
@@ -484,4 +500,19 @@ Description: GNU wget for armv7 iOS 10+ (static OpenSSL 4)
  /var/mobile/tools/env.sh.
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: GNU Wget 1.25
+
+Package: whois4
+Version: 5.6.6-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/w/whois4/whois4_5.6.6-1_iphoneos-arm.deb
+Size: 28670
+MD5sum: 07f7315082974f615c4ff9df2d13acbf
+SHA1: d9a2ed3f6b6ce7f1064c5e1ca75b8de32199f20a
+SHA256: 70580c794e528ccf889f09e69faf3815c0fd79d1001e2de2d3b487c2886631bb
+Section: net
+Priority: optional
+Description: whois 5.6.6 (rfc1036) for iOS 10.3.3 armv7
+ RIPE-style whois client; server list compiled in.  Built without
+ iconv/libidn/NLS (see whois/build.sh).
 

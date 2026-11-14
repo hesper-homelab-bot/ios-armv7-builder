@@ -620,3 +620,5 @@ _writev
 _y0
 _y1
 _yn
+_mkfifo
+_mktemp
