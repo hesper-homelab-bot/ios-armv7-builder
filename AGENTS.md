@@ -14,6 +14,7 @@
 | `docs/quickjs.md` | QuickJS（Phase 1） |
 | `docs/HANDOVER-nginx-mosh.md` | **明日入口**:nginx/mosh 移植交接(状态、断点、剩余) |
 | `docs/debugserver.md` | 活体调试（设备 debugserver + 主机 lldb-21） |
+| `docs/p7zip.md` | p7zip 17.05 移植专项（makefile 选型、打包、设备验收） |
 | `DEVICE.md` | 设备全书（英文编号节；**gitignored，私有**，勿提交勿外发） |
 
 ## 本仓库工作规则
