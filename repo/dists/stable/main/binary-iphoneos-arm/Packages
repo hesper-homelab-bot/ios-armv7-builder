@@ -1,3 +1,20 @@
+Package: class-dump4
+Version: 3.5.2-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/c/class-dump4/class-dump4_3.5.2-1_iphoneos-arm.deb
+Size: 143686
+MD5sum: 99c13edf5675ef8c990c0edb82fae683
+SHA1: c3bade4d0c906d312463ff592fe2504582793bb1
+SHA256: 2b48fdb0575ae771ede7b2341cb1fed7a316dba8e70a009e69748f67f7672709
+Section: sysutils
+Priority: optional
+Description: class-dump (nygard fork 2c82b4f) for iOS 10.3.3 armv7
+ Examines the Objective-C runtime segment of Mach-O files.  Built against
+ the real iPhoneOS10.3.sdk headers (xybp888/iOS-SDKs); links Foundation/
+ CoreFoundation via official tbd stubs.  MRC weak refs downgraded to
+ unsafe_unretained (CLI lifecycle -- see class-dump/build.sh).
+
 Package: curl4
 Version: 8.16.0-1
 Architecture: iphoneos-arm

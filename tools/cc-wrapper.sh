@@ -66,6 +66,7 @@ while [ $# -gt 0 ]; do
     -pie) LDARGS+=("-pie") ;;
     -rdynamic) ;;   # GNU: export all; darwin controls exports differently
     -L*) LDARGS+=("$1") ;;
+    -F*) CFLAGS+=("$1"); LDARGS+=("$1") ;;     # 框架路径双投递：前端找头 + ld64 找 tbd（2026-11-14 class-dump 首次需要）
     -lSystem|-lc|-lm|-lpthread|-lutil|-lresolv|-ldl|-lrt|-lintl|\
 -lpanel|-lform|-ltinfo|-lncurses|-lncursesw|-lz|-latomic|-lgcc_s|-lgcc)
         ;;                                     # all inside libSystem on Darwin

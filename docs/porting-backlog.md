@@ -30,16 +30,20 @@
   pool 的 tor_0.4.8.14.orig.tar.gz（dist.torproject.org 与 GitHub 镜像
   均不可用/只有 alpha tag）。
 
-## 挡板（有明确破局点，待下批次）
+## 已上线（2026-11-14 深夜批次补完）
 
-- **class-dump**：76 个 ObjC 源全部依赖 pch 里的 `<Foundation/Foundation.h>`，
-  而本工具链从未有过 iOS SDK 头（设备不带头文件，sysroot 也没有）——
-  编译期就挡住，与 Mach-O 解析能力无关。
-  **破局点（用户 2026-11-14 指出）**：github.com/xybp888/iOS-SDKs 收录
-  **iPhoneOS10.3.sdk**（与设备精确同版本！），Foundation 头 + 官方全量
-  tbd 符号表可一并解决 class-dump 编译与审计白名单精度；长期看还是
-  手写 sysroot 头（NULL 缺口/getopt 签名/net 头拼装）的官方替代参考。
-  待做：sparse clone 只拉 iPhoneOS10.3.sdk 子目录（文件量大，后台进行）。
+- **class-dump4 3.5.2-1**（nygard fork 2c82b4f）：**用户指出的
+  xybp888/iOS-SDKs 破局兑现**——真实 iPhoneOS10.3.sdk（与设备精确同版本）
+  的 Foundation/CoreFoundation/ObjC 头 + 官方全量 tbd（178 个 usr/lib
+  + system 子库）入审计白名单。设备验收：宿主编一个 ObjC 测试程序
+  （CDPTestWidget）部署后 class-dump 现场解剖出类/ivar/属性/方法全表。
+  构建要点（`class-dump/build.sh` 注释全记录）：SDK 头世界一致性
+  （-isystem SDK/usr/include 优先 + -F 双投递——cc-wrapper 补了 -F 通道）、
+  MRC 的 __weak/weak 属性被 clang 词法层直认（宏无效，必须字面量 sed，
+  且**弱引用大多住在 .h 里**——只扫 .m 会漏）、mach-o 平台常量 shim
+  （10.3 SDK 早于 LC_BUILD_VERSION）、NeXT 时代 libc.h 摘除。
+
+## 挡板（无）
 
 ## 已立项待开工（用户 2026-11-14 拍板"先记录"）
 
