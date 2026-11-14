@@ -73,6 +73,10 @@ _dlsym
 _dn_expand
 _dup
 _dup2
+__dyld_get_image_header
+__dyld_get_image_name
+__dyld_get_image_vmaddr_slide
+__dyld_image_count
 dyld_stub_binder
 _endgrent
 _endpwent
