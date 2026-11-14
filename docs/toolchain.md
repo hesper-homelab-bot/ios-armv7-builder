@@ -359,3 +359,30 @@ typedef char _assert_tstate[(offsetof(struct xtcpcb_e, tp.t_state) == 244) - 1];
 信号 → 动作：设备 `dpkg -i` 报 unknown compression → `ar t 包.deb` 看成员
 后缀，非 .gz 即在 make-deb.sh 钉 `-Zgzip` 重建。另：GitHub Release
 `apps-20261113` 里的 netstat4 是 zst 版装不上，需换传 gz 版。
+
+## 15. configure 交叉移植四板斧（2026-11-14，rsync/less 沉淀）
+
+1. **`ac_cv_func_*` 恒真陷阱**：cc-wrapper 链接带 `-undefined dynamic_lookup`，
+   autoconf 的"自己声明 `char fn()` 再链接"存在性探针**永远成功**——设备
+   根本没有的 glibc-ism（mallinfo2）也会被判 yes，然后死于编译期
+   incomplete type 或运行期 dyld 缺符号。对策：显式压掉已知 glibc-ism
+   （rsync 压了 mallinfo/mallinfo2/setattrlist/getattrlist/attropen/
+   chflags/lchmod/mknod/linkat/acl_get_file/lseek64/open64），然后
+   **`tools/check-undefined.sh` 门禁兜底**（它就是为这坑生的）；真有但
+   tbd 白名单没收的符号走 `tools/probe-symbols.sh` 设备实测 →
+   追加 `tools/sysroot/device-exports/`。
+2. **注释禁入续行链**：`VAR=x \` 下一行以 `#` 开头 = `#` 连同行尾反斜杠
+   一起进注释，续行断裂，**整串 env 覆盖静默失联**（rsync 一天栽两次）。
+   规则：注释全部放赋值块上方；configure 之后**断言覆盖已生效**
+   （grep config.h 里关键 define 的存在/不存在，不符即 FATAL）。
+3. **手写 sysroot 的头是精简版，探针假阴性要手动复现**：sys/time.h 只有
+   11 行、不提供 NULL → gettimeofday(&tv,NULL) 探针（只 include
+   sys/time.h）假阴性；sys/xattr.h 是 Linux 4 参签名（macOS 6 参代码
+   编不过）；无 sys/attr.h（lsof 早就绕过）。信号：探针结论与平台常识
+   矛盾 → 手动复现探针看真实报错，别信结论；能喂缓存变量的喂真相，
+   系统性缺口记 backlog（sys/attr.h、xattr.h 达尔文化）。
+4. **git 树 ≠ 完整构建源**：rsync/less 的 git 树都缺生成物（rsync 的
+   configure 探针在 configure.sh；less 的 funcs.h/help.c/less.hlp 只在
+   release tarball 里）。信号：`No rule to make target` / 缺 .c →
+   换官方 release tarball 当构建源（less-668.tar.gz 一把全齐）。
+   tarball 下载后先 `tar -t` 验真（sourceforge/Debian 直链给过 HTML 壳）。

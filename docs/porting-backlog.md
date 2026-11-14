@@ -11,14 +11,17 @@
 设备现有 18+ 包（kit 清单见 `repo/pool` 与 AGENTS.md 索引各专项文档）。
 2026-11-14：netstat4 重建（gzip 修复）、p7zip17 上线。
 
-## 进行中（2026-11-14 批次）
+## 已上线（2026-11-14 批次，T1 完成）
 
-- **rsync**：部署刚需（现在全靠 scp）。上游 3.3.x，popt/zlib 源内自带，
-  configure 交叉需处理探针缓存。
-- **whois**：rfc1036/whois，单目录小项目，零依赖。
-- **less**：curses 头已随 vim 进 sysroot；链接走 vim 先例
-  （`$HOME/ios-tool/device-libs/libncursesw.5.dylib`，cc-wrapper 会吞
-  `-lncursesw` 所以必须显式给 dylib）。
+- **rsync4 3.3.0-1**：增量同步设备验收 291B/2817×（改 1 加 1 只传增量）。
+  过 ssh 用 `--rsync-path=/var/mobile/tools/bin/rsync`（非登录 shell PATH
+  不含 tools/bin）。构建踩坑全记录见 `rsync/build.sh` 注释 +
+  `toolchain.md` §15（dynamic_lookup 恒真探针、ac_cv 压制清单、
+  configure 后断言）。
+- **whois4 5.6.6-1**：零 override 零补丁（config.h 自带 __APPLE__ 分支，
+  数据列表编译期进头文件）；设备实弹查询验证。
+- **less4 668-1**：ncurses 走 vim 先例（设备 libncursesw.5.dylib 显式
+  上链接行）；release tarball 补齐 git 树缺的生成物；设备翻页冒烟过。
 
 ## 已立项待开工（用户 2026-11-14 拍板"先记录"）
 
