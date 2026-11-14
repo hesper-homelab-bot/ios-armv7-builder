@@ -105,6 +105,22 @@ Description: jq 1.7.1 for armv7 iOS 10+ (oniguruma regex, verified)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: jq 1.7
 
+Package: less4
+Version: 668-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/l/less4/less4_668-1_iphoneos-arm.deb
+Size: 114974
+MD5sum: a5bbf21a9388d385085af89323f5fdab
+SHA1: acd27d1d72b04c71699c96bcc8c16a6abe2c569f
+SHA256: 00281599602a01eae8663097ee68c9ad4c2ae40e68cbf1325e422153c55ea044
+Section: utils
+Priority: optional
+Description: less v668 for iOS 10.3.3 armv7
+ Terminal pager.  Links the device's own libncursesw.5.dylib; terminfo from
+ /usr/share/terminfo.  Built from the official less-668 release tarball
+ (greenwoodsoftware.com).
+
 Package: lsof
 Version: 4.99.7-1
 Architecture: iphoneos-arm
