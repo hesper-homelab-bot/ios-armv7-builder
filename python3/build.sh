@@ -23,6 +23,12 @@ PYSRC="${PYTHON_SRC:-$HOME/scratch/python3/src}"
 SDK="${IOS_SDK:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
 OSSL="${OSSL_PREFIX:-$HOME/ios-tool/openssl-src/openssl-4.0.3}"
 ZLIB_STATIC="${ZLIB_STATIC:-$HOME/ios-tool/build-ios/install/lib/libz.a}"
+# sqlite3: the device's /usr/lib/libsqlite3.0.dylib is a dangling symlink and
+# provides none of the symbols (_sqlite3_* all rejected by dyld -- verified
+# 2026-11-16 with tools/probe-symbols.sh).  Link the static lib built for this
+# device instead, and use its own headers (3.54.1) rather than the SDK's 3.16.0
+# so header and library agree.
+SQLITE_PREFIX="${SQLITE_PREFIX:-$HOME/ios-tool/sqlite-src/sqlite-autoconf-3540100}"
 COMPAT_STATIC="$root/sysroot-overlay/usr/lib/libios-compat.a"
 BUILDPY="${BUILD_PYTHON:-/usr/bin/python3.14}"
 
@@ -34,6 +40,7 @@ BUILDPY="${BUILD_PYTHON:-/usr/bin/python3.14}"
 [ -x "$BUILDPY" ] || { echo "missing host $BUILDPY (need 3.14 for build-python)" >&2; exit 1; }
 [ -f "$SDK/usr/include/uuid/uuid.h" ] || { echo "missing SDK under $SDK" >&2; exit 1; }
 [ -f "$ZLIB_STATIC" ] || { echo "missing $ZLIB_STATIC" >&2; exit 1; }
+[ -f "$SQLITE_PREFIX/libsqlite3.a" ] || { echo "missing $SQLITE_PREFIX/libsqlite3.a" >&2; exit 1; }
 [ -f "$COMPAT_STATIC" ] || { echo "missing $COMPAT_STATIC" >&2; exit 1; }
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$SDK}"
@@ -77,8 +84,9 @@ struct sf_hdtr {
 int sendfile(int, int, off_t, off_t *, struct sf_hdtr *, int);
 #endif /* PY_IOS_SHIM_H */
 EOF
-CPPFLAGS="-include $build/pygetentropy_shim.h"
-export CPPFLAGS
+CPPFLAGS="-include $build/pygetentropy_shim.h -I$SQLITE_PREFIX"
+LDFLAGS="-L$SQLITE_PREFIX"
+export CPPFLAGS LDFLAGS
 
 CC="$CC" \
 AR="$AR" RANLIB="$RANLIB" READELF=llvm-readelf-21 \
@@ -90,20 +98,30 @@ AR="$AR" RANLIB="$RANLIB" READELF=llvm-readelf-21 \
 	--disable-shared \
 	--disable-test-modules \
 	--prefix=/var/mobile/tools/python3 \
+	CPPFLAGS="-include $build/pygetentropy_shim.h -I$SQLITE_PREFIX" \
+	LIBS="$SQLITE_PREFIX/libsqlite3.a" \
 	ac_cv_file__dev_ptmx=yes \
 	ac_cv_file__dev_ptc=no \
 	ac_cv_buggy_getaddrinfo=no \
 	$(for sym in $PY_SUPPRESS_FUNCS; do echo "ac_cv_func_$sym=no"; done) \
 	ac_cv_lib_rt_clock_nanosleep=no \
 	ac_cv_lib_rt_clock_settime=no \
+	ac_cv_header_sqlite3_h=yes \
+	$(for fn in sqlite3_open sqlite3_bind_double sqlite3_column_decltype \
+	           sqlite3_column_double sqlite3_complete sqlite3_progress_handler \
+	           sqlite3_result_double sqlite3_set_authorizer sqlite3_trace_v2 \
+	           sqlite3_trace sqlite3_value_double sqlite3_load_extension \
+	           sqlite3_serialize sqlite3_close; do
+	      echo "ac_cv_lib_sqlite3_$fn=yes"
+	  done) \
 	py_cv_module__lzma=n/a \
 	py_cv_module__bz2=n/a \
 	py_cv_module__dbm=n/a \
 	py_cv_module_nis=n/a \
-	py_cv_module__scproxy=n/a py_cv_module_readline=n/a \
-	py_cv_module__curses=n/a \
-	py_cv_module__curses_panel=n/a py_cv_module__ctypes=n/a py_cv_module__ctypes_test=n/a \
+	py_cv_module_readline=n/a \
 	py_cv_module__scproxy=n/a \
+	py_cv_module__curses=n/a \
+	py_cv_module__curses_panel=n/a \
 	py_cv_module__ctypes=n/a \
 	py_cv_module__ctypes_test=n/a
 
@@ -139,9 +157,58 @@ echo "configure OK"
 # #error "unknown architecture"，CONFIG_32 从未定义（2026-11-15 实录）。
 # 命令行覆盖为显式 32 位 ANSI 配置。
 MPDEC_CFLAGS="-I$PYSRC/Modules/_decimal/libmpdec -DCONFIG_32=1 -DANSI=1"
+
+# sqlite3_progress_handler stub: our static libsqlite3.a was built with
+# SQLITE_OMIT_PROGRESS_CALLBACK, but _sqlite3 requires the symbol at link
+# time (and -undefined dynamic_lookup would otherwise leave it dangling,
+# failing only at dlopen on the device).  (2026-11-16)
+# --- ssl compatibility stubs (merged into a single object) ---------------
+# (a) OpenSSL 4.0 removed SSLv3 and the TLSv1/TLSv1.1/TLSv1.2 method
+#     constructors, but CPython's _ssl.c still takes their addresses; return
+#     TLS_method() so legacy PROTOCOL_* constants behave like PROTOCOL_TLS.
+# (b) OPENSSL_armcap_P: our libcrypto.a is built with `no-asm`, which makes
+#     OPENSSL_cpuid_setup() an empty function and leaves the capability word
+#     undefined at dlopen time ("Symbol not found: _OPENSSL_armcap_P").
+#     Defining it here satisfies the reference.
+#
+# KNOWN LIMITATION (2026-11-16): even with the capability word set,
+# ssl.SSLContext() still crashes (PC=0x100 inside OPENSSL_init_crypto).
+# `import ssl` and ssl.OPENSSL_VERSION work.  Fixing this needs libcrypto
+# rebuilt WITH assembly, which is currently blocked: the ARM perlasm output
+# uses `.word OPENSSL_armcap_P - .Llocal` (PIC style) that clang's integrated
+# assembler rejects under our -undefined dynamic_lookup link model.
+cat > ssl_compat_stub.c <<'EOF'
+typedef struct ssl_method_st SSL_METHOD;
+extern const SSL_METHOD *TLS_method(void);
+const SSL_METHOD *TLSv1_method(void)   { return TLS_method(); }
+const SSL_METHOD *TLSv1_1_method(void) { return TLS_method(); }
+const SSL_METHOD *TLSv1_2_method(void) { return TLS_method(); }
+const SSL_METHOD *SSLv3_method(void)   { return 0; }
+unsigned int OPENSSL_armcap_P = (1u << 0);   /* ARMV7_NEON */
+EOF
+"$CC" -c -o ssl_compat_stub.o ssl_compat_stub.c
+
+cat > sq_progress_stub.c <<'EOF'
+struct sqlite3;
+typedef int (*sqlite3_progress_handler_fn)(void *);
+void sqlite3_progress_handler(struct sqlite3 *db, int n,
+                              sqlite3_progress_handler_fn handler, void *arg)
+{ (void)db; (void)n; (void)handler; (void)arg; }
+EOF
+"$CC" -c -o sq_progress_stub.o sq_progress_stub.c
+
+# Static libs must be named explicitly on the module link lines -- configure's
+# LIBS=/LDFLAGS= only affect its own probes, not the per-module link commands
+# (verified 2026-11-16: -lsqlite3 / -lssl left every symbol undefined).
+OSSL_LIB="$OSSL/lib"
+SQLITE_LIB="$SQLITE_PREFIX/libsqlite3.a"
+
 make -j"$(nproc)" \
 	MODULE__DECIMAL_CFLAGS="$MPDEC_CFLAGS" \
-	LIBMPDEC_CFLAGS="$MPDEC_CFLAGS \$(PY_STDMODULE_CFLAGS) \$(CCSHARED)"
+	LIBMPDEC_CFLAGS="$MPDEC_CFLAGS \$(PY_STDMODULE_CFLAGS) \$(CCSHARED)" \
+	MODULE__SQLITE3_LDFLAGS="$SQLITE_LIB sq_progress_stub.o" \
+	MODULE__SSL_LDFLAGS="-L$OSSL_LIB $OSSL_LIB/libssl.a $OSSL_LIB/libcrypto.a ssl_compat_stub.o $COMPAT_STATIC" \
+	MODULE__HASHLIB_LDFLAGS="$OSSL_LIB/libcrypto.a"
 
 echo "== built =="
 ls -l "$build/python"
