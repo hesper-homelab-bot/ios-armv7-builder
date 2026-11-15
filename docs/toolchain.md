@@ -416,5 +416,26 @@ export IOS_STUBDIR=$HOME/ios-tool        # 注意：仍是手写 stub 目录！
   随便插；configure 后断言兜底。
 - **金丝雀已过**：whois（Makefile 型，实弹查询）✓；rsync（configure+gnulib
   型，增量同步 245B/1618×）✓。两类型代表都干净，SDK 模式可用于新移植。
-- **默认切换待拍板**：已上线 24 包是 musl sysroot 产物；切默认需分批
-  重验或明确放弃旧产物可复现性。
+- **默认已拍板**（2026-11-15）：新移植一律 SDK 模式（AGENTS.md 工作规则
+  5）；已上线 24 包是 musl sysroot 产物，不重编，可复现性保留在 git。
+
+## 17. 设备 UUID 复测：SDK 头 availability ≠ 设备现实（2026-11-15）
+
+三路实测（探针源码 `~/scratch/uuid-probe/`，二进制部署三件套签名）：
+
+- **libSystem `uuid_*` API 全正常**：uuid_generate（连续 3 次互异 v4）、
+  generate_random、parse/unparse 往返 rc=0，root/mobile 双身份各过。
+- **内核 `gethostuuid()` 头标 `__IPHONE_NA`，设备符号却存在且可用**：
+  dlsym(RTLD_DEFAULT) 拿到、调用成功，返回稳定主机 UUID（两次一致）。
+  **结论：SDK 头的 availability 标注不是设备事实。** 以后遇到"头说
+  iOS 没有"的函数（`__IPHONE_NA` / `__OSX_AVAILABLE` 系），先 dlsym
+  复核符号在不在，再决定 shim/放弃，不要按头文件宣判。
+- **BigBoss `uuid` 1.6.0-2p 的 `/usr/bin/uuid` CLI 是死的**：dyld 解析
+  `libgcc_s.1.dylib` 经 libSystem.B 的 re-export 失败，Abort trap 6
+  （三次复现）。2008 年老包兼容性烂，与设备 UUID 体系无关。
+- **填补**：仓库第 25 包 `uuidgen`（e2fsprogs 1.47.2 misc/uuidgen.c，
+  SDK 模式首移植，`uuid/build.sh`）。默认/-r v4、-t v1 实弹验证通过；
+  `uuid_unparse` 大写输出是 e2fsprogs 上游行为。安装后注意：设备
+  登录 shell PATH 只有 `/usr/bin:/bin`，`/var/mobile/tools/bin` 下的
+  工具（含 uuidgen/node）日常要走绝对路径或自行 alias——既有环境
+  现状，非本包问题。
