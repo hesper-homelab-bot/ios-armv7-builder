@@ -6,17 +6,17 @@ Codename: stable
 Architectures: iphoneos-arm
 Components: main
 Description: Cross-compiled tools for armv7 iOS 10.x - built on Linux, no Xcode
-Date: Sun, 15 Nov 2026 20:40:01 -0000
+Date: Sun, 15 Nov 2026 22:23:43 -0000
 
 MD5Sum:
- 2fd56d24e1c3f0b63b6439d01ee58353    26429 main/binary-iphoneos-arm/Packages
- 30262ddb866065ebb05056ba0bc7e39b     9830 main/binary-iphoneos-arm/Packages.gz
- 1ad9e02bfa5d235fbc2c57c14cbe8cf1     9233 main/binary-iphoneos-arm/Packages.bz2
+ 855c2193f1950858ae928d563cb7bdc3    26429 main/binary-iphoneos-arm/Packages
+ af6e4a4f7799332b1e959f5f7d5abff4     9830 main/binary-iphoneos-arm/Packages.gz
+ fe183b7b66bebaef63cd4d78020a2eba     9225 main/binary-iphoneos-arm/Packages.bz2
 SHA1:
- 8f8e856be36f75044043e786f569b8fba7210264    26429 main/binary-iphoneos-arm/Packages
- bc215b0358a94784496047449c8b21745b1ba43f     9830 main/binary-iphoneos-arm/Packages.gz
- c55b00e1501cf6c5597f3081a1d987b29f9483bc     9233 main/binary-iphoneos-arm/Packages.bz2
+ 82ab43fe5a816e78d2f16692814ed6d69f5c4104    26429 main/binary-iphoneos-arm/Packages
+ 3e1f89b1e9c181453eaed3834effd576bd392cf2     9830 main/binary-iphoneos-arm/Packages.gz
+ 3c40f315a25ef05461a230f275ebb0deeef84f97     9225 main/binary-iphoneos-arm/Packages.bz2
 SHA256:
- 13faf6a179e29a5137131805e6546bc56cd7294c0df17733ef207e982ddfe0aa    26429 main/binary-iphoneos-arm/Packages
- 67cbdaca94246abe2cef4e46e997234f68e77f119d56eb279bcdcf4a4c876839     9830 main/binary-iphoneos-arm/Packages.gz
- 46d120768fcf75faa301990cc3b72eba110fb7a60cf23c199f14b2ee5dbb891b     9233 main/binary-iphoneos-arm/Packages.bz2
+ b5561a6f703c37d31876d1b1cda70451deb1700be1cfb5fbdaa12be4f8873dbc    26429 main/binary-iphoneos-arm/Packages
+ 863b9e8c19a939a9e4d4a92895711aed873deadec24a9a1a6f2d174ce4d77b8c     9830 main/binary-iphoneos-arm/Packages.gz
+ 21397944f02ebbc6054c2052f389e2a6464b1ebe8cddc3e7ec974e63a227d619     9225 main/binary-iphoneos-arm/Packages.bz2

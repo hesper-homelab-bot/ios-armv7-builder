@@ -207,7 +207,7 @@ CPython 构建树里 `build/lib.*/xxx.so` 是指向 `../../Modules/xxx.so` 的
   stub（该库以 `SQLITE_OMIT_PROGRESS_CALLBACK` 编译）。
 - 设备验收：`sqlite_version 3.54.1`、建表/插入/查询/计数全通。
 
-### ⚠️ ssl：模块可加载，SSLContext 仍崩
+### ✅ ssl：完全可用（TLS 1.3 实测通过）
 
 **已解决**：
 - `SSLv3_method` / `TLSv1_method` / `TLSv1_1_method` / `TLSv1_2_method`
@@ -223,9 +223,15 @@ CPython 构建树里 `build/lib.*/xxx.so` 是指向 `../../Modules/xxx.so` 的
 - `atomic_compat.c` 的 `my_atomic_*` 手写自旋锁崩溃 → 重写为
   **pthread mutex** 实现。
 
-**未解决**：`ssl.SSLContext()` 在 `OPENSSL_init_crypto` 内跳到 0x100
-（EXC_BAD_ACCESS, KERN_INVALID_ADDRESS at 0x100）。`import ssl` 与
-`ssl.OPENSSL_VERSION` 正常。
+**最终根因（2026-11-16 攻克）**：`tools/` 里那对 `__atomic_*` 跳板
+（`atomic_alias_pic.s`，从 node 时代继承）用 **`bl`** 跳转到 `my_atomic_*`。
+`bl` 会覆盖 **LR**，被调函数 `bx lr` 后返回到跳板、LR 已损坏、参数寄存器也
+被改写——实测表现为 `my_atomic_load(size=1, dest=NULL)` 并立即
+SIGSEGV at 0x100。**改用尾调用 `b`** 后一切正常。
+
+修好后实测：`ssl.SSLContext()` ✓、17 个 cipher、
+**TLS 1.3 握手成功**（`TLS_AES_256_GCM_SHA384`）、
+真实 HTTPS GET `example.com` 返回 `HTTP/1.1 200 OK`。
 
 **根因方向**：libcrypto 以 `no-asm` 构建，`OPENSSL_armcap_P` 恒为 0
 （`__ARM_MAX_ARCH__ < 7` 分支），OpenSSL 4.0 在某些分派点仍按该字索引函数表。
@@ -240,3 +246,43 @@ subtraction expression"。需要非 PIC 形式的 perlasm 或双遍链接，留�
 `_hashlib` 提供完整加密散列（14 种算法，SHA256/HMAC 验证通过），
 `sqlite3` 提供数据库，**TLS 网络能力是唯一缺口**（需要 https 时暂用
 宿主或系统工具）。
+
+---
+
+## 最终验收（2026-11-16 06:23 deb）
+
+```
+CPython 3.13.18 on darwin
+math.pi      : 3.1415926536
+zlib         : 17 bytes for 1000B
+sha256       : 2cf24dba5fb0a30e26e83b2ac5b9e29e
+hmac         : b60090e3052297aeb5a080889ce2fc4b
+sqlite3      : 3.54.1        (建表/插入/查询 OK)
+ssl          : OpenSSL 4.0.3 29 Sep 2026   (17 ciphers)
+TLS          : TLSv1.3 TLS_AES_256_GCM_SHA384   ← 真实握手
+HTTPS        : HTTP/1.1 200 OK                  ← 真实请求
+ALL SYSTEMS GO
+```
+
+### OpenSSL 4.0.3 重编（带汇编，2026-11-16）
+
+为解开 ssl 的死结，把 libcrypto 从 `no-asm` 改为**带汇编 + `__ARM_MAX_ARCH__=7`**
+重编。perlasm 生成的 ARM 汇编用 `.word OPENSSL_armcap_P - .Llocal`（PIC 相对），
+clang 集成汇编器在 `-undefined dynamic_lookup` 下拒绝
+（"symbol can not be undefined in a subtraction expression"）；改成**绝对寻址**
+后汇编可通过，但 bundle 又拒绝绝对 text-reloc。
+
+**最终做法**：把 perlasm 里的 armcap 间接寻址整体替换成
+`mov rX,#1`（常量 ARMV7_NEON）——A6X 确实支持 NEON，且这消除了全部
+text-relocation。共改 8 个 `.pl`。同时：
+- 关闭 `OPENSSL_NO_BN_ASM_GF2m`（并从归档移除该 asm 成员）
+- `no-dso`（不建 provider 动态模块）
+- `atomic_compat.c` 重写：**`is_lock_free` 必须返回 true**
+  （`crypto/init.c:374` 以 `lock=NULL` 调用 `CRYPTO_atomic_load`，
+  只有 lock-free 分支会填充结果；返回 false 会让 `tmp` 未初始化）
+  且 8 字节原子拆成两个 32 位（设备 8 字节原子静默失败）
+- **`atomic_alias_pic.s` 用 `b` 而非 `bl`**（本节顶部所述，关键 bug）
+
+这些改动都在 `~/ios-tool/openssl-src/openssl-4.0.3/` 里，尚未回写到
+`openssl/build.sh`（该脚本仍是 musl sysroot 时代的 no-asm 版本），
+**下次重编 libcrypto 必须照此办理**——是 TODO。
