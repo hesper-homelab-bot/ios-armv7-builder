@@ -54,8 +54,9 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 - **iPhoneOS10.3.sdk 头整合**（结构性基建）：**阶段 1（共存验证）已完成**
   ——SDK 落位 `~/ios-tool/iPhoneOS10.3.sdk`，金丝雀 whois（Makefile 型）
   与 rsync（configure+gnulib 型）均以 SDK sysroot 重建并通过设备实弹
-  验收；用法与坑见 `toolchain.md` §16。**阶段 2（默认切换）待拍板**：
-  已上线 24 包为 musl sysroot 产物，切默认需分批重验。
+  验收；用法与坑见 `toolchain.md` §16。**阶段 2 已拍板（2026-11-15）**：
+  新移植默认走 SDK 模式（规则见仓库 AGENTS.md 工作规则 5）；存量 24 包
+  不重编。
 
 ## 待表态（用户未点头，不动）
 

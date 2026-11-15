@@ -387,7 +387,7 @@ typedef char _assert_tstate[(offsetof(struct xtcpcb_e, tp.t_state) == 244) - 1];
    换官方 release tarball 当构建源（less-668.tar.gz 一把全齐）。
    tarball 下载后先 `tar -t` 验真（sourceforge/Debian 直链给过 HTML 壳）。
 
-## 16. SDK sysroot 模式（2026-11-15 共存验证通过）
+## 16. SDK sysroot 模式（2026-11-15 共存验证通过；同日拍板：新移植默认走此模式）
 
 真 Apple SDK 已落位：`~/ios-tool/iPhoneOS10.3.sdk`（xybp888/iOS-SDKs 的
 iOS-SDKs release zip，与设备 iOS 10.3.3 精确同版本；157 头条目、178 个
