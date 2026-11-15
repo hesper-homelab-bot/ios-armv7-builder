@@ -471,3 +471,30 @@ configure 阶段即暴露一批工具链通用雷，全部修复并回写 cc-wra
   wav→aac 编码 ✓；aac 解码回路 ✓（字节数合理）；ffprobe 双产物
   元数据全对 ✓；链接审计 ffmpeg 288/288、ffprobe 283/283 符号
   全部 tbd 可解析 ✓。
+
+## 19. Apple armv7 的 8 字节原子操作不可信（2026-11-16，python3 血战结论）
+
+**症状**：写入后立刻读回是 0/垃圾；或单线程死锁（"自己等自己"）。
+
+**根因**：clang 对 Apple armv7 目标强制 `unsigned long long` / `double`
+**4 字节对齐**（Apple ABI 历史怪癖，Linux armv7 是 8）。于是 8 字节
+`__atomic_store_n` 编译成 `strexd`（独占存储），在 4 对齐的运行时地址上
+**静默失败**——不报错、不崩溃、就是没写进去。
+
+**关键陷阱**：`__attribute__((aligned(8)))` 加在**字段**上无效——编译器
+生成原子操作时按**类型的自然对齐**判断。
+
+**判别方法**（三步定位）：
+1. 编译期看警告：`-Watomic-alignment`（"expected alignment (8 bytes)
+   exceeds the actual alignment (4 bytes)"）
+2. 运行期：`__atomic_store_n` 后 `memcpy` 到字节数组打印原始字节。
+   **raw bytes 正确 + `__atomic_load_n` 读回 0 = 确诊**
+3. 隔离探针：4 字节原子 vs 8 字节原子各自 store→load 对比
+
+**修法**：把 8 字节原子拆成两个 4 字节原子 + 屏障。参考实现见
+`docs/python3.md` 与 `~/scratch/python3/src313/Include/cpython/pyatomic_gcc.h`
+的 `#if defined(__APPLE__) && defined(__arm__)` 分支。
+
+**历史呼应**：node 移植墙 #11（`___atomic_load_8` 是 no-op，用 `c8fixed.o`
+强制 `is_lock_free` 只认 ≤4 字节）——同一根因的第二次现身。**凡在
+armv7 Apple 上移植带锁/原子计数的软件，先检查这一条。**
