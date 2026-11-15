@@ -13,3 +13,6 @@ DEVICE.md
 # node port: large device-generated snapshot blobs are re-generable via
 # node/patches/snapshot/README.md procedure; keep only sources in git.
 node/patches/snapshot/embedded_S_v10.txt
+
+# uuid/build.sh 生成的 shim（每次重建）
+uuid/obj/

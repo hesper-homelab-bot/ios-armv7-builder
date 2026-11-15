@@ -8,9 +8,13 @@
 
 ## 已上线
 
-设备 kit 现有 **24 包**（清单见 `repo/pool` 与 AGENTS.md 索引各专项文档）。
+设备 kit 现有 **25 包**（清单见 `repo/pool` 与 AGENTS.md 索引各专项文档）。
 2026-11-14：netstat4 重建（gzip 修复）、p7zip17、rsync4、whois4、less4、
 make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
+2026-11-15：**uuidgen 1.47.2-1** 上线（e2fsprogs misc/uuidgen.c，SDK 模式
+拍板后首个新移植；BigBoss `uuid` CLI 在 iOS 10.3.3 上 dyld 必死，本包
+替代之——死因与 "SDK 头 availability ≠ 设备现实" 结论见
+`toolchain.md` §17）。
 
 ## 已上线（2026-11-14 批次，T1 完成）
 
@@ -71,6 +75,9 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 
 - **syslogcmdline**：实为 `syslogon`/`syslogoff` 两个开关包装，launchctl
   两行可替代，不值得移植（2026-11-14 验明）。
+- **BigBoss `uuid` 1.6.0-2p（ossp-uuid）**：设备存量包，CLI `/usr/bin/uuid`
+  在 iOS 10.3.3 上 dyld 解析 libgcc_s re-export 失败，Abort trap 6
+  （2026-11-15 三次复现）。不修不依赖，由自研 `uuidgen` 包替代。
 - **msmtp / vsftpd**：用户 2026-11-15 裁掉（不做）。
 - nano / dialog、adv-cmds 家族：用户裁掉（nano/dialog 不需要；adv-cmds
   设备基础 userland 已有）。
