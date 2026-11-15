@@ -193,3 +193,50 @@ CPython 构建树里 `build/lib.*/xxx.so` 是指向 `../../Modules/xxx.so` 的
 扩展 `.so` 在设备上**必须 ldid 签名**才能被 `dlopen()` 接受
 （与可执行文件同理）；`make-deb.sh` 已对每个 `.so` 执行 `ldid -S`，
 `postinst` 再校验一遍。
+
+---
+
+## 后续修复（2026-11-16 续）：sqlite3 上线、ssl 部分可用
+
+### ✅ sqlite3 3.54.1 完全可用
+
+- 设备 `/usr/lib/libsqlite3.0.dylib` 是**悬空符号链接**，13 个 `_sqlite3_*` 符号
+  全部被 dyld 拒绝（`tools/probe-symbols.sh` 实测）→ 不能链系统库。
+- 改为静态链接 `~/ios-tool/sqlite-src/sqlite-autoconf-3540100/libsqlite3.a`
+  （armv7，含 3.54.1 头文件），并把 `sqlite3_progress_handler` 补为 no-op
+  stub（该库以 `SQLITE_OMIT_PROGRESS_CALLBACK` 编译）。
+- 设备验收：`sqlite_version 3.54.1`、建表/插入/查询/计数全通。
+
+### ⚠️ ssl：模块可加载，SSLContext 仍崩
+
+**已解决**：
+- `SSLv3_method` / `TLSv1_method` / `TLSv1_1_method` / `TLSv1_2_method`
+  —— OpenSSL 4.0 已移除这些构造函数，CPython `_ssl.c` 仍取地址。用 stub
+  返回 `TLS_method()`，`SSLv3_method` 返回 NULL（该协议已彻底移除）。
+- `recvmmsg` —— 复用 `sysroot-overlay/usr/lib/libios-compat.a`（tor 时代产物）。
+- `OPENSSL_armcap_P` —— no-asm 构建下 `OPENSSL_cpuid_setup` 是空函数
+  （反汇编实证：push/mov/pop），符号在 dlopen 时找不到；在 `_ssl` 内定义它。
+- **OpenSSL 归档里的 `atomic_alias.o` 是 ARM 模式绝对跳转**
+  （`ldr pc, [pc, #-4]` + `.word`），在 Mach-O bundle 里触发
+  "illegal text-relocation"。改用 **Thumb PIC 跳板**（`bl` 相对调用）后，
+  `_ssl`/`_hashlib` 成功链接。
+- `atomic_compat.c` 的 `my_atomic_*` 手写自旋锁崩溃 → 重写为
+  **pthread mutex** 实现。
+
+**未解决**：`ssl.SSLContext()` 在 `OPENSSL_init_crypto` 内跳到 0x100
+（EXC_BAD_ACCESS, KERN_INVALID_ADDRESS at 0x100）。`import ssl` 与
+`ssl.OPENSSL_VERSION` 正常。
+
+**根因方向**：libcrypto 以 `no-asm` 构建，`OPENSSL_armcap_P` 恒为 0
+（`__ARM_MAX_ARCH__ < 7` 分支），OpenSSL 4.0 在某些分派点仍按该字索引函数表。
+
+**为何重编带 asm 受阻**：ARM perlasm 产物用
+`.word OPENSSL_armcap_P - .Llocal`（PIC 相对写法），clang 集成汇编器在
+`-undefined dynamic_lookup` 链接模型下报 "symbol can not be undefined in a
+subtraction expression"。需要非 PIC 形式的 perlasm 或双遍链接，留待后续。
+
+### 结论
+
+`_hashlib` 提供完整加密散列（14 种算法，SHA256/HMAC 验证通过），
+`sqlite3` 提供数据库，**TLS 网络能力是唯一缺口**（需要 https 时暂用
+宿主或系统工具）。
