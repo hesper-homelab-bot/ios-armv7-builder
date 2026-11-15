@@ -64,21 +64,26 @@ make distclean >/dev/null 2>&1 || true
 #                                NULL) probe fails on NULL and misreports
 #                                the 2-arg signature.  On this platform it
 #                                IS 2-arg (sysroot NULL gap -- backlog).
-ac_cv_func_mallinfo=no \
-ac_cv_func_mallinfo2=no \
-ac_cv_func_setattrlist=no \
-ac_cv_func_getattrlist=no \
-ac_cv_func_attropen=no \
-ac_cv_func_chflags=no \
-ac_cv_func_lchmod=no \
-ac_cv_func_mknod=no \
-ac_cv_func_linkat=no \
-ac_cv_func_lseek64=no \
-ac_cv_func_open64=no \
-ac_cv_func_acl_get_file=no \
-rsync_cv_HAVE_GETTIMEOFDAY_TZ=yes \
-CC="$root/tools/cc-wrapper.sh" \
-CFLAGS="-O2" \
+# 全部 override 用独立 export 行（tor/build.sh 同款结构性规避：注释吞
+# 续行反斜杠的事故在本文件发生两次、tor 一次——export 行自包含无链）。
+export ac_cv_func_mallinfo=no
+export ac_cv_func_mallinfo2=no
+export ac_cv_func_setattrlist=no
+# SDK 头世界新增（2026-11-15）：utimensat 在 iOS 10 的 Darwin 上不存在，
+# SDK 头也不声明——恒真探针放进来必炸；utimes 回退。
+export ac_cv_func_utimensat=no
+export ac_cv_func_getattrlist=no
+export ac_cv_func_attropen=no
+export ac_cv_func_chflags=no
+export ac_cv_func_lchmod=no
+export ac_cv_func_mknod=no
+export ac_cv_func_linkat=no
+export ac_cv_func_lseek64=no
+export ac_cv_func_open64=no
+export ac_cv_func_acl_get_file=no
+export rsync_cv_HAVE_GETTIMEOFDAY_TZ=yes
+export CC="$root/tools/cc-wrapper.sh"
+export CFLAGS="-O2"
 ./configure \
     --host=armv7-apple-darwin \
     --prefix=/var/mobile/tools/rsync \

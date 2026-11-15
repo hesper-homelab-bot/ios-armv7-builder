@@ -386,3 +386,35 @@ typedef char _assert_tstate[(offsetof(struct xtcpcb_e, tp.t_state) == 244) - 1];
    release tarball 里）。信号：`No rule to make target` / 缺 .c →
    换官方 release tarball 当构建源（less-668.tar.gz 一把全齐）。
    tarball 下载后先 `tar -t` 验真（sourceforge/Debian 直链给过 HTML 壳）。
+
+## 16. SDK sysroot 模式（2026-11-15 共存验证通过）
+
+真 Apple SDK 已落位：`~/ios-tool/iPhoneOS10.3.sdk`（xybp888/iOS-SDKs 的
+iOS-SDKs release zip，与设备 iOS 10.3.3 精确同版本；157 头条目、178 个
+usr/lib 官方 tbd、91 框架）。
+
+**用法**（与 musl sysroot 共存，不切换默认）：
+
+```sh
+export IOS_SYSROOT=$HOME/ios-tool/iPhoneOS10.3.sdk
+export IOS_STUBDIR=$HOME/ios-tool        # 注意：仍是手写 stub 目录！
+```
+
+- **头**：SDK 的 usr/include 全量 Apple 头（NULL/getopt/net 系缺口一次性
+  消失；libc 头即设备真身）。
+- **`-lSystem` 锚点仍用手写 libSystem.tbd**：SDK 的 libSystem.tbd 是
+  re-export 壳，re-export 指向设备绝对路径 /usr/lib/system/*.dylib——
+  cctools ld64 会去宿主机追这些路径然后 `file not found` 退出
+  （连 `cc-wrapper --version` 探针都炸，configure 直接"cannot create
+  executables"）。手写 tbd 无 re-exports，`-lSystem` 锚定后其余符号走
+  dynamic_lookup 由设备绑定，审计白名单（sdk-*.tbd 已入
+  `~/ios-tool/`）确认设备真实性。
+- **ac_cv 压制清单仍需要**：dynamic_lookup 恒真探针是编译器侧行为，
+  换头不解决；且 SDK 头世界有新差异（utimensat 在 iOS 10 不存在）。
+- **override 一律用独立 export 行**：注释吞续行反斜杠事故四个文件里
+  发生过五次（make×2、tor×1、rsync×2）——export 行自包含无链，注释
+  随便插；configure 后断言兜底。
+- **金丝雀已过**：whois（Makefile 型，实弹查询）✓；rsync（configure+gnulib
+  型，增量同步 245B/1618×）✓。两类型代表都干净，SDK 模式可用于新移植。
+- **默认切换待拍板**：已上线 24 包是 musl sysroot 产物；切默认需分批
+  重验或明确放弃旧产物可复现性。

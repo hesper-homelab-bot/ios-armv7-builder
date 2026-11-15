@@ -49,11 +49,17 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 （原"已立项待开工"的 tor / class-dump / make 已于 2026-11-14 深夜全部
 完工上线，条目并入上方已上线节；可行性笔记在各 build.sh 注释。）
 
+## 进行中（2026-11-15 立项）
+
+- **iPhoneOS10.3.sdk 头整合**（结构性基建）：**阶段 1（共存验证）已完成**
+  ——SDK 落位 `~/ios-tool/iPhoneOS10.3.sdk`，金丝雀 whois（Makefile 型）
+  与 rsync（configure+gnulib 型）均以 SDK sysroot 重建并通过设备实弹
+  验收；用法与坑见 `toolchain.md` §16。**阶段 2（默认切换）待拍板**：
+  已上线 24 包为 musl sysroot 产物，切默认需分批重验。
+
 ## 待表态（用户未点头，不动）
 
-- **msmtp**：SMTP 客户端。deps libgsasl/libidn/openssl——openssl4 已有，
-  裁掉 SASL 可省俩依赖。
-- **vsftpd**：FTP 服务端，**零依赖**，最容易移植。
+（暂无）
 
 ## 远期（难度高，最后）
 
@@ -64,6 +70,7 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 
 - **syslogcmdline**：实为 `syslogon`/`syslogoff` 两个开关包装，launchctl
   两行可替代，不值得移植（2026-11-14 验明）。
+- **msmtp / vsftpd**：用户 2026-11-15 裁掉（不做）。
 - nano / dialog、adv-cmds 家族：用户裁掉（nano/dialog 不需要；adv-cmds
   设备基础 userland 已有）。
 - 全部 GUI/游戏/中文商业包（触动精灵/天下游/Filza…）、Theos 与
