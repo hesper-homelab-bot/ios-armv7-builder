@@ -405,6 +405,24 @@ Description: p7zip 17.05 (7z/7za) for iOS 10.3.3 armv7
  PATHs via /var/mobile/tools/bin symlinks; the old package's dpkg-owned
  /usr/bin/7z and /usr/bin/7za are left untouched.
 
+Package: python3
+Version: 3.13.18-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/p/python3/python3_3.13.18-1_iphoneos-arm.deb
+Size: 14839666
+MD5sum: 5eb0fd473e6bd94e997b62557d292454
+SHA1: 774c16a4ab8841ebb3d836a5a676ec44f4ec0221
+SHA256: 4aaad103719b6e392fd75f88a09cfc2430aca8d4201a4882f5423cb6dcde0b25
+Section: Development
+Priority: optional
+Description: CPython 3.13.18 for iOS 10.3.3 armv7
+ Full CPython built against the real iPhoneOS10.3.sdk, cross-compiled on
+ Linux with cctools ld64.  Includes the standard library and 51 C extension
+ modules (math, zlib, hashlib, sqlite3, _socket, ...).  NOTES: ssl/hashlib
+ OpenSSL-backed modules are absent (OpenSSL static archive has armv7
+ text-relocation issues in bundles); set PYTHONHOME if relocating.
+
 Package: rsync4
 Version: 3.3.0-1
 Architecture: iphoneos-arm

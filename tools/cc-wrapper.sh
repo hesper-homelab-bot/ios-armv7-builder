@@ -47,7 +47,7 @@ if [ $mode_dep = 1 ]; then
 fi
 
 FRAMEWORKS=()
-OUTPUT=a.out; HAS_OUTPUT=0
+OUTPUT=a.out; HAS_OUTPUT=0; IS_BUNDLE=0
 SRCS=(); OBJS=(); CFLAGS=(); LDARGS=()
 
 TGT=(-target armv7-apple-ios10.3 -isysroot "$SYSROOT")
@@ -62,6 +62,12 @@ while [ $# -gt 0 ]; do
     *.o) [ $mode_compile -eq 1 ] && CFLAGS+=("$1") || OBJS+=("$1") ;;
     *.a|*.dylib|*.tbd) OBJS+=("$1") ;;
     -shared|-dynamiclib) LDARGS+=("-dylib") ;;
+    -bundle) LDARGS+=("-bundle"); IS_BUNDLE=1 ;;   # Python C extensions are
+                                                   # Mach-O bundles: they must
+                                                   # NOT get -e _main
+                                                   # (2026-11-16: extensions
+                                                   # failed to dlopen with
+                                                   # "Symbol not found: _main")
     -static) ;;
     -pie) LDARGS+=("-pie") ;;
     -rdynamic) ;;   # GNU: export all; darwin controls exports differently
@@ -145,6 +151,12 @@ COMPAT_ARCHIVE="$SYSROOT/../../sysroot-overlay/usr/lib/libios-compat.a"
 COMPAT=()
 [ -f "$COMPAT_ARCHIVE" ] && COMPAT+=("$COMPAT_ARCHIVE")
 
+# A bundle/dylib has no entry point; asking ld64 for -e _main makes it
+# resolve _main from the flat namespace, so dlopen() fails with
+# "Symbol not found: _main".  Only executables get -e _main.
+ENTRY=(-e _main)
+if [ "$IS_BUNDLE" = 1 ]; then ENTRY=(); fi
+
 exec "$LD64" -arch armv7 -platform_version ios 10.3 10.3 \
   -undefined dynamic_lookup -L"$STUBDIR" -lSystem \
-  -e _main -o "$OUTPUT" "${OBJS[@]}" "${EXTRA[@]}" "${LDARGS[@]}" "${COMPAT[@]}"
+  "${ENTRY[@]}" -o "$OUTPUT" "${OBJS[@]}" "${EXTRA[@]}" "${LDARGS[@]}" "${COMPAT[@]}"
