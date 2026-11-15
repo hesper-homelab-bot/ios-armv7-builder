@@ -184,7 +184,10 @@ const SSL_METHOD *TLSv1_method(void)   { return TLS_method(); }
 const SSL_METHOD *TLSv1_1_method(void) { return TLS_method(); }
 const SSL_METHOD *TLSv1_2_method(void) { return TLS_method(); }
 const SSL_METHOD *SSLv3_method(void)   { return 0; }
-unsigned int OPENSSL_armcap_P = (1u << 0);   /* ARMV7_NEON */
+/* NOTE: OPENSSL_armcap_P is *not* defined here.  Since libcrypto was rebuilt
+   with assembly enabled (-D__ARM_MAX_ARCH__=7), crypto/armcap.c provides a
+   real OPENSSL_cpuid_setup and the symbol itself; defining it here would be a
+   duplicate symbol.  It was only needed for the old no-asm build. */
 EOF
 "$CC" -c -o ssl_compat_stub.o ssl_compat_stub.c
 

@@ -286,3 +286,52 @@ text-relocation。共改 8 个 `.pl`。同时：
 这些改动都在 `~/ios-tool/openssl-src/openssl-4.0.3/` 里，尚未回写到
 `openssl/build.sh`（该脚本仍是 musl sysroot 时代的 no-asm 版本），
 **下次重编 libcrypto 必须照此办理**——是 TODO。
+
+---
+
+# CPython 3.14.10 移植（2026-11-16，同日完成）
+
+**结论：3.13 趟出来的路让 3.14 一次到位。** 设备验收全通，
+含 TLS 1.3 真实握手与 HTTPS 请求。
+
+## 复用与差异
+
+| 项目 | 3.13.18 | 3.14.10 |
+|---|---|---|
+| 8 字节原子拆半 | 手工改 | **补丁脚本一键**（同一处 `pyatomic_gcc.h`） |
+| Apple SystemLog | `pylifecycle.c` 的 `USE_APPLE_SYSTEM_LOG` | **重构成 `initconfig.c` 的 `USE_SYSTEM_LOGGER_DEFAULT`**（有运行时 `-X use_system_logger` 开关，更干净） |
+| 64 位字段对齐 | 手工 | 补丁脚本（3.13 阶段已同步，3.14 unchanged） |
+| configure darwin 分支 | sed 两处 | **同样两处**（`*-apple-darwin*` 仍未进上游 case 表） |
+| build-python | 需自编宿主 3.13 | 宿主 `/usr/bin/python3.14` 直接满足 |
+| `_ssl` 符号冲突 | — | **新增**：asm 版 libcrypto 自带 `OPENSSL_armcap_P`，stub 里不能再定义 |
+
+## 设备验收（全新 deb 安装，mobile 身份）
+
+```
+Python  : 3.14.10
+math.pi : 3.14159265
+zlib    : 17 bytes / 1000B
+sha256  : 8f434346648f6b96df89
+sqlite  : 3.54.1        (建表/插入/查询)
+ssl     : OpenSSL 4.0.3
+TLS     : TLSv1.3 | TLS_AES_256_GCM_SHA384   ← 真实握手
+HTTPS   : HTTP/1.1 200 OK                    ← 真实请求
+53 个扩展全部 ldid 签名并导入成功
+```
+
+## 包
+
+- `python314_3.14.10-1_iphoneos-arm.deb`（19MB，仓库第 28 包）
+- 装到 `/var/mobile/tools/python314`，与 3.13 **共存**
+- `/var/mobile/tools/bin/python3.14` 符号链接
+- **注意**：configure 时的 prefix 是 `/var/mobile/tools/python3`，
+  与 3.14 的安装路径不同，运行需 `PYTHONHOME=/var/mobile/tools/python314`
+  （若要免除，重编时传 `--prefix=/var/mobile/tools/python314`）
+
+## 复用清单（下次移植新版 CPython）
+
+1. `python3/patches/patch-cpython-ios-armv7.py <srcdir>`
+2. `configure` / `configure.ac` 各补 `*-apple-darwin*` 分支（两处 case）
+3. `PYTHON_SRC=<srcdir> BUILD_PYTHON=<同 minor 宿主> ./python3/build.sh`
+4. 扩展在构建树里是符号链接 → 打包用 `tar -h` / `cp -L`
+5. 设备上二进制与每个 `.so` 都要 `ldid -S`
