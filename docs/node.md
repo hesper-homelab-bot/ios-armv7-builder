@@ -10,6 +10,13 @@
 > sysroot 正本修正 sysroot-overlay/usr/include/sys/event.h。
 > 唯一已知限制：设备不能执行 JIT 代码（内存模型固有），wrapper 强制
 > --jitless；no-jitless 崩溃为墙 #15（记录在案，不在目标内）。
+>
+> **jitless 的连锁边界（2026-11-15 实测确认）**：jitless = V8 无代码生成
+> = **WebAssembly 在 node4 中不存在**（`typeof WebAssembly === 'undefined'`，
+> 编译期 --expose_wasm 与 jitless 冲突被 V8 静默禁用）。凡依赖 WASM 的
+> 生态（Go js/wasm 产物、WASI 运行时等）在 iPad 上均不可用——tailcat
+> wasm 路线即死于此（2026-11-15：宿主编译+运行全通，iPad 端 node4 无
+> WebAssembly）。解锁唯一路径 = 过墙 #15 开 JIT，属立项级工程，暂不目标。
 
 
 > 工具链通用规则（env、归档、thumb、原子雷区、部署三件套、探针模板）见
