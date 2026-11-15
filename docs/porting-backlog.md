@@ -75,13 +75,21 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 
 ## 待表态（用户未点头，不动）
 
-- **node JIT（内核 patch 级）**：2026-11-15 完成用户态路线全灭实验
-  （entitlement×2 / RWX 直建 / vm_remap 双映射四路全 SIGBUS，证据链
-  `docs/node.md`）——唯一剩余路径 = tfp0 内核 patch（数周级 + 高风险）。
-  用户已表态先推进 python3，此项**挂起待内核级需求**再议。
+- **node JIT（内核 patch 级）**：**用户 2026-11-15 判死**（"有那精力不如
+  研究 Go 移植"）。用户态路线全灭实验证据链 `docs/node.md`（entitlement×2
+  / RWX 直建 / vm_remap 四路全 SIGBUS）。
+- **Go 最新版移植（1.27.x，darwin/arm32 复活）**：2026-11-15 立项侦察。
+  基建级：编译器后端（gc arm）健在（linux/arm 是 tier-1），缺的只是
+  darwin 薄层 6-8 文件（os/rt0/signal/sys_darwin_arm）零残留——从
+  darwin/arm64 的 libc 调用桩 × linux/arm 的 32 位 asm 拼装（Go 1.17+
+  darwin runtime 全走 libc 调用，转写工整）+ cmd/link 的 macho32 + 
+  buildcfg 合法组合表。源码在 `~/go-sdk/go1.27.2/src`（tarball 自带）。
+  预估 3-7 天级，风险点 = libc 调用约定细节（armv7 Darwin 的 struct
+  return/vfp）与 ucontext 字段。
 - **tailcat（Rust 复刻）**：用户 2026-11-15 裁掉（放弃 Rust，磁盘约束 +
   DERP/STUN/netstack 生态全空白需自写数周）。宿主侧 tailcat server +
-  跨机 ping 已验证（`~/scratch/tailcat/`）。
+  跨机 ping 已验证（`~/scratch/tailcat/`，server 已按用户指示关停，
+  宿主可直接装官方包）。
 
 ## 远期（难度高，最后）
 
