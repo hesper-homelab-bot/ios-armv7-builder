@@ -16,3 +16,6 @@ node/patches/snapshot/embedded_S_v10.txt
 
 # uuid/build.sh 生成的 shim（每次重建）
 uuid/obj/
+
+# ffmpeg build dir
+ffmpeg/obj/

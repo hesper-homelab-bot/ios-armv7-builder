@@ -64,6 +64,23 @@ Description: Dropbear SSH server and client for armv7 iOS 10+ (port 22)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Dropbear SSH 2026.94
 
+Package: ffmpeg
+Version: 9.0.2-1
+Architecture: iphoneos-arm
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/f/ffmpeg/ffmpeg_9.0.2-1_iphoneos-arm.deb
+Size: 19869858
+MD5sum: dcb251a73d7bc7df5cc48a2b0a34f3bb
+SHA1: ed09f3579234de17a0c1019566a177bd3700b5d3
+SHA256: 3c805a2f436739e1b86d6b39448fe93cc694e86c335839d8227f6f519190013c
+Section: Multimedia
+Priority: optional
+Description: FFmpeg 9.0.2 (static, full built-in codecs) for iOS 10.3.3 armv7
+ ffmpeg + ffprobe with all built-in encoders/decoders/muxers/demuxers/
+ filters; network enabled (https via static OpenSSL 4.0.3, zlib via
+ static 1.3.1).  SDK sysroot mode (real iPhoneOS10.3.sdk); ARM NEON asm
+ via gas-preprocessor.  Successor of BigBoss com.nin9tyfour.ffmpeg 2.6.1.
+
 Package: git
 Version: 2.51.2-1
 Architecture: iphoneos-arm

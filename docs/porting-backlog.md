@@ -8,13 +8,15 @@
 
 ## 已上线
 
-设备 kit 现有 **25 包**（清单见 `repo/pool` 与 AGENTS.md 索引各专项文档）。
+设备 kit 现有 **26 包**（清单见 `repo/pool` 与 AGENTS.md 索引各专项文档）。
 2026-11-14：netstat4 重建（gzip 修复）、p7zip17、rsync4、whois4、less4、
 make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 2026-11-15：**uuidgen 1.47.2-1** 上线（e2fsprogs misc/uuidgen.c，SDK 模式
 拍板后首个新移植；BigBoss `uuid` CLI 在 iOS 10.3.3 上 dyld 必死，本包
 替代之——死因与 "SDK 头 availability ≠ 设备现实" 结论见
 `toolchain.md` §17）。
+2026-11-15：**ffmpeg 9.0.2-1** 上线（**远期最大工程清仓**，全内置编解码器
+静态 ffmpeg+ffprobe，deb 19MB；构建雷区与验收全录 `toolchain.md` §18）。
 
 ## 已上线（2026-11-14 批次，T1 完成）
 
@@ -68,8 +70,7 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
 
 ## 远期（难度高，最后）
 
-- **ffmpeg**：armv7 + iOS 10 老内核 + 全编解码器，工程量最大。
-  BigBoss 先例 `com.nin9tyfour.ffmpeg 2.6.1-1`（2015 上游）证明可行。
+（暂无——ffmpeg 已于 2026-11-15 完工上线，见"已上线"。）
 
 ## 判死 / 排除
 

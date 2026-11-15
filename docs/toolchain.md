@@ -439,3 +439,35 @@ export IOS_STUBDIR=$HOME/ios-tool        # 注意：仍是手写 stub 目录！
   登录 shell PATH 只有 `/usr/bin:/bin`，`/var/mobile/tools/bin` 下的
   工具（含 uuidgen/node）日常要走绝对路径或自行 alias——既有环境
   现状，非本包问题。
+
+## 18. FFmpeg 9.0.2 移植（2026-11-15，26 号包，SDK 模式最大工程）
+
+全编解码器静态 CLI（ffmpeg+ffprobe 各 ~23MB，deb 19MB gzip）。
+configure 阶段即暴露一批工具链通用雷，全部修复并回写 cc-wrapper：
+
+- **`-Wl,a,b` 逗号语义**：GNU 链接器的 `-Wl,` 逗号串要拆成独立参数
+  （`-Wl,-dynamic,-search_paths_first` 整串直喂 ld64 = unknown option）。
+  wrapper 已改：逐逗号拆分转发。
+- **`-isysroot <path>` 分立形式**：flag 与路径是两个参数，路径不能漏进
+  CFLAGS（"linker input unused" 警告源头）。wrapper 已改。
+- **SYSTEM_FUNCS 恒真探针窝**：ffmpeg 探测几十个系统函数
+  （`check_func`），dynamic_lookup 下全部恒真——Windows/BSD/Linux
+  专属函数（closesocket/gethrtime/pthread_setaffinity_np/sched_getaffinity
+  等 20 项）误进 config.h，`closesocket` 宏失效直接编译报错。
+  `--disable-XXX` 不达 SYSTEM_FUNCS（只在 CONFIG/HAVE_LIST 作用域），
+  修法 = configure 后、make 前 sed config.h 压制 + grep 断言。
+  ffmpeg 的 config.h 仅 configure 时生成、make 不重写，修正不丢。
+- **darwin 分支无条件挂四框架**：CoreFoundation/CoreMedia/CoreVideo/
+  CoreAudio 的 `check_apple_framework`（configure 7119-7122）不看
+  videotoolbox 开关，探测过了就把 `-framework` 写进 EXTRALIBS——
+  必须给 ld64 框架搜索路径：`--extra-ldflags` 加
+  `-F$SDK/System/Library/Frameworks`（wrapper 的 -F 双投递）。
+- **gas-preprocessor.pl**：arm/aarch64 汇编通道是 configure 自动探测
+  （PATH 里有就采用）；本工程 NEON/VFP 汇编实编通过，未用
+  --disable-asm（降 arch=c、DSP SIMD 全灭，A6X 性能崩）。
+- **lavfi 缺失**：`-f lavfi` 输入属 libavdevice（本包 --disable-avdevice），
+  验收素材从宿主造（testsrc2 mp4 / sine wav）scp 上去。
+- **验收**（mobile 身份）：-version ✓；h264 解码→mpeg4 编码 ✓；
+  wav→aac 编码 ✓；aac 解码回路 ✓（字节数合理）；ffprobe 双产物
+  元数据全对 ✓；链接审计 ffmpeg 288/288、ffprobe 283/283 符号
+  全部 tbd 可解析 ✓。
