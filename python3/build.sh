@@ -207,7 +207,7 @@ make -j"$(nproc)" \
 	MODULE__DECIMAL_CFLAGS="$MPDEC_CFLAGS" \
 	LIBMPDEC_CFLAGS="$MPDEC_CFLAGS \$(PY_STDMODULE_CFLAGS) \$(CCSHARED)" \
 	MODULE__SQLITE3_LDFLAGS="$SQLITE_LIB sq_progress_stub.o" \
-	MODULE__SSL_LDFLAGS="-L$OSSL_LIB $OSSL_LIB/libssl.a $OSSL_LIB/libcrypto.a ssl_compat_stub.o $COMPAT_STATIC" \
+	MODULE__SSL_LDFLAGS="$OSSL/atomic_alias_pic.o $OSSL/atomic_compat.o -L$OSSL_LIB $OSSL_LIB/libssl.a $OSSL_LIB/libcrypto.a ssl_compat_stub.o $COMPAT_STATIC" \
 	MODULE__HASHLIB_LDFLAGS="$OSSL_LIB/libcrypto.a"
 
 echo "== built =="
