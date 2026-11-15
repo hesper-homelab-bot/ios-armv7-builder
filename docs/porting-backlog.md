@@ -63,10 +63,25 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
   验收；用法与坑见 `toolchain.md` §16。**阶段 2 已拍板（2026-11-15）**：
   新移植默认走 SDK 模式（规则见仓库 AGENTS.md 工作规则 5）；存量 24 包
   不重编。
+- **python3（CPython 3.14.x）**：用户 2026-11-15 立项。SDK 模式。预研点：
+  ① configure 交叉四板斧 + ac_cv 压制（dynamic_lookup 恒真）；
+  ② CPython 交叉编译经典坑——host python3 编译 parse/pgen 生成器
+  （`--build/--host` 分离 + 宿主 python3 提供 BUILDPYTHON）；
+  ③ 依赖取舍：openssl（接已有静态 4.0.3）、zlib（已有）、readline/ncurses
+  （设备 libncursesw.5.dylib）、expat（自编或 --without-system-expat 内置）、
+  libffi/ctypes（可 `--disable-ctypes` 类开关砍掉，需要时再补）；
+  ④ stdlib 纯 Python 部分无移植问题，C 扩展逐个过审计门禁。
+  产出：`python3` + `pip`（ensurepip 可选）。
 
 ## 待表态（用户未点头，不动）
 
-（暂无）
+- **node JIT（内核 patch 级）**：2026-11-15 完成用户态路线全灭实验
+  （entitlement×2 / RWX 直建 / vm_remap 双映射四路全 SIGBUS，证据链
+  `docs/node.md`）——唯一剩余路径 = tfp0 内核 patch（数周级 + 高风险）。
+  用户已表态先推进 python3，此项**挂起待内核级需求**再议。
+- **tailcat（Rust 复刻）**：用户 2026-11-15 裁掉（放弃 Rust，磁盘约束 +
+  DERP/STUN/netstack 生态全空白需自写数周）。宿主侧 tailcat server +
+  跨机 ping 已验证（`~/scratch/tailcat/`）。
 
 ## 远期（难度高，最后）
 

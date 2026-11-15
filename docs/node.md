@@ -16,7 +16,27 @@
 > 编译期 --expose_wasm 与 jitless 冲突被 V8 静默禁用）。凡依赖 WASM 的
 > 生态（Go js/wasm 产物、WASI 运行时等）在 iPad 上均不可用——tailcat
 > wasm 路线即死于此（2026-11-15：宿主编译+运行全通，iPad 端 node4 无
-> WebAssembly）。解锁唯一路径 = 过墙 #15 开 JIT，属立项级工程，暂不目标。
+> WebAssembly）。
+>
+> **墙 #15 的用户态路线全灭记录（2026-11-15，探针实测闭环）**：
+> no-jitless 的 SIGBUS = 内核执行校验（崩溃报告：EXC_BAD_ACCESS
+> KERN_PROTECTION_FAILURE，crash 点为无模块归属的 JIT 页——页已翻成
+> RX 但执行被 codesign 校验拒）。四条用户态路全部实测排除：
+> ① ldid `dynamic-codesigning` entitlement 重签——依旧 SIGBUS；
+> ② JIT 特权全家桶（dynamic-codesigning/get-task-allow/
+>    platform-application/skip-library-validation/can-execute-trusted/
+>    allow-jit 六项）——依旧 SIGBUS；
+> ③ 裸 C 探针 mmap RWX 直建 + sys_icache_invalidate + 执行——root 与
+>    mobile 双身份均 Bus error；
+> ④ vm_remap 双映射（RW 影子写 + remapped RX 执行，Substitute/
+>    MSHookFunction 风格，32 位 vm_map API）——Bus error。
+> 注意 32 位 iOS SDK 明确 `#error mach_vm.h unsupported`，须用旧版
+> vm_map 系 API。内核在全环拒绝执行动态代码，h3lix 补丁集未覆盖此点。
+>
+> **结论：JIT 唯一剩余路径 = 内核 patch**（tfp0 在手 → 解密内核 →
+> 逆向 vm_fault/cs 校验点 → 在线 patch）。数周级 + 高风险（patch 错 =
+> panic，可重试）。回报 = JIT 性能 + WASM 生态。**2026-11-15 拍板：
+> 立项搁置**，证据链完整留档，待内核级需求出现再启。
 
 
 > 工具链通用规则（env、归档、thumb、原子雷区、部署三件套、探针模板）见
