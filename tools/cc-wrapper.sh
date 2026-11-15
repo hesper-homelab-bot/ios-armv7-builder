@@ -75,14 +75,25 @@ while [ $# -gt 0 ]; do
         LDARGS+=("-L${IOS_PREFIX:-/nonexistent}/lib" "$1") ;;
     -l*) LDARGS+=("$1") ;;                     # ld64 resolves via the -L paths
                                                # (e.g. -lssl -lcrypto with -L.)
-    -framework) shift; FRAMEWORKS+=("-framework" "$1"); shift ;;
-    -isysroot*) ;;
+    # -framework 对（框架名独立参数）：case 内 shift 2 吃掉两个参数后必须
+    # continue 跳过循环尾的 shift，否则多吞一个（首个受害者是 CPython 的
+    # `-o python`——产物莫名变成 a.out，2026-11-15）
+    -framework) FRAMEWORKS+=("-framework" "$2"); shift 2; continue ;;
+    -isysroot*) [ "$1" = "-isysroot" ] && shift ;;   # 分立形式：flag 与路径是
+                                                     # 两个参数，路径不能漏进
+                                                     # CFLAGS（ffmpeg darwin 分
+                                                     # 支踩出，2026-11-15）
     -I*|-isystem*) CFLAGS+=("$1") ;;
     -target*|-arch*) ;;
     -platform_version*|-mlinker-version*) ;;
     -Wl,--start-group|-Wl,--end-group) ;;   # GNU-ld grouping: ld64 scans
                                              # archives iteratively anyway
-    -Wl,*) LDARGS+=("${1#-Wl,}") ;;
+    -Wl,*) IFS=, read -r -a _wl <<< "${1#-Wl,}"   # GNU -Wl,a,b 逗号语义：
+                                                   # 拆成独立参数再喂 ld64
+                                                   # （-dynamic,-search_paths_
+                                                   # first 整串直传会 unknown
+                                                   # option；ffmpeg 踩出）
+            for _f in "${_wl[@]}"; do LDARGS+=("$_f"); done ;;
     *) CFLAGS+=("$1") ;;
   esac
   shift
