@@ -294,6 +294,23 @@ configure 刚跑完时 **config.status 比 stamp-h1 新**，于是第一次 make
    tigetstr → curses ERR。设备没有的东西，桩给一个**可处理的错误返回**，
    而不是让 dyld 杀进程。未引用的成员不会被拉入。
 
+#### 3.1 桩清单（按加入原因分组）
+
+| 桩 | 触发包 | 说明 |
+|---|---|---|
+| `recvmmsg` / `sendmmsg` | mosh、（ffmpeg/tor 的 libssl 亦拖出） | → `ENOSYS` |
+| `setupterm` / `tigetflag` / `tigetnum` / `tigetstr` | curses 类 | → curses `ERR` |
+| **`pledge`** + 其余 5 个 | **mosh** | OpenBSD 专有系统调用，优雅降级（连同 `recvmmsg` 等共 6 个） |
+| **`_pow10`** | **jq** | **忠实仿真**（`pow(10, x)`），不是空桩——见 `docs/jq.md` §3.4 |
+| **`fflush_unlocked` / `fputs_unlocked` / `fread_unlocked` / `__fsetlocking`** | **wget** | glibc 的 `_unlocked` 变体；补后 wget **261/261 审计全绿**，见 `docs/wget.md` §5 |
+| **terminfo 全家**（tmux/vim 路径） | tmux / vim | 冷路径，lazy 绑定 + 桩双保险 |
+| **utmp 三件套** | — | 设备无 utmp；冷路径 |
+| **BLAS：`daxpy_` / `ddot_` / `dnrm2_` / `dscal_`** | **node**（nmap 也触发过） | 冷路径 BLAS 符号 |
+| **`_NSGetExecutablePath`** | node 等 | 存根**返回 `-1` 且 `buflen=0`**。曾因"设备应该有"而被探针**误拒**，实为需要显式存根（2026-11-14 审计后补） |
+
+> **原则**：**冷路径符号进桩，热路径符号必须真解析**。
+> 判据 = `check-undefined.sh` 门禁（`docs/toolchain.md` §13 第 1 件工具）。
+
 ### 排障时踩过的坑（本节配套）
 
 - 设备 `/usr/lib/libSystem.B.dylib`、`libSystem.dylib` **打不开**——
