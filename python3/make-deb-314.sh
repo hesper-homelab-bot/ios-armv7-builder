@@ -9,7 +9,7 @@ set -eu
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 REPO_OUT="$(cd "$ROOT/.." && pwd)/out"
 SRC="${PYTHON_SRC:-$HOME/scratch/python3/src}"
-OBJ="$ROOT/obj"
+OBJ="${PYTHON_OBJ:-$ROOT/obj}"
 PYVER="3.14"
 UPSTREAM="$(grep -m1 '^#define PY_VERSION' "$SRC/Include/patchlevel.h" | sed 's/.*"\(.*\)".*/\1/')"
 VERSION="${UPSTREAM}-1"

@@ -11,7 +11,9 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 V="${V:-1.0-1}"
 SYSROOT="${SYSROOT:-$here/../tmp/sysroot}"
-[ -d "$SYSROOT/usr/include" ] || SYSROOT="${SYSROOT_OVERRIDE:-/home/hesper/ios-tool/tmux-minimal-build/sysroot}"
+# Fallback for machines that never ran tmux/build.sh (which creates
+# tmp/sysroot).  $HOME, not a literal path -- this repo is public.
+[ -d "$SYSROOT/usr/include" ] || SYSROOT="${SYSROOT_OVERRIDE:-$HOME/ios-tool/tmux-minimal-build/sysroot}"
 
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/DEBIAN" "$work/Library/MobileSubstrate/DynamicLibraries"

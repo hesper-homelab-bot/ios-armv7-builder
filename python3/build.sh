@@ -31,6 +31,13 @@ ZLIB_STATIC="${ZLIB_STATIC:-$HOME/ios-tool/build-ios/install/lib/libz.a}"
 SQLITE_PREFIX="${SQLITE_PREFIX:-$HOME/ios-tool/sqlite-src/sqlite-autoconf-3540100}"
 COMPAT_STATIC="$root/sysroot-overlay/usr/lib/libios-compat.a"
 BUILDPY="${BUILD_PYTHON:-/usr/bin/python3.14}"
+# Install prefix baked into the interpreter's default sys.path search.
+# 3.13 and 3.14 coexist on the device under different directories, so this
+# must be overridable -- if the baked prefix does not match where the deb
+# actually installs, the interpreter cannot find its stdlib without an
+# explicit PYTHONHOME.  Package with PYTHON_PREFIX=/var/mobile/tools/python314
+# to match make-deb-314.sh.
+PYTHON_PREFIX="${PYTHON_PREFIX:-/var/mobile/tools/python3}"
 
 [ -f "$PYSRC/configure" ] || {
 	echo "missing $PYSRC/configure -- fetch Python-3.14.10.tar.xz from" >&2
@@ -97,7 +104,7 @@ AR="$AR" RANLIB="$RANLIB" READELF=llvm-readelf-21 \
 	--with-openssl="$OSSL" \
 	--disable-shared \
 	--disable-test-modules \
-	--prefix=/var/mobile/tools/python3 \
+	--prefix="$PYTHON_PREFIX" \
 	CPPFLAGS="-include $build/pygetentropy_shim.h -I$SQLITE_PREFIX" \
 	LIBS="$SQLITE_PREFIX/libsqlite3.a" \
 	ac_cv_file__dev_ptmx=yes \

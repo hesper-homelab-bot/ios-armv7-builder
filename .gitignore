@@ -19,3 +19,13 @@ uuid/obj/
 
 # ffmpeg build dir
 ffmpeg/obj/
+
+# python3 build dirs.  These are configure output trees (Makefile,
+# pyconfig.h, config.status) plus hundreds of .o/.so archives -- ~95MB,
+# fully regenerable by running build.sh.  They slipped into git via
+# fa586ce..019a5e3 before this rule existed; the files were untracked in
+# the commit that added this line.  3.13 and 3.14 use separate trees when
+# they coexist (see docs/python.md).
+python3/obj/
+python3/obj3*/
+obj313/

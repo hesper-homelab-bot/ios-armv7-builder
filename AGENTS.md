@@ -1,4 +1,4 @@
-# ios-tmux-builder 项目准则与文档索引
+# ios-armv7-builder 项目准则与文档索引
 
 本项目：为 iPad4（armv7 / iOS 10.3.3）交叉编译并打包软件的仓库。
 用户级协作准则见 `~/.dsh/AGENTS.md`；本文只放**本项目**的内容。
