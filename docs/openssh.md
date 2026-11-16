@@ -17,6 +17,25 @@
 - 仓库侧：`openssh/{build.sh,ios-config.site,make-deb.sh,sshd_config,
   osshd-daemon.sh,osshd.plist}`。
 
+## 构建坑：Blowfish 未定义符号（已修）
+
+**现象**：11 个二进制引用 `_blf_enc` 等 **5 个 Blowfish 符号 undefined**
+（全量符号审计 `tools/audit-all.sh` 发现）。
+
+**根因**：真实实现在 `openbsd-compat/blowfish.c` 里，**Makefile 已列出该文件**，
+但链接时没被解析。
+
+**修法**（已完成）：
+
+1. `ios-config.site` 里 **pin 三个 `ac_cv_func_Blowfish_*`=no**
+2. **显式链接 `blowfish.o`**——而不是 `-lopenbsd-compat`
+   （**ld64 不回扫档案**，`toolchain.md` §2 同族）
+
+**结果**：14/14 二进制 `check-undefined` 全绿。
+
+> **注意**：这条路径**加密私钥的 KDF 会走到**，所以是**优先重建**项，
+> 不是冷路径。
+
 ## 已知问题
 
 - 从主机连 22226 报 `Permission denied (publickey)`：ossh 侧

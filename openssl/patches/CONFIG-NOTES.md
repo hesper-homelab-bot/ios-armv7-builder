@@ -30,7 +30,11 @@ perl ./Configure ios-cross no-shared no-dso no-tests no-docs \
      （实测 `my_atomic_load(size=1, dest=NULL)` → SIGSEGV at 0x100）
    - `is_lock_free` **必须返回 true**：`crypto/init.c:374` 以
      `lock=NULL` 调 `CRYPTO_atomic_load`，只有 lock-free 分支会填充结果
-   - 8 字节原子拆成两个 32 位（设备 8 字节原子静默失败）
+   - 8 字节原子拆成两个 32 位。**注意根因表述（2026-11-16 晚修正）**：
+     早先这里写"设备 8 字节原子静默失败"，实测**是 SIGBUS 硬崩**——
+     Apple armv7 ABI 给 int64_t 只有 4 字节自然对齐，而 ldrexd/strexd
+     要求 8 字节对齐。拆半依然正确，只是理由要对。证据与探针见
+     `docs/toolchain.md` §19 与 `tools/probes/probe-atomic-align.c`。
    - 编译：`cc-wrapper.sh -c -mthumb -o atomic_alias_pic.o atomic_alias_pic.s`
 
 3. **GF2m 汇编**：关闭或从归档移除（其绝对寻址在 bundle 里非法）
