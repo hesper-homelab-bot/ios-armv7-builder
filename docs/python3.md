@@ -66,7 +66,13 @@ platform tag 显示 `macosx-.-arm`（configure 的 _PYTHON_HOST_PLATFORM
 
 ---
 
-## 重大发现：Apple armv7 8 字节原子操作静默失败（2026-11-16 攻克）
+## 重大发现：Apple armv7 8 字节原子操作有**对齐陷阱**（2026-11-16 攻克，11-16 晚**根因修正**）
+
+> **⚠️ 本节结论于 2026-11-16 晚被实测修正。**
+> 早期记录写的是"8 字节原子**静默失败**、写入成功但读回 0"——**那是错的**。
+> 设备探针证明：非对齐的 8 字节原子**不是静默失败，而是直接 SIGBUS 硬崩**。
+> 死锁只是同一约束在"不需要内存访问"的那条路径上呈现出的**另一种症状**。
+> 保留下面的原始定位过程（有价值），但**根因以 §根因（修正版）为准**。
 
 ### 现象
 
@@ -89,22 +95,39 @@ _PyRecursiveMutex_Lock → PyMutex_Lock → park` 永等（单线程自己等自
 [rm] lock m=... me=952905280 owner=0 bits=1         ← 误判"非我持有"→ 再次 park
 ```
 
-### 根因（编译警告早就说了）
+### 根因（修正版，2026-11-16 晚 · 设备探针实测）
 
 ```
-warning: misaligned atomic operation may incur significant performance penalty;
-         the expected alignment (8 bytes) exceeds the actual alignment (4 bytes)
+sizeof(int64_t) = 8      _Alignof(int64_t) = 4      ← Apple armv7 ABI
+&g_val = 0x72024         (mod 8 = 4)                ← 只有 4 字节对齐
+
+__atomic_load_n(&g_val, __ATOMIC_RELAXED)
+    →  Bus error: 10        ★ 直接 SIGBUS，进程当场死，连 printf 都打不完
 ```
 
-**clang 在 Apple armv7 目标上强制 `unsigned long long` 为 4 字节对齐**
-（Apple ABI 历史怪癖；Linux armv7 是 8）。因此：
-- `__atomic_store_n(u64*)` 编译成 `strexd`（独占存储），在 **4 对齐的运行时地址**上
-  **静默失败**（不报错、不崩溃，就是没写进去）
-- `__atomic_load_n(u64*)` 同样不可靠
+**机制**：ARM 的 `ldrexd` / `strexd`（编译器给 8 字节原子用的独占访问指令）
+**要求 8 字节对齐**；而 Apple 32 位 ARM ABI 给 `int64_t` 的**自然对齐只有 4 字节**。
+clang 按 ABI 排布对象 → 生成非对齐的 `ldrexd` → **CPU 对齐异常 → SIGBUS**。
 
-**`__attribute__((aligned(8)))` 加在字段上无效**——编译器生成原子操作时用的是
-**类型的自然对齐**，不是字段的声明对齐。（`offsetof` 验证 offset=8，但
-`-Watomic-alignment` 仍报 4 字节，即编译器按类型判定。）
+不是"数据读错"，是**硬件把进程打死**。这解释了所有诡异现象：
+
+| 现象 | 解释 |
+|---|---|
+| `--version` 正常、`-c pass` 死锁 | 死锁路径的 8 字节原子**恰好落在 8 对齐地址**上（运气），于是"能跑但值不对"；换条路径就崩 |
+| **SIGBUS 没有崩溃报告** | 崩在 dyld/早期，CrashReporter 来不及写盘（20 次崩溃 0 份报告） |
+| 编译警告早就提示 | `-Watomic-alignment`：expected 8 bytes exceeds actual alignment 4 |
+
+**设备探针完整结论**（`scratch-probe/atomic8*.c`）：
+
+| 场景 | 结果 |
+|---|---|
+| 4 字节对齐 + 8 字节原子 | ❌ **SIGBUS** |
+| 拆成两个 32 位原子读 | ✅ 数值正确 |
+| 8 字节对齐 + 8 字节原子 | ✅ 数值正确 |
+
+**`__attribute__((aligned(8)))` 加在字段上无效**——编译器按**类型**的自然对齐
+判定，不是字段的声明对齐。（`offsetof` 验证 offset=8，但 `-Watomic-alignment`
+仍报 4 字节。）真正的解法只有一个：**别让 8 字节原子碰 4 字节对齐的对象**。
 
 ### 修法（`Include/cpython/pyatomic_gcc.h`）
 
@@ -122,6 +145,28 @@ warning: misaligned atomic operation may incur significant performance penalty;
 
 `_Py_atomic_load_ullong_relaxed` 同法（两个 32 位读 + 屏障拼接）。
 **设备探针实测**：4 字节原子 100% 可靠，8 字节不可靠（2026-11-16）。
+
+### ⚠️ 当初只修了 1 个函数，漏了 18 个（2026-11-16 晚踩到）
+
+第一次移植时**只改了 `_Py_atomic_load_ullong_relaxed` 一个**（因为死锁恰好撞上
+它），`pyatomic_gcc.h` 里其余 **18 个 int64/uint64 入口**原封不动。后果：
+
+```
+$ python3 -c "import socket; socket.socket()"
+Bus error: 10        ← 100% 复现，20/20
+```
+
+崩点：`init_sockobject()` 里的
+`_Py_atomic_load_int64_relaxed(&state->defaulttimeout)`。
+
+**修法**：`python3/patches/patch-atomic-armv7-align.py` 一次性覆盖
+**5 个 load + 5 个 store**（seq_cst / relaxed / acquire / release），
+文件顶部的 `SENTINEL` 保证幂等，3.13 与 3.14 通用（已在两个原始 tarball
+上端到端验证）。
+
+**未覆盖**：`add / exchange / compare_exchange / and / or` 这几个**读-改-写**
+操作。拆半会破坏原子性，需要锁或 `ldrexd/strexd` 重试循环；实测路径未触发，
+但**将来若出现新崩溃，优先查这几个**。
 
 ### 通用教训（已同步 `docs/toolchain.md` §19）
 
@@ -330,8 +375,34 @@ HTTPS   : HTTP/1.1 200 OK                    ← 真实请求
 
 ## 复用清单（下次移植新版 CPython）
 
-1. `python3/patches/patch-cpython-ios-armv7.py <srcdir>`
-2. `configure` / `configure.ac` 各补 `*-apple-darwin*` 分支（两处 case）
-3. `PYTHON_SRC=<srcdir> BUILD_PYTHON=<同 minor 宿主> ./python3/build.sh`
-4. 扩展在构建树里是符号链接 → 打包用 `tar -h` / `cp -L`
-5. 设备上二进制与每个 `.so` 都要 `ldid -S`
+**两个补丁脚本，都要跑**（顺序无所谓，互不重叠）：
+
+1. `python3/patches/patch-atomic-armv7-align.py \
+       <srcdir>/Include/cpython/pyatomic_gcc.h`
+   —— 8 字节原子拆半。**漏了它必 SIGBUS**（socket/锁/超时全崩）。
+   幂等；3.13/3.14 通用；已对两个原始 tarball 端到端验证过。
+2. `python3/patches/patch-cpython-ios-armv7.py <srcdir>`
+   —— 关 Apple SystemLog、64 位字段对齐等。
+3. `configure` / `configure.ac` 各补 `*-apple-darwin*` 分支（两处 case）
+4. `PYTHON_SRC=<srcdir> BUILD_PYTHON=<同 minor 宿主> ./python3/build.sh`
+   - 注意 `obj/` 是**单一目录**，3.13 与 3.14 共用；交替构建会互相覆盖。
+     给并存的版本用独立构建树（本项目 3.13 在 `~/scratch/python3/obj313`），
+     打包时用 `PYTHON_OBJ=<tree> ./python3/make-deb.sh` 指定。
+   - `build.sh` 生成的两个 stub（`ssl_compat_stub.o`、`sq_progress_stub.o`）
+     是**手工构建树时最容易漏的两步**，漏了 `_ssl` 链接报
+     `ld: file not found: ssl_compat_stub.o`。
+5. 扩展在构建树里是符号链接 → 打包用 `tar -h` / `cp -L`
+6. 设备上二进制与每个 `.so` 都要 `ldid -S`
+
+### 只改一个模块时的快路径
+
+`_socket` 这类单模块修复**不必全量重编**：
+
+```sh
+python3 <srcdir>/configure ...        # 建独立构建树（一次）
+make Modules/_socket$(EXT_SUFFIX)     # 只编这一个
+# 部署：su root 覆盖设备上的 .so + chmod 755 + chown mobile:mobile + ldid -S
+```
+
+实测有效：只替换 `_socket.so` 一个文件，socket/TLS 全部恢复，
+其余 52 个模块无需重编。
