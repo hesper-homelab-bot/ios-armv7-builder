@@ -1,7 +1,7 @@
 /*
  * <net/if_var.h> for the iOS armv7 cross build.
  *
- * source:   /home/hesper/scratch/sysctl-work/xnu [xnu-3789.70.16] bsd/net/if_var.h (via git cat-file)
+ * source:   ~/scratch/sysctl-work/xnu [xnu-3789.70.16] bsd/net/if_var.h (via git cat-file)
  * repo:     https://github.com/apple-oss-distributions/xnu
  * tag/ref:  xnu-3789.70.16
  * fetched:  2026-11-13T09:50:18Z by tools/fetch-darwin-header.sh

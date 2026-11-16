@@ -7,13 +7,13 @@
 ## 1. 构建环境（每次都要 export）
 
 ```sh
-export IOS_SYSROOT=$HOME/ios-tmux-builder/tmp/sysroot
+export IOS_SYSROOT=$HOME/ios-armv7-builder/tmp/sysroot
 export IOS_STUBDIR=$HOME/ios-tool
 export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib
 ```
 
-- C 驱动：`~/ios-tmux-builder/tools/cc-wrapper.sh`
+- C 驱动：`~/ios-armv7-builder/tools/cc-wrapper.sh`
 - C++ 驱动：`~/ios-tool/cxx-wrapper.sh`（内部转调 cc-wrapper，附加
   `-nostdinc++ -isystem libcxx15-headers` 与 `_LIBCPP_NO_EXCEPTIONS`/
   `_LIBCPP_DISABLE_AVAILABILITY`，为匹配设备上的 libc++ 6.0.1 ABI）
@@ -66,10 +66,10 @@ export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/li
 - 探针模板（构建+部署+跑）：
 
 ```sh
-export IOS_SYSROOT=$HOME/ios-tmux-builder/tmp/sysroot IOS_STUBDIR=$HOME/ios-tool
+export IOS_SYSROOT=$HOME/ios-armv7-builder/tmp/sysroot IOS_STUBDIR=$HOME/ios-tool
 export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib
-~/ios-tmux-builder/tools/cc-wrapper.sh -O1 -o /tmp/probe /tmp/probe.c [额外 .o/.a]
+~/ios-armv7-builder/tools/cc-wrapper.sh -O1 -o /tmp/probe /tmp/probe.c [额外 .o/.a]
 scp /tmp/probe mobile@<device>:/var/mobile/scratch/probe.new
 ssh mobile@<device> 'cd /var/mobile/scratch && rm -f probe && cp probe.new probe && \
   chmod 755 probe && chown mobile:mobile probe && ldid -S probe && ./probe'

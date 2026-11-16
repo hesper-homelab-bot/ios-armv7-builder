@@ -68,7 +68,7 @@ __ZNSt3__14__fs10filesystem8__statusERKNS1_4pathEPNS_10error_codeE
 - 编译旗标（注意：**不能用 cxx-wrapper.sh**，原因见 §5-1）：
 
 ```sh
-~/ios-tmux-builder/tools/cc-wrapper.sh \
+~/ios-armv7-builder/tools/cc-wrapper.sh \
   -nostdinc++ -isystem $HOME/ios-tool/libcxx15-headers \
   -isystem "$IOS_SYSROOT/usr/include" \
   -D_LIBCPP_DISABLE_AVAILABILITY \

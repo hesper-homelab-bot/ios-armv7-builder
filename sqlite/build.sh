@@ -22,7 +22,7 @@
 # library dependency at all (not even zlib: see the note about -lz below).
 #
 # Usage:
-#   export IOS_SYSROOT=$HOME/ios-tmux-builder/tmp/sysroot \
+#   export IOS_SYSROOT=$HOME/ios-armv7-builder/tmp/sysroot \
 #          IOS_STUBDIR=$HOME/ios-tool \
 #          IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld \
 #          LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib

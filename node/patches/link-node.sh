@@ -16,11 +16,15 @@ NODE_TREE="${NODE_TREE:-$HOME/scratch/node-research/node-v22.23.4}"
 SHIMS_DIR="${SHIMS_DIR:-$HOME/scratch/node-shims}"
 set -euo pipefail
 
+# Repo root derived from THIS script's location (not a hardcoded folder
+# name) -- works no matter where the repo is cloned or what it is called.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 N=$NODE_TREE
 R=$N/out/Release
 O=$R/obj.target
 
-export IOS_SYSROOT=$HOME/ios-tmux-builder/tmp/sysroot
+export IOS_SYSROOT="$REPO_ROOT/tmp/sysroot"
 export IOS_STUBDIR=$HOME/ios-tool
 export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib

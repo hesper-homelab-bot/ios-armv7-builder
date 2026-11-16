@@ -49,8 +49,9 @@ class Client:
         self.id = 0
         # The server chdirs to its user's home at startup (as OpenSSH's
         # does), so a bare "name" in a request resolves against that home,
-        # not against the directory this test happens to run in.
-        self.root = "/home/hesper"
+        # not against the directory this test happens to run in.  Derive it
+        # from the running user -- do not hardcode a maintainer path.
+        self.root = os.path.expanduser("~")
 
     def abspath(self, path):
         if path.startswith("/"):
@@ -424,7 +425,7 @@ def main():
     tln = struct.unpack(">I", rest[4:8])[0]
     target = rest[8:8 + tln]
     check(typ == SSH_FXP_NAME and count == 1 and
-          target == b"/home/hesper/payload.bin",
+          target == c.abspath("payload.bin").encode(),
           "readlink returns the target")
     typ, rest = c.readlink(c.abspath("payload.bin"))
     check(typ == SSH_FXP_STATUS,

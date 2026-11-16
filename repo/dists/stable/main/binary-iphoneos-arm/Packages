@@ -537,7 +537,7 @@ Description: Terminal multiplexer - windows, panes, detachable sessions
  Cross-compiled from upstream source for armv7 iOS 10.x (no Xcode, no iOS
  SDK). Requires iOS 10.3 or later on an armv7 (32-bit) device.
 Author: Nicholas Marriott <nicholas.marriott@gmail.com>
-Depiction: https://github.com/hesper-homelab-bot/ios-tmux-builder
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: tmux
 
 Package: tor4

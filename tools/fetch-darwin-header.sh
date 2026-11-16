@@ -120,6 +120,10 @@ LIBC_DIR="${LIBC_DIR:-$HOME/scratch/sysctl-work/libc}"
 DISPATCH_DIR="${DISPATCH_DIR:-$HOME/ios-tool/x-libdispatch}"
 CCTOOLS_FOREIGN="${CCTOOLS_FOREIGN:-$HOME/ios-tool/cctools-port/cctools/include/foreign}"
 
+# Provenance lines land in committed headers, which are public: collapse the
+# user's home directory to ~ so no personal path leaks into the repo.
+collapse_home() { printf '%s' "${1/#$HOME/~}"; }
+
 # Upstream refs used for the curl fallback.  The xnu tag matches the device
 # kernel exactly (uname -v: xnu-3789.70.16~4; the ~n build suffix never
 # changes headers).
@@ -244,7 +248,7 @@ try_xnu() {
     for cand in "${cands[@]}"; do
         if ( cd "$repo" && git cat-file -e "HEAD:$cand" 2>/dev/null ); then
             SRC_KIND="xnu-git-object"; SRC_FILE=""; XNU_REL="$cand"
-            SRC_DESC="$XNU_DIR [$XNU_TAG] $cand (via git cat-file)"
+            SRC_DESC="$(collapse_home "$XNU_DIR") [$XNU_TAG] $cand (via git cat-file)"
             return 0
         fi
     done
@@ -291,7 +295,7 @@ try_libc() {
         fi
         if ( cd "$repo" && git cat-file -e "HEAD:$cand" 2>/dev/null ); then
             SRC_KIND="libc-git-object"; SRC_FILE=""; LIBC_REL="$cand"
-            SRC_DESC="$LIBC_DIR [$LIBC_TAG] $cand (via git cat-file)"
+            SRC_DESC="$(collapse_home "$LIBC_DIR") [$LIBC_TAG] $cand (via git cat-file)"
             return 0
         fi
     done
@@ -627,10 +631,10 @@ write_probe() {
  *
  *   export LD64="\$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld"
  *   export LD_LIBRARY_PATH="\$HOME/ios-tool/x-libdispatch/lib:\$HOME/ios-tool/x-tapi/lib:\$LD_LIBRARY_PATH"
- *   export IOS_SYSROOT="\$HOME/ios-tmux-builder/tmp/sysroot"
+ *   export IOS_SYSROOT="\$HOME/ios-armv7-builder/tmp/sysroot"
  *   export IOS_LD64="\$LD64"
  *   export IOS_STUBDIR="\$HOME/ios-tool"
- *   \$HOME/ios-tmux-builder/tools/cc-wrapper.sh $(basename "$out") -o ${base}-probe
+ *   \$HOME/ios-armv7-builder/tools/cc-wrapper.sh $(basename "$out") -o ${base}-probe
  *   ldid -S ${base}-probe
  *   scp -q ${base}-probe ipad:/var/mobile/scratch/ && \\
  *       ssh ipad '/var/mobile/scratch/${base}-probe; echo rc=\$?'
