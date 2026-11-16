@@ -110,7 +110,7 @@ APPLESTREAM_OLD = '''#  if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 #    define USE_APPLE_SYSTEM_LOG 0
 #  endif'''
 
-APPLESTREAM_NEW = '''// ios-tmux-builder (2026-11-16): upstream enables os_log on iOS, which
+APPLESTREAM_NEW = '''// ios-armv7-builder (2026-11-16): upstream enables os_log on iOS, which
 // replaces sys.stdout/sys.stderr with a SystemLog object -- a command line
 // python3 then writes nothing to the terminal.  Disabled by default; pass
 // -DPYTHON_IOS_USE_APPLE_SYSTEM_LOG=1 to get the upstream behaviour back.

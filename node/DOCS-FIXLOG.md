@@ -28,7 +28,7 @@ text**, **evidence**.
   ```
   ## 11. The sysroot overlay: 85 headers, what each was for (2026-11-08)
 
-  `ios-tmux-builder/sysroot-overlay/usr/include/` holds 85 hand-written or
+  `ios-armv7-builder/sysroot-overlay/usr/include/` holds 85 hand-written or
   copied-from-source headers.
   ```
 
@@ -37,7 +37,7 @@ text**, **evidence**.
   ```
   ## 11. The sysroot overlay: 87 headers, what each was for (2026-11-08)
 
-  `ios-tmux-builder/sysroot-overlay/usr/include/` holds 87 hand-written or
+  `ios-armv7-builder/sysroot-overlay/usr/include/` holds 87 hand-written or
   copied-from-source headers.
   ```
 
@@ -125,7 +125,7 @@ text**, **evidence**.
 
   * `~/ios-tool/libSystem.tbd` — the **reference** copy, **210 exported
     symbols**.
-  * `ios-tmux-builder/tmp/stubs/libSystem.tbd` — the **operative** stub, the
+  * `ios-armv7-builder/tmp/stubs/libSystem.tbd` — the **operative** stub, the
     one Node's link actually consumes via `IOS_STUBDIR`
     (`node/build.sh` line 128 defaults `IOS_STUBDIR` to `$HOME/ios-tool`, and
     `~/scratch/mkdev/build.sh` sets it explicitly); it carries **204 exported

@@ -64,7 +64,7 @@ Apple armv7 ABI 给 `int64_t` 的**自然对齐是 4 字节**，而 ARM 的
 ## 4. 从零重建
 
 ```sh
-cd ~/ios-tmux-builder
+cd ~/ios-armv7-builder
 export IOS_SYSROOT=~/ios-tool/iPhoneOS10.3.sdk
 export IOS_STUBDIR=$HOME/ios-tool
 export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
