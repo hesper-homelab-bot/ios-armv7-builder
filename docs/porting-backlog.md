@@ -63,15 +63,19 @@ make4、tor4、class-dump4 依次上线（当日 T1/T2 批次全清）。
   验收；用法与坑见 `toolchain.md` §16。**阶段 2 已拍板（2026-11-15）**：
   新移植默认走 SDK 模式（规则见仓库 AGENTS.md 工作规则 5）；存量 24 包
   不重编。
-- **python3（CPython 3.14.x）**：用户 2026-11-15 立项。SDK 模式。预研点：
-  ① configure 交叉四板斧 + ac_cv 压制（dynamic_lookup 恒真）；
-  ② CPython 交叉编译经典坑——host python3 编译 parse/pgen 生成器
-  （`--build/--host` 分离 + 宿主 python3 提供 BUILDPYTHON）；
-  ③ 依赖取舍：openssl（接已有静态 4.0.3）、zlib（已有）、readline/ncurses
-  （设备 libncursesw.5.dylib）、expat（自编或 --without-system-expat 内置）、
-  libffi/ctypes（可 `--disable-ctypes` 类开关砍掉，需要时再补）；
-  ④ stdlib 纯 Python 部分无移植问题，C 扩展逐个过审计门禁。
-  产出：`python3` + `pip`（ensurepip 可选）。
+- **python3（CPython 3.13 / 3.14）**：**✅ 已完成上线（两版并存）**。
+  用户 2026-11-15 立项，2026-11-16 双版本交付。
+  - 包：`python3_3.13.18-2`（27 号，`-2` 为 socket 修复）、
+    `python314_3.14.10-1`（28 号）。索引见 `docs/python.md`，
+    主文档 `docs/python3.md`。
+  - 53 个 C 扩展 + TLS 1.3 实测握手 + sqlite3 3.54.1 + OpenSSL 4.0.3。
+  - 核心难点：**Apple armv7 8 字节原子的对齐陷阱 → SIGBUS**
+    （`docs/toolchain.md` §19）。首次只修了 1 个函数漏了 18 个，
+    导致 `socket.socket()` 100% 崩溃；补丁脚本
+    `python3/patches/patch-atomic-armv7-align.py` 系统化覆盖。
+  - 遗留：3.14 的 configure prefix 仍是 `python3`（跑时需 `PYTHONHOME`）；
+    3.14 尚未并入本次原子补丁（已知 `import _socket` 会崩，
+    修复路径已明确，等下次重编）。
 
 ## 待表态（用户未点头，不动）
 
