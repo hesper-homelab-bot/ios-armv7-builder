@@ -8,6 +8,8 @@
 | 文档 | 内容 |
 |---|---|
 | `docs/toolchain.md` | 交叉编译工具链通用规则（env、归档、thumb、原子雷区、部署验证、连接方式） |
+| `docs/python.md` | **Python 索引页**：3.13/3.14 双版本导航、重建步骤、两个必知坑 |
+| `docs/python3.md` | CPython 3.13/3.14 移植主文档（13 道墙、原子根因、全部验收） |
 | `docs/node.md` | Node 22.23.4 移植专项（墙列表、链接配方、补丁、当前状态） |
 | `docs/dropbear.md` | ssh 服务专项（dropbear 22、selfheal 守护、host keys） |
 | `docs/openssh.md` | 自编 OpenSSH 10.6p2（22226 验证口） |

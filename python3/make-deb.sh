@@ -14,7 +14,10 @@ set -eu
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 REPO_OUT="$(cd "$ROOT/.." && pwd)/out"
 SRC="${PYTHON_SRC:-$HOME/scratch/python3/src313}"
-OBJ="$ROOT/obj"
+# OBJ is overridable because 3.13 and 3.14 share one repo directory; the
+# 3.13 build tree lives in $HOME/scratch/python3/obj313, and build.sh still
+# writes to $ROOT/obj.  Pass OBJ=... to package a specific tree.
+OBJ="${PYTHON_OBJ:-$ROOT/obj}"
 PYVER="3.13"
 VERSION="3.13.18-1"
 DEB="$REPO_OUT/python3_${VERSION}_iphoneos-arm.deb"

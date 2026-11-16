@@ -472,29 +472,52 @@ configure 阶段即暴露一批工具链通用雷，全部修复并回写 cc-wra
   元数据全对 ✓；链接审计 ffmpeg 288/288、ffprobe 283/283 符号
   全部 tbd 可解析 ✓。
 
-## 19. Apple armv7 的 8 字节原子操作不可信（2026-11-16，python3 血战结论）
+## 19. Apple armv7 的 8 字节原子是**对齐陷阱** → SIGBUS（2026-11-16 定论）
 
-**症状**：写入后立刻读回是 0/垃圾；或单线程死锁（"自己等自己"）。
+> **结论曾于 2026-11-16 晚修正**：早期记为"静默失败（写不进、不崩溃）"，
+> 实测**是 SIGBUS 硬崩**。死锁与崩溃是同一约束的两种症状，见下。
 
-**根因**：clang 对 Apple armv7 目标强制 `unsigned long long` / `double`
-**4 字节对齐**（Apple ABI 历史怪癖，Linux armv7 是 8）。于是 8 字节
-`__atomic_store_n` 编译成 `strexd`（独占存储），在 4 对齐的运行时地址上
-**静默失败**——不报错、不崩溃、就是没写进去。
+**症状**（两种，取决于 8 字节对象碰巧落在什么地址上）：
+- **非对齐** → `Bus error: 10`，进程当场死，**且不产生崩溃报告**
+- **恰好 8 对齐** → 能跑，但值不对 / 单线程自己等自己（死锁）
+
+**根因**：Apple 32 位 ARM ABI 给 `int64_t` / `unsigned long long` / `double`
+的**自然对齐是 4 字节**（Linux armv7 是 8）。但 ARM 的 `ldrexd`/`strexd`
+（8 字节原子的独占访问实现）**要求 8 字节对齐**。clang 按 ABI 排布对象后
+生成非对齐的 `ldrexd` → **CPU 抛对齐异常 → SIGBUS**。
+
+设备探针（`scratch-probe/atomic8.c`）：
+
+```
+sizeof(int64_t)=8   _Alignof(int64_t)=4
+&g_val = 0x72024    (mod 8 = 4)
+__atomic_load_n(&g_val, __ATOMIC_RELAXED)  ->  Bus error: 10
+```
+
+| 场景 | 结果 |
+|---|---|
+| 4 字节对齐 + 8 字节原子 | ❌ **SIGBUS** |
+| 拆成两个 32 位原子 | ✅ 正确 |
+| 8 字节对齐 + 8 字节原子 | ✅ 正确 |
 
 **关键陷阱**：`__attribute__((aligned(8)))` 加在**字段**上无效——编译器
-生成原子操作时按**类型的自然对齐**判断。
+按**类型**的自然对齐判定，不看字段声明对齐。
 
 **判别方法**（三步定位）：
 1. 编译期看警告：`-Watomic-alignment`（"expected alignment (8 bytes)
-   exceeds the actual alignment (4 bytes)"）
-2. 运行期：`__atomic_store_n` 后 `memcpy` 到字节数组打印原始字节。
-   **raw bytes 正确 + `__atomic_load_n` 读回 0 = 确诊**
-3. 隔离探针：4 字节原子 vs 8 字节原子各自 store→load 对比
+   exceeds the actual alignment (4 bytes)"）——**这警告必需当错误看待**
+2. 运行期：8 字节原子 store/load 一个 4 对齐对象，崩就是它
+3. 隔离探针：4 字节 vs 8 字节原子各自对比（见上表）
 
-**修法**：把 8 字节原子拆成两个 4 字节原子 + 屏障。参考实现见
-`docs/python3.md` 与 `~/scratch/python3/src313/Include/cpython/pyatomic_gcc.h`
-的 `#if defined(__APPLE__) && defined(__arm__)` 分支。
+**修法**：把 8 字节原子拆成两个 4 字节原子 + 两半之间加屏障。
+- **不要只修撞到的那一个函数**——python3 首次移植只改了
+  `_Py_atomic_load_ullong_relaxed`，留下 18 个 int64/uint64 入口，
+  后来 `socket.socket()` 100% SIGBUS（崩在 `_Py_atomic_load_int64_relaxed`）。
+- 系统化脚本：`python3/patches/patch-atomic-armv7-align.py`（幂等，
+  3.13/3.14 通用，覆盖 5 load + 5 store）。
+- **读-改-写类**（add / exchange / CAS / and / or）拆半会破坏原子性，
+  需锁或重试循环，该脚本**未覆盖**——将来新崩溃优先查这几个。
 
-**历史呼应**：node 移植墙 #11（`___atomic_load_8` 是 no-op，用 `c8fixed.o`
-强制 `is_lock_free` 只认 ≤4 字节）——同一根因的第二次现身。**凡在
-armv7 Apple 上移植带锁/原子计数的软件，先检查这一条。**
+**历史呼应**：node 移植墙 #11（`___atomic_load_8` 被当成 no-op，用
+`c8fixed.o` 强制 `is_lock_free` 只认 ≤4 字节）——**同一根因的第一次现身**。
+**凡在 armv7 Apple 上移植带锁/原子计数的软件，先检查这一条。**
