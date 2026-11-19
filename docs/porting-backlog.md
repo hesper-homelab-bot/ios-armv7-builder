@@ -28,7 +28,7 @@
 | wget | 1.25.0 | — | 双签名约定的出处 |
 | openssh | 10.6p2 | [openssh.md](openssh.md) | 22226 验证口 |
 | dropbear | 2026.94 | [dropbear.md](dropbear.md) | 唯一 sshd（22 口） |
-| nginx | 1.26.3 | [nginx.md](nginx.md) | 设备侧已停用 |
+| nginx | 1.31.9 | [nginx.md](nginx.md) | 设备侧已停用 |
 | mosh | 1.4.0 | [mosh.md](mosh.md) | Termius 验证通过 |
 | netstat | 1.0 | [netstat.md](netstat.md) | **自研**，ABI 全实测 |
 | nmap | 7.95 | [nmap.md](nmap.md) | **侵入性最强**（八道墙） |
@@ -52,13 +52,14 @@
 | tailcat | 0.7.0 | [tailcat-porting.md](tailcat-porting.md) · [tailcat.md](tailcat.md) | 首个完整 Go 程序;设备端自举编译 ✓ |
 | go | 1.27.2 | [go.md](go.md) | **TESTING ONLY**;设备端工具链 |
 | tailscale | 1.104.7 | [tailscale.md](tailscale.md) | 全链路验证,userspace-netstack |
+| pgrep/pkill | 1.0 | [pgrep.md](pgrep.md) | OpenBSD 血统,sysctl 路线(-f 需 root) |
+| ping | 1.0 | [ping.md](ping.md) | 自写;setuid root(ICMP 投递策略实测) |
 
 **未能凑齐专项文档的**：wget（信息散落在 `docs/curl.md` §4 的签名教训里）。
 
 ## 进行中
 
-（无——tailcat 已完成并升入已上线；设备 curl 8.16 回包 bug 为唯一活跃专项,
-见 [tailscale.md](tailscale.md) §4。）
+（暂无）
 
 ## 已完成
 
@@ -75,20 +76,9 @@
     `~/scratch/go-port/`。
   - 遗留（独立工作，未做）：设备端 `go build` 需要先补
     vendored `golang.org/x/sys/unix` 的 darwin/arm 类型定义。
-
-## 待表态（用户未点头，不动）
-
-- **node JIT（内核 patch 级）**：**用户 2026-11-15 判死**（"有那精力不如
-  研究 Go 移植"）。用户态路线全灭实验证据链 `docs/node.md`（entitlement×2
-  / RWX 直建 / vm_remap 四路全 SIGBUS）。
-- **tailcat（Rust 复刻）**：用户 2026-11-15 裁掉（放弃 Rust，磁盘约束 +
-  DERP/STUN/netstack 生态全空白需自写数周）。宿主侧 tailcat server +
-  跨机 ping 已验证（`~/scratch/tailcat/`，server 已按用户指示关停，
-  宿主可直接装官方包）。
-
-## 远期（难度高，最后）
-
-**（暂无——ffmpeg 已于 2026-11-15 完工上线。）**
+- ffmpeg 已于 2026-11-15 完工上线。
+- tailcat 已于 2026-11-19 完工上线。
+- tailscale 已于 2026-11-19 完工上线。
 
 ## 判死 / 排除
 

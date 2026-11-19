@@ -69,6 +69,11 @@ export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/li
 - 排查 SIGKILL 第一步：设备上 `ldid -e X`——有输出=已签名；
   `_assert(signature != NULL)`=未签名。
 - 就地覆盖已存在文件有 vnode 风险 → **部署成新文件名，再 `rm -f` 旧名 + `cp`**。
+- **覆盖已签名二进制（2026-11-19 curl 实锤）**：`cp` 原地覆盖已签名文件后，
+  即使新内容自带有效签名、md5 与源一致，内核仍拒载（依赖 inode 状态；
+  设备实测三连 Killed:9 无崩溃报告）。**覆盖后必须对目标重新 `ldid -S`**
+  （重写签名即复活）；正规部署走 deb——dpkg 解包 = 新 inode + rename +
+  postinst 重签，天然免疫。
 - 崩溃报告：`/var/mobile/Library/Logs/CrashReporter/*.ips`（SIGKILL 无报告；
   连续崩溃会被限流）。
 - **.ips 符号化**：报告里 `0xADDR base + off` 的 base 是设备加载基址；
