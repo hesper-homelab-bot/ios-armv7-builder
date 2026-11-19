@@ -82,3 +82,32 @@ export SSL_CERT_FILE=/etc/ssl/cert.pem
 |---|---|
 | `curl/build.sh` | 构建（三坑的推导过程在注释里） |
 | `curl/make-deb.sh` | 打包（**含签名教训**，与 openssl 一起出两个包） |
+
+## 墙:keepalive 误设 TCP_NOPUSH 的 5 秒 cork(2026-11-19,SDK 迁移)
+
+**症状**:设备 curl 请求"能收到回包但延迟很久";loopback 上 TTFB 恒定
+~5.01s(connect 毫秒级);`-v` 两条 `Failed to set TCP_KEEPINTVL/KEEPCNT
+on fd 5: errno 42`(ENOPROTOOPT)。
+
+**根因**(tcpdump lo0 + 服务端时间戳 + 选项空间探针,全链路实证):musl
+派生 sysroot 的 `netinet/tcp.h` 是 Linux 选项号——`TCP_KEEPIDLE=4` 在
+Darwin 撞 `TCP_NOPUSH=0x04`(设备实测 0x4 可设!),curl 默认 keepalive
+设置把 socket **cork 住**,请求在内核压 ~5s(NOPUSH 定时器)才放行;
+`TCP_KEEPINTVL=5/TCP_KEEPCNT=6` 是死号 → errno 42。服务端全部无辜
+(nginx/python/Go 即时响应,sockprobe 裸 C 4-9ms)。
+
+**修法**:按 2026-11-15 拍板**迁移 SDK sysroot**
+(`IOS_SYSROOT=$HOME/ios-tool/iPhoneOS10.3.sdk`,`IOS_STUBDIR=$HOME/ios-tool`
+锚 -lSystem,真 Apple 头常量天然正确);另链 `tools/shims/c8fixed.S`
+(libcrypto 2026-11-16 重建引入 `___atomic_is_lock_free` 引用,墙#7 同源,
+check-undefined 205/205)。终验:default keepalive 5.01s → **2.4ms**,
+errno 42 归零,HTTPS 200。
+
+**部署新教训(三件套增补)**:`cp` 原地覆盖**已签名**二进制后,即使内容/
+签名 blob md5 完整,内核仍拒载(依赖 inode 状态,机制未深挖);**覆盖后
+必须对目标重新 `ldid -S`**,或直接走 deb(dpkg 解包 = 新 inode + rename +
+postinst 重签,天然免疫——实测对照)。本次 3 次 Killed:9 假信号的真凶。
+
+**根因自查方法论**:分段计时(curl -w)→ tcpdump lo0 看内核视角哪个包
+迟到 → 服务端加时间戳分清 send/recv 侧 → 选项空间探针(python3 逐号
+setsockopt)→ 开关实验(--no-keepalive 一发命中)。
