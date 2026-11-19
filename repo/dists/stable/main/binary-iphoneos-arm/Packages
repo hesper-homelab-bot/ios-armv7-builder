@@ -114,6 +114,34 @@ Description: Git 2.51.2 for armv7 iOS 10+ (fully static)
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: Git 2.51
 
+Package: go4
+Version: 1.27.2-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Filename: pool/main/g/go4/go4_1.27.2-1_iphoneos-arm.deb
+Size: 54781142
+MD5sum: 8a9e45c211db70673fa48149ca85c6f5
+SHA1: bf8f6248e3424b713d6f527a6184878e0c77692d
+SHA256: 85eaee670bfb43481746e39d3e3d20d49e565c00ae94f5e2d511b6b64ebff158
+Section: Development
+Priority: optional
+Homepage: https://go.dev/
+Description: Go 1.27.2 toolchain for armv7 iOS, revived port
+ Go compiler and toolchain running on the device itself (armv7 iOS 10).
+ The darwin/arm port was dropped upstream after Go 1.14; this revives it
+ inside the Go 1.27.2 tree (internal-linking Mach-O writer, pure-Go
+ runtime, per-thread g-slot table).  See the porting notes in the repo
+ docs for the runtime and linker bugs that had to be fixed first.
+ .
+ Usage:
+ .
+   export GOROOT=/var/mobile/tools/goroot
+   cd /var/mobile/gohello && go build -o hello .
+ .
+ First full build of a multi-package program takes minutes on an A6X.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: Go 1.27.2 darwin/arm
+
 Package: jq
 Version: 1.7.1-2
 Architecture: iphoneos-arm
@@ -247,20 +275,20 @@ Description: netstat for iOS 10.3.3 armv7
  xnu-3789.70.16). Supports -a -t -u -r -i flags, numeric output.
 
 Package: nginx4
-Version: 1.26.3-5
+Version: 1.31.9-1
 Architecture: iphoneos-arm
 Maintainer: Hesper <hesperup@users.noreply.github.com>
 Depends: firmware (>= 10.3)
-Filename: pool/main/n/nginx4/nginx4_1.26.3-5_iphoneos-arm.deb
-Size: 2230920
-MD5sum: f7024ecff85ce3ffc02638df7312f880
-SHA1: c5d32749934e83ebed9e5e57e42a05e2b4e81679
-SHA256: f2f86c29e2ad2790db51259677829971cddda4c943ecb4cb072f8692d0df7b58
+Filename: pool/main/n/nginx4/nginx4_1.31.9-1_iphoneos-arm.deb
+Size: 2483050
+MD5sum: ff6fd59253c3306d93a06f326ac2b0b6
+SHA1: 78c016cf0c3f1509afbed8b006b63569ba4c1540
+SHA256: 71e276488d4c932768de97a8376c9c3f3e545429b2db826471d62c301c5a1c3b
 Section: Networking
 Priority: optional
 Homepage: https://nginx.org/
-Description: nginx 1.26.3 for armv7 iOS 10+ (kqueue, static OpenSSL 4)
- nginx 1.26.3 cross-compiled for armv7 iOS 10.x, using the iOS
+Description: nginx 1.31.9 for armv7 iOS 10+ (kqueue, static OpenSSL 4)
+ nginx 1.31.9 cross-compiled for armv7 iOS 10.x, using the iOS
  kqueue event engine and statically linked against PCRE2, zlib and
  OpenSSL 4.0.3.  Installs to /var/mobile/tools/nginx so it does not touch
  any system path.
@@ -276,7 +304,7 @@ Description: nginx 1.26.3 for armv7 iOS 10+ (kqueue, static OpenSSL 4)
  and check it with
    curl http://127.0.0.1:8080/
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
-Name: nginx 1.26
+Name: nginx 1.31.9
 
 Package: nmap
 Version: 7.95-1
@@ -406,32 +434,32 @@ Description: p7zip 17.05 (7z/7za) for iOS 10.3.3 armv7
  /usr/bin/7z and /usr/bin/7za are left untouched.
 
 Package: python3
-Version: 3.13.18-1
+Version: 3.13.18-2
 Architecture: iphoneos-arm
 Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
-Filename: pool/main/p/python3/python3_3.13.18-1_iphoneos-arm.deb
-Size: 19073526
-MD5sum: eb4e82e103cbd2a34a56e66e33c588a5
-SHA1: d290a16a1c411357993e66795c514ba8e3334c1b
-SHA256: c7b75cfd571d19606f6880f1ceddf1d24d6dabbbf4e38286c48dd40b33899a3b
+Filename: pool/main/p/python3/python3_3.13.18-2_iphoneos-arm.deb
+Size: 19072418
+MD5sum: ab1b34e71db0457a5ea09ef89de6d8f0
+SHA1: bc59d78476639a52abbe96f7ce1616c1cdfdc804
+SHA256: 61e3d7b5f1951595c21270a0ebe1a8f71de144fe694a164d286734cb91574a74
 Section: Development
 Priority: optional
 Description: CPython 3.13.18 for iOS 10.3.3 armv7
  Full CPython built against the real iPhoneOS10.3.sdk, cross-compiled on
- Linux with cctools ld64.  Includes the standard library and 51 C extension
- modules (math, zlib, hashlib, sqlite3, _socket, ...).  NOTES: ssl/hashlib
- OpenSSL-backed modules are absent (OpenSSL static archive has armv7
- text-relocation issues in bundles); set PYTHONHOME if relocating.
+ Linux with cctools ld64.  Includes the standard library and 53 C extension
+ modules (math, zlib, hashlib, sqlite3, _socket, ssl/OpenSSL 4.0.3, ...).
+ TLS 1.3 verified on device with a real HTTPS request.
+ Installs to /var/mobile/tools/python3; no PYTHONHOME needed.
 
 Package: python314
 Version: 3.14.10-1
 Architecture: iphoneos-arm
 Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
 Filename: pool/main/p/python314/python314_3.14.10-1_iphoneos-arm.deb
-Size: 19765508
-MD5sum: 091758835f1c4f7c6cbe5d69d9e54d68
-SHA1: f0d9e2c08d99dcec073883ada897fe77a48c0584
-SHA256: 1af3942cf2415512f6da4f2df65a774aa7b92d076f2818817a4d45216c75412f
+Size: 19765466
+MD5sum: 578e2d4ff983e5eb2443e2d5aa1c9a94
+SHA1: 29ed94dbdb1365bfcadad1ed898348dd202512a3
+SHA256: 04f54f52ced039a8b752949fe502a7f8f37e48bf1a4a5689319fb46cc1770fd5
 Section: Development
 Priority: optional
 Description: CPython 3.14.10 for iOS 10.3.3 armv7
@@ -489,6 +517,34 @@ Description: SQLite 3.54.1 command-line shell for armv7 iOS 10+
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Name: SQLite 3.54
 
+Package: tailcat4
+Version: 0.7.0-1
+Architecture: iphoneos-arm
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Filename: pool/main/t/tailcat4/tailcat4_0.7.0-1_iphoneos-arm.deb
+Size: 8279620
+MD5sum: ac154d943e1010a19ce88fb87547f1cc
+SHA1: bc1f78c65c4f1a0f8967cfa2a9906514f887ab6c
+SHA256: 157f324204eddd796b280b09c75260c26bd2cb1ed0aa52f32c49e883cb916d5e
+Section: Networking
+Priority: optional
+Homepage: https://github.com/tailscale/tailcat
+Description: tailcat for armv7 iOS, Go 1.27.2 darwin/arm revived port
+ Securely pipe or serve network connections over Tailscale's data plane
+ (WireGuard, NAT traversal) without Tailscale's control plane.  Built with
+ the revived Go 1.27.2 darwin/arm toolchain; see the porting notes in the
+ repo docs for the runtime bugs that had to be fixed first.
+ .
+ No launchd daemon: run it yourself, e.g.
+ .
+   /var/mobile/tools/tailcat serve
+ .
+ or pipe through it:
+ .
+   /var/mobile/tools/tailcat <address>
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Name: tailcat 0.7.0
+
 Package: tcpdump
 Version: 4.99.5-1
 Architecture: iphoneos-arm
@@ -537,7 +593,7 @@ Description: Terminal multiplexer - windows, panes, detachable sessions
  Cross-compiled from upstream source for armv7 iOS 10.x (no Xcode, no iOS
  SDK). Requires iOS 10.3 or later on an armv7 (32-bit) device.
 Author: Nicholas Marriott <nicholas.marriott@gmail.com>
-Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Depiction: https://github.com/hesper-homelab-bot/ios-tmux-builder
 Name: tmux
 
 Package: tor4
