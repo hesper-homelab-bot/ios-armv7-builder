@@ -68,11 +68,44 @@ runtime/链接器的 **SVC 直陷遗留**:zsyscall 的 SVC 路径(SYS_LSEEK 等)
   `TMPDIR` 指到根分区,否则 "disk quota exceeded"(构建脚本已内置)。
 - 性能:A6X 上 complex 多包编译约 10 分钟;工具链自举或编译大程序按耐心计。
 
-## 六、遗留待办
+## 六、遗留待办(2026-11-19 全量清理完毕)
 
-- **用设备端 go 编译 tailcat**(终极自举验证;源码+依赖需上设备,
-  goproxy.cn 拉取或宿主推 modcache;预计 30-60 分钟)。
-- zsyscall SVC 路径全面改 libc 原语(见三末)。
-- Ftruncate/Truncate/pread/pwrite 的 64 位参数"<4GB 碰巧对"形态规范化。
-- trampoline 调 libc 时 sp 的 8 字节对齐(quirk 路径)未系统验证。
-- g 槽表满(64 线程)行为:当前跳过写,可加诊断。
+- ✅ **设备端 go 编译 tailcat:完成**(终极自举验证)。设备工具链在 A6X 上
+  40 分钟编出完整 tailcat(20.3MB,含 tailscale.com/wireguard-go/gvisor
+  全依赖图),`--help` 正常。方法:宿主预构建最小 modcache(真实构建驱动,
+  286M)整包推送,设备 GOPROXY 直连补漏;设备产的二进制仍要部署三件套
+  (ldid)。详见 docs/tailscale.md 时代的基础设施 + /var/mobile/build/。
+- ✅ trampoline 写回审计:对 sys_darwin_arm.s 全部 47 个 `BL libc_*` 与
+  sys_darwin.go 的 47 条 cgo_import_dynamic 交叉核对,**无存活缺陷**。
+  mlock(void)/issetugid(R0)/proc_regionfilename(R0)签名匹配;
+  pthread_key_create/setspecific 两个 trampoline 是 TLSG 方案后的死代码
+  (无 Go 侧声明)。fcntl/mmap/pipe 的双槽写回齐全。
+- ✅ **墙 #8(新发现,已修)**:runtime 自己调用的 libc_gettimeofday
+  (walltime,1.14 复活版)没有任何 cgo_import_dynamic 声明——链接集只含
+  runtime 的最小程序(hello)直接 "relocation target libc_gettimeofday not
+  defined";大程序全靠别的包(syscall/x_sys)恰好带着声明才侥幸通过。
+  修复 = sys_darwin.go 补 3 条声明(gettimeofday + 两个死 pthread 符号)。
+  顺带完成全量交叉核对(见上)。
+- ✅ Ftruncate/Truncate/pread/pwrite 64 位参数规范化:高位字补进分发器
+  读取的槽位(与 Seek/mmap 已实证的拆分约定一致)。设备探针:ReadAt
+  100/150/293 字节级正确;Ftruncate 1K/4K 往返正确;≥4GB 无法在设备实测
+  (/var 仅 3.8G,HFS+ 无稀疏文件),由槽位约定保证并记录。
+- ✅ g 槽表满诊断:第 65 个线程注册时不再静默跳过(旧路径会导致
+  load_g 回 g==0,炸在远处),改为标记寄存器自旋(R8='TLSF',
+  R9=未落槽的 TPIDRURO),lldb 一眼可辨(与 syscallN 金丝雀同约定)。
+- ✅ zsyscall SVC 路径定性反转:**设计与上游一致,非移植缺陷**。stdlib
+  zsyscall 主体早已是 libc trampoline 分发(syscalln);仅剩的大写
+  Syscall/Syscall6/9 asm 在上游官方 1.27 里同为裸 SVC
+  (asm_darwin_arm64.s 原文对照),iOS 10 内核对部分 arm32 直陷号的
+  差异(曾观测 SYS_LSEEK→ENOTTY)属上游继承行为;libSystem 甚至不导出
+  syscall(2),libc 包装路线不存在。stdlib 零暴露(LINUX 专属调用不在
+  darwin 编译),需直陷号的调用方应学 x/sys 用 trampoline。
+- ✅ trampoline 调 libc 的 sp 8 字节对齐:系统验证完成。机制=Go 汇编器对
+  含 BL 的函数自动标 non-LEAF:序言压 LR(SP 变 4 mod 8)、RET 弹 LR——
+  所以 mmap/sysctlbyname 注释里"frame must be 4 mod 8"的补齐是必需的;
+  syscallN 的槽位计算为 8 的倍数,叠加序言偏移后与 AAPCS 对齐要求一致
+  (obj5.go ARET 原文对照 + 各 trampoline 注释交叉确认)。
+
+**新遗留(2026-11-19 记录)**:设备 curl 8.16 移植自身收不到回包
+(三案同源:nginx loopback / tailscale SOCKS5 / python3 loopback 对照
+实证内核无辜),见 docs/tailscale.md §4,待专项。

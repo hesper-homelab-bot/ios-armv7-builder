@@ -1,0 +1,35 @@
+diff -ruN old/src/vendor/golang.org/x/sys/cpu/cpu_darwin_arm.go new/src/vendor/golang.org/x/sys/cpu/cpu_darwin_arm.go
+--- old/src/vendor/golang.org/x/sys/cpu/cpu_darwin_arm.go	1970-01-01 08:00:00.000000000 +0800
++++ new/src/vendor/golang.org/x/sys/cpu/cpu_darwin_arm.go	2026-11-17 10:07:13.479380710 +0800
+@@ -0,0 +1,30 @@
++// Copyright 2026 The Go Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style
++// license that can be found in the LICENSE file.
++
++//go:build darwin && arm && gc
++
++package cpu
++
++func doinit() {
++	setMinimalFeatures()
++
++	// darwin/arm (revived port for iOS 10.3.3 armv7).
++	// armv7 has NEON (Advanced SIMD) and VFPv4.
++	ARM.HasNEON = true
++	ARM.HasVFPv4 = true
++	ARM.HasVFPv3 = true
++	ARM.HasVFPv2 = true
++	// ARMv7-A has integer division in Thumb-2
++	ARM.HasIDIVA = true
++	// Large Physical Address Extension (LPAE) - not on standard armv7
++	ARM.HasLPAE = false
++	// CRC32 - not on armv7
++	ARM.HasCRC32 = false
++	// AES/SHA - not on armv7
++	ARM.HasAES = false
++	ARM.HasSHA1 = false
++	ARM.HasSHA2 = false
++	// ATOMICS (LSE) - armv8.1 feature
++	ARM.HasATOMICS = false
++}
+\ No newline at end of file

@@ -2,11 +2,10 @@
 
 > **本文件只放"还没做的"和"判死的"。**
 >
-> **待办(2026-11-19):用设备端 Go 工具链编译 tailcat**(终极自举验证)。
-> 设备端工具链已就绪:`go4` deb / `/var/mobile/goroot2`(go+compile/link/asm/vet)。
-> 设备端 go 已验证可编译 complex 多包测试(10 组全过,见 docs/tailcat-porting.md 九)。
-> tailcat 源码在设备 `/var/mobile/complex`(需换成 tailcat 树 + 依赖模块
-> goproxy.cn 拉取或宿主推 modcache);A6X 上预计 30-60 分钟。
+> **✅ 已完成(2026-11-19):设备端 Go 工具链编译 tailcat**(终极自举验证)。
+> A6X 上 40 分钟编出 20.3MB 完整 tailcat(全依赖图),`--help` 正常。
+> 方法与墙见 [go.md](go.md) §六;顺带清完 Go 移植全部遗留(trampoline
+> 审计/64 位参数规范化/g 槽诊断/墙 #8 libc 声明)。
 > 已上线的包，详情在各自的 `docs/<pkg>.md` 专项文档里（索引见下）。
 >
 > 2026-11-14 从 BigBoss 索引盘点产生（分析底稿：`~/scratch/bigboss/bigboss.db`，
@@ -50,15 +49,16 @@
 | node | 22.23.4 | [node.md](node.md) | jitless |
 | python3 | 3.13.18 | [python.md](python.md) · [python3.md](python3.md) | 含 ssl/sqlite3 |
 | python314 | 3.14.10 | 同上 | 与 3.13 并存 |
+| tailcat | 0.7.0 | [tailcat-porting.md](tailcat-porting.md) · [tailcat.md](tailcat.md) | 首个完整 Go 程序;设备端自举编译 ✓ |
+| go | 1.27.2 | [go.md](go.md) | **TESTING ONLY**;设备端工具链 |
+| tailscale | 1.104.7 | [tailscale.md](tailscale.md) | 全链路验证,userspace-netstack |
 
 **未能凑齐专项文档的**：wget（信息散落在 `docs/curl.md` §4 的签名教训里）。
 
 ## 进行中
 
-- **tailcat(Go 1.27.2 darwin/arm)**:编译/部署已通,`--help`/`genkey`/`serve`
-  在设备上跑通(2026-11-17 深夜)。剩最后一关:6/2 参 libc 调用经
-  `syscallN_trampoline` 后崩(SIGSEGV,libc 本体正常)。全记录:
-  [tailcat-porting.md](tailcat-porting.md)。
+（无——tailcat 已完成并升入已上线；设备 curl 8.16 回包 bug 为唯一活跃专项,
+见 [tailscale.md](tailscale.md) §4。）
 
 ## 已完成
 

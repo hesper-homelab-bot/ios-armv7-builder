@@ -23,7 +23,12 @@ go-port's git log (~/scratch/go-port/go, commits 4ede5256..HEAD).
   preemptMSupported=false (async-preemption SIGURG hangs threads whose TLS
   g-slot is uninitialized); badsignal drops signals arriving on foreign
   (libpthread workqueue) threads; rt0/arm+os/signal_darwin_arm glue;
-  pprof defs.
+  pprof defs.  Also declares the three libc dynimports the revived arm32
+  trampolines call that nothing else in a minimal link set declares
+  (libc_gettimeofday for the 1.14 walltime + the two dead pthread-TSD
+  ones): without them a runtime-only link fails with "relocation target
+  libc_gettimeofday not defined" (found via a minimal on-device hello,
+  2026-11-19, docs/go.md wall #8).
 
 - 020-syscall-darwin-arm.patch — syscall: the zsys darwin/arm set (1.14
   generation, regenerated for 1.27), the 1.14 SVC Syscall/Syscall6/9
@@ -56,8 +61,14 @@ go-port's git log (~/scratch/go-port/go, commits 4ede5256..HEAD).
   zosarch gain darwin/arm; internal/syscall/unix/net_darwin.go retagged
   (its cgo_import_dynamic of libresolv made the linker emit an
   LC_LOAD_DYLD for a dylib iOS 10 does not have) with the syscall hooks
-  split out (syscall_syscall* linkname + AI_* constants); std vendor
-  gains x/sys cpu_darwin_arm.go (wireguard-go checksum needs IsBigEndian).
+  split out (syscall_syscall* linkname + AI_* constants).
+
+- 070-vendor-xsys-cpu.patch — src/vendor: golang.org/x/sys/cpu gains
+  cpu_darwin_arm.go (IsBigEndian needed by the wireguard-go checksum
+  path).  The FIRST generation of this patch set claimed this file in
+  060, but src/vendor was never inside any diff group — the 2026-11-19
+  regeneration diffed the whole tree and caught it; device builds of
+  anything importing the vendored cpu package failed without it.
 
 ## Deliberately NOT in the patches
 

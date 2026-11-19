@@ -288,6 +288,7 @@ diff -ruN old/src/cmd/link/internal/arm/obj.go new/src/cmd/link/internal/arm/obj
  	case objabi.Hlinux, /* arm elf */
  		objabi.Hfreebsd,
  		objabi.Hnetbsd,
+diff -ruN old/src/cmd/link/internal/ld/lib.go new/src/cmd/link/internal/ld/lib.go
 --- old/src/cmd/link/internal/ld/lib.go	2026-10-03 04:28:03.000000000 +0800
 +++ new/src/cmd/link/internal/ld/lib.go	2026-11-18 10:22:39.203294183 +0800
 @@ -3103,7 +3103,7 @@
@@ -299,6 +300,7 @@ diff -ruN old/src/cmd/link/internal/arm/obj.go new/src/cmd/link/internal/arm/obj
  			// Mach-O relocations are a royal pain to lay out.
  			// They use a compact stateful bytecode representation.
  			// Here we record what are needed and encode them later.
+diff -ruN old/src/cmd/link/internal/ld/macho.go new/src/cmd/link/internal/ld/macho.go
 --- old/src/cmd/link/internal/ld/macho.go	2026-10-03 04:28:03.000000000 +0800
 +++ new/src/cmd/link/internal/ld/macho.go	2026-11-19 09:35:09.824477982 +0800
 @@ -503,9 +503,15 @@
@@ -524,6 +526,7 @@ diff -ruN old/src/cmd/link/internal/arm/obj.go new/src/cmd/link/internal/arm/obj
  		bind.AddUint8(BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB | segId(seg))
  		bind.AddUleb(off)
  
+diff -ruN old/src/cmd/link/internal/ld/sym.go new/src/cmd/link/internal/ld/sym.go
 --- old/src/cmd/link/internal/ld/sym.go	2026-10-03 04:28:03.000000000 +0800
 +++ new/src/cmd/link/internal/ld/sym.go	2026-11-16 14:43:46.844987362 +0800
 @@ -111,6 +111,12 @@
