@@ -143,3 +143,42 @@
 
 逐墙时间线、调查协议与中间结论：`~/scratch/node-research/BUILD-STATE.md`
 （节 (a)–(v)；墙 #12 进行中，结论落 (u) 节及其后续）。
+
+## README 迁入（2026-11-19）：概览与发布
+
+
+`node/build.sh` and `node/make-deb.sh` build and package **Node.js 22.23.4**
+(V8 12.4) — the first C++20 port in this repo, and the one that pushed the
+toolchain from "compiles C programs" to "compiles a modern C++ runtime".
+Ships in the APT repository and as the
+[node-22.23.4 release](https://github.com/hesper-homelab-bot/ios-armv7-builder/releases/tag/node-22.23.4).
+
+What is different about this port, one line each:
+
+* **Jitless by necessity.** The device cannot execute generated code
+  (`mprotect`→RWX raises SIGBUS, `MAP_JIT` returns `EINVAL`), so the installed
+  `node` is a wrapper that appends `--jitless` and execs `node.real`.
+* **A real V8 code blob and startup snapshot**, produced by a custom
+  arm32-capable `mksnapshot` (11,415 relocation fixups applied before the
+  blob ships).
+* **The deb installs ready to run**: `/usr/local/bin/node` (the wrapper) and
+  `node.real`, both `ldid -S`-signed at package time — `dpkg -i` is the whole
+  install. npm is not included (`--without-npm`) and Intl is off
+  (`--with-intl=none`).
+* **Known limits**: no JIT (wall #15 — a device memory-model fact, not a bug),
+  and the kernel-locked 1 MB main-thread stack bounds deep recursion.
+
+The engineering log for this port is the deepest in the repo: **15 walls**,
+from the silent exec SIGKILL of an unsigned Mach-O (wall #10) through a no-op
+`__atomic_load_8` on the device that corrupted the OpenSSL CSPRNG (wall #11),
+torque's 32-bit literal layout (wall #13) and a sysroot `struct kevent` ABI
+mismatch — 52 B against the kernel's 20 B — that surfaced only as wrong
+`changelist` entries (wall #14). The per-wall account, the patch set
+(`node/patches/`) and the verification checklist (`node/VERIFY.md`) live in
+[docs/node.md](docs/node.md).
+
+One build-system note: Node's own build system cannot run unmodified against
+this hand-made sysroot, so the load-bearing recipe is the patch set plus the
+link script described in `docs/node.md`; `node/build.sh` (whose header states
+its own prepared/proven status) assembles the same steps.
+

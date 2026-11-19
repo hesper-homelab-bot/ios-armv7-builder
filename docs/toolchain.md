@@ -550,3 +550,182 @@ __atomic_load_n(&g_val, __ATOMIC_RELAXED)  ->  Bus error: 10
 **历史呼应**：node 移植墙 #11（`___atomic_load_8` 被当成 no-op，用
 `c8fixed.o` 强制 `is_lock_free` 只认 ≤4 字节）——**同一根因的第一次现身**。
 **凡在 armv7 Apple 上移植带锁/原子计数的软件，先检查这一条。**
+
+## 20. O_NONBLOCK:把所有问题都藏起来的那个 bug（README 迁入 2026-11-19）
+
+
+Worth reading even if you never build for iOS, because it produced weeks of
+blaming the wrong layer.
+
+The sysroot started from musl, whose `fcntl.h` is Linux's:
+
+```
+musl/Linux:  O_NONBLOCK = 0x800     (and O_CLOEXEC = 0x80000)
+Darwin:      O_NONBLOCK = 0x4       (and O_CLOEXEC = 0x1000000)
+```
+
+`fcntl(fd, F_SETFL, 0x800)` on Darwin sets an unrelated bit and *does not set
+non-blocking mode* — and fcntl never fails on an unknown flag, so every
+"make this socket non-blocking" in the entire program was a **silent no-op**.
+Every socket stayed blocking.
+
+Symptoms this one constant produced:
+
+* the client hung forever inside libevent's signal-pipe drain loop
+  (`evsig_cb` reads until EAGAIN; on a blocking fd with no data left it simply
+  blocks, and the client never called `poll()` again — proven with a watchdog
+  and a debug `poll()` wrapper);
+* a peer's data sat unread while both processes were alive and sleeping;
+* `MSG_EXIT` was queued but the peer never saw it;
+* behaviour changed randomly between runs and between the select/kqueue/poll
+  backends, because blocking fds make every event-loop race resolve
+  differently.
+
+`F_GETFL`/`F_SETFL` (3/4) match Darwin by pure luck, which is why fcntl calls
+never failed loudly. `O_CLOEXEC` being wrong also leaked fds into pane
+children.
+
+
+## 21. Darwin ABI 陷阱总表（README 迁入 2026-11-19；与 §8 互为索引）
+
+
+Each of these produced its own bug before being fixed; the fixes live in
+`sysroot-overlay/usr/include/`:
+
+| header | trap |
+|---|---|
+| `bits/errno.h` | `EAGAIN` 11 (Linux) vs 35 (Darwin): every `errno != EAGAIN` treats "try again" as fatal |
+| `sys/socket.h` | `SOL_SOCKET` 1 vs `0xffff`: `sendmsg`+`SCM_RIGHTS` fails with `EINVAL`, so a client cannot hand its tty to a server |
+| `fcntl.h` | `O_NONBLOCK`/`O_CLOEXEC` as above |
+| `pwd.h` | Darwin inserts `pw_change`/`pw_class`: musl's layout made `pw_shell` read `pw_gecos` — tmux tried to exec a shell named "Mobile User" |
+| `termios.h` | musl adds `c_line`; every offset after it differs |
+| `sys/utsname.h` | Darwin `char[256]x5` vs musl `char[65]x6`: `uname()` overflows the caller's stack by ~890 bytes and corrupts adjacent buffers (tmux parsed `list-windows` as `liPad3,4`) |
+| `bits/signal.h` | signal numbers, `SA_*`, `sigset_t` |
+| `sys/ioctl.h` | `TIOCGWINSZ` and friends are completely different ioctls |
+| `unistd.h` | `closefrom` does not exist on iOS 10; autoconf probes always succeed because the linker tolerates undefined symbols, so it must be disabled by hand and replaced by the project's bundled copy — it aborts in the forked child of every new pane, visible only in `/var/mobile/Library/Logs/CrashReporter/*.ips` |
+
+Later additions, found while porting OpenSSL 4 and curl 8:
+
+| header | trap |
+|---|---|
+| `pthread.h` | musl's `pthread_once_t` is a 4-byte `int`; Darwin's is a 12-byte `{long __sig; char __opaque[8]}` with `_PTHREAD_ONCE_SIG_init = 0x71B7236C`. Every `CRYPTO_ONCE`/`pthread_once` therefore corrupts memory and aborts inside `os_once` with `BUG IN CLIENT OF LIBPLATFORM: Unlock of an os_once_t not owned by current thread`. Also carries the 32-bit `pthread_mutex_t` (44), `cond` (28), `rwlock` (128) and `attr` (40) layouts, and Darwin's `PTHREAD_CREATE_DETACHED = 2` (Linux says 1). `bits/alltypes.h` must surrender its 14 `__NEED_pthread_*` typedef blocks, and `sys/types.h`/`signal.h`/`mqueue.h` their `__NEED_pthread_*` defines, or the two definitions collide |
+| `netinet/in.h`, `sys/socket.h` | **No `sa_len`/`sin_len`.** Darwin's `struct sockaddr` is `{u_char sa_len; sa_family_t sa_family; ...}` with the length first; musl omits it and its `sa_family_t` is 16-bit. Without the leading byte, `inet_ntop()` reads a 16-bit family from offset 0, gets `0x0210`, and fails with `EAFNOSUPPORT` — curl reports `connect to port 0 failed: Address family not supported by protocol family`. Sizes that must come out right: `sockaddr` 16, `sockaddr_in` 16, `sockaddr_in6` 28, `sockaddr_storage` 128 |
+| `sys/socket.h` | `SOCK_NONBLOCK`/`SOCK_CLOEXEC` **do not exist on iOS 10.** musl hands out `0x80000`; curling ORs `SOCK_NONBLOCK` into the socket type, the kernel answers `EINVAL`, and every connection dies in ~1 ms with "Failed initialization". Probing every candidate bit showed only the low two bits are even meaningful (`0x2`/`0x4` are `SOCK_DGRAM`/`SOCK_RAW`; `0x8`…`0x40` are rejected). The overlay `#undef`s both so callers fall back to `fcntl(F_SETFL, O_NONBLOCK)`, which works because `O_NONBLOCK` is already corrected |
+| `netdb.h` | `h_errno` is a Darwin global that musl does not declare |
+| `netinet/in6.h` | `struct in6_pktinfo` plus Darwin's option values: `IPV6_PKTINFO` 46 and `IPV6_RECVPKTINFO` 61, **not** the Linux 50/49. `netinet/in.h` must not also define the Linux `IPV6_*` block, or those values win by being included second |
+| `TargetConditionals.h`, `libkern/OSByteOrder.h` | Apple-only headers OpenSSL includes unconditionally; clean-room stubs |
+
+A third round, found while porting GNU wget 1.25.0.  One entry is not a new
+trap but a correction to the row above, and it is the most instructive of the
+lot:
+
+**The `sa_len` fix in the `sys/socket.h` row above was never actually made.**
+`netinet/in.h` got `sin_len`, but `sys/socket.h`'s `struct sockaddr` still
+starts at `sa_family`, so the README described a fix the tree did not contain
+(`git log -S'sa_len'` shows the symbol was never committed there until it was
+added for wget).  Nothing noticed because curl passes the `sockaddr` that
+`getaddrinfo()` returns straight back to `connect()` — the *system* fills the
+memory in, so a wrong header still byte-counts 16 and works.  wget's own
+socket layer inspects the struct, so it fails at once: `getaddrinfo()`
+resolves correctly and then every address fails `connect()` with
+`EAFNOSUPPORT`.  The lesson generalises: a header that is wrong in a way that
+only matters to code that *touches* the field will pass every test you already
+have, and the size is not a safety net because musl's and Darwin's
+`sockaddr` are both 16 bytes with different layouts.
+
+| header | trap |
+|---|---|
+| `sys/socket.h` | `sa_len` missing from `sockaddr`, and `ss_len` from `sockaddr_storage` (which also used musl's padding and came out 136 bytes instead of 128) — see the paragraph above |
+| `stdlib.h` | `MB_CUR_MAX` was `__ctype_get_mb_cur_max()`, a **glibc** internal.  Darwin exports a plain `int` variable, `__mb_cur_max`.  Measured on the device: the function form aborts with `dyld: lazy symbol binding failed: Symbol not found: ___ctype_get_mb_cur_max`; the data form returns 1 and survives `setlocale()`.  Calling the data symbol *as a function* bus-errors, which is how the two were told apart.  Any program using `MB_CUR_MAX` died at first use, not at link time |
+| `unistd.h` | six declared-but-absent functions are declared here after being confirmed on the device one at a time: `getpgrp`, `setpgrp`, `fdatasync`, `sbrk`, `ualarm`, `fpathconf` and `issetugid` (wget 1.25 needs `getpgrp`, gnulib needs `issetugid`) |
+| `sys/stat.h` | no `st_birthtim` alias for `st_birthtimespec`, so gnulib's `stat-time.h` fails with `no member named 'st_birthtim' in 'struct stat'` |
+| `netinet/in6.h` | musl omits `IN6_ARE_ADDR_EQUAL` outright.  Also fixed a typo in `IN6_IS_ADDR_LOOPBACK`: a stray second dereference meant the second word was never compared, so the macro accepted **every** IPv6 address as a loopback |
+| `unistd.h` (again) | Darwin's `pathconf` selectors are not Linux's — `_PC_NAME_MAX` is **4**, not 3.  Established by binary-search over `open()`: the filesystem rejects a 256-character path component with `ENAMETOOLONG`, and selector 4 is the one that returns 255.  A jailbroken device has no `/usr/include`, so this constant has to be measured, not copied from a header you do not have |
+| `xlocale.h` | Apple deleted it years ago (its contents moved into `<locale.h>`); gnulib's `localcharset.c` still includes it for `MB_CUR_MAX_L` whenever it defines `DARWIN7` |
+| `spawn.h` | Darwin represents `posix_spawnattr_t` and `posix_spawn_file_actions_t` as **4-byte opaque pointers**, not musl's 80- and 72-byte by-value structs.  Measured on the device: `posix_spawnattr_init()` writes 4 bytes into an `0xAA`-filled buffer and leaves the rest untouched |
+
+**`libSystem` is missing compiler-rt's generic atomics.** clang lowers OpenSSL's
+`CRYPTO_atomic_*` on armv7 to `__atomic_load`, `__atomic_store`,
+`__atomic_compare_exchange` and `__atomic_is_lock_free`, none of which iOS 10
+exports. clang also refuses to let C code define them (`cannot redeclare builtin
+function`, even with `-fno-builtin-<name>`), so `openssl/atomic_compat.c`
+implements them under internal names with a libgcc-style lock table and
+`openssl/atomic_alias.s` provides the public symbols as Mach-O long-branch
+stubs (`ldr pc, [pc, #-4]`).
+
+**Autoconf link tests always succeed here.** Because the kit links with
+`-undefined dynamic_lookup`, a `checking for eventfd... yes` is worthless: the
+symbol is simply left undefined and dyld aborts at first use
+(`dyld: lazy symbol binding failed: Symbol not found: _eventfd`). Every Linux-only
+function a project probes for — `eventfd`, `pipe2`, `accept4`, `recvmmsg`,
+`sendmmsg`, `getpass_r`, `gsasl_init` — has to be switched off by hand after
+`configure` runs.
+
+Debugging tips that actually worked, in order of usefulness:
+
+1. **Read the crash reports first.** A dyld abort produces no other output;
+   `Termination Description: DYLD, Symbol not found: _closefrom` ended days of
+   guessing.
+2. **Compare the failing program with a minimal one on the device.** A 60-line
+   program that performs the same registration pattern either reproduces the
+   fault (libevent/platform bug) or passes (program logic bug).
+3. **Instrument the platform libraries.** A debug `fprintf` around `poll()`
+   showing the fds, requested events and returned `revents` settles arguments
+   about "lost wakeups" immediately.
+4. **Bisect with a throwaway program against the same headers.** When curl
+   failed to connect in 1 ms but `ssh` from the same device worked, a 30-line
+   `socket()`/`connect()` program passed and a `getaddrinfo()` one passed too —
+   which proved the kernel and resolver were fine and pushed the search into
+   curl's own socket setup. Probe the *candidate constant* directly: looping
+   `socket(AF_INET, SOCK_STREAM | bit, 0)` over single bits found that iOS 10
+   accepts none of them.
+
+
+## 22. Darwin 头获取流程：fetch-darwin-header.sh（README 迁入 2026-11-19）
+
+
+`tools/fetch-darwin-header.sh` exists because the loop
+
+> find the header -> take the definition from upstream -> prove it on the device
+
+was repeated by hand about twenty times across the ports (tmux, curl, lsof,
+dropbear, openssh, node), and because **every mistake in that loop was a
+confidently-written wrong value**, not a syntax error.
+
+```sh
+./tools/fetch-darwin-header.sh sys/filio.h          # print source + provenance
+./tools/fetch-darwin-header.sh sys/event.h --install  # stamp + sync into overlay
+./tools/fetch-darwin-header.sh mach/boolean.h --probe # also emit a device probe
+```
+
+What it does:
+
+1. **Resolves the header from an authoritative source**, in order: the local
+   xnu sparse clone (tag `xnu-3789.70.16`), the Libc clone, cctools' `foreign/`
+   headers, the libdispatch clone, then GitHub over HTTP for anything else.
+   It prints where it got the text so the provenance ends up in the file.
+2. **Installs with a provenance comment** into `sysroot-overlay/usr/include/`
+   and syncs to `tmp/sysroot` with an `rsync --include='*.h'` filter. It will
+   not overwrite an existing, differing header without `--force` — the overlay
+   is a working tree every build depends on.
+3. **Checks** the result before it can break a build: include-guard pairing,
+   `extern "C"` presence, and a "Darwin does not have this at all" list
+   (`SIGPWR`, `SIGSTKFLT`, `SIGPOLL`, `sendmmsg`/`recvmmsg`, ...). A failed
+   check exits non-zero.
+4. **Writes a probe skeleton** with `--probe` that carries the exact compile /
+   sign / scp / run sequence for the device, and the rules learned the hard
+   way.
+
+The third step of the loop — proving the value on the device — is the only one
+that cannot be automated, and the probe skeleton leaves the asserts to you.
+Nothing in this port is believed until the device says so:
+
+| Symbol | Value | How it was settled |
+|---|---|---|
+| `F_GETPATH` | 50 | swept fcntl numbers 45..55, found the one returning a path |
+| `MCAST_JOIN_GROUP` | 80 | xnu (`bsd/netinet/in.h`) — Linux is 42 |
+| `MAP_MEM_NAMED_CREATE` | `0x20000` | cctools `foreign/mach/memory_object_types.h` |
+| `malloc_zone_t` `size` | offset 16 | found by calling `zone->size(zone, p)` |
+| `IP_TTL` | 4 | xnu — Linux is 2 |
+| `SIGPWR` / `SIGSTKFLT` | *absent* | device signal dump showed the collisions they'd cause |
+
