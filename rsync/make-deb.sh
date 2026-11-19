@@ -3,16 +3,17 @@
 #
 # Payload layout (p7zip17 pattern):
 #   /var/mobile/tools/rsync/rsync   the real binary (root:wheel, host-signed)
-#   /var/mobile/tools/bin/rsync     symlink (login shells; non-login shells
-#                                   keep PATH=/usr/bin:/bin)
-# Over-ssh callers must pass --rsync-path=/var/mobile/tools/bin/rsync because
+#   /var/mobile/tools/bin/rsync     symlink (login shells)
+#   /usr/bin/rsync                  symlink (3.3.0-2: over-ssh callers do NOT
+#                                   need --rsync-path any more; dropbear's
+#                                   non-login PATH=/usr/bin:/bin covers it)
 # the remote shell is non-login.
 set -eu
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 REPO_OUT="$(cd "$ROOT/.." && pwd)/out"
 UPSTREAM="3.3.0"                          # build.sh 产物命名（rsync-<UPSTREAM>-armv7）
-VERSION="$UPSTREAM-1"                     # deb 版本
+VERSION="$UPSTREAM-2"                     # deb 版本
 BIN_SRC="$REPO_OUT/rsync-$UPSTREAM-armv7" # build.sh 产物（未签名）
 DEB="$REPO_OUT/rsync4_${VERSION}_iphoneos-arm.deb"
 STAGE="$REPO_OUT/rsync4-stage"
@@ -22,6 +23,7 @@ STAGE="$REPO_OUT/rsync4-stage"
 rm -rf "$STAGE" "$DEB"
 mkdir -p "$STAGE/var/mobile/tools/rsync" \
          "$STAGE/var/mobile/tools/bin" \
+         "$STAGE/usr/bin" \
          "$STAGE/DEBIAN"
 
 # 本体：签名 + 断言（§7/§10：签名必须验证，不许 || true）
@@ -31,6 +33,7 @@ ldid -S "$STAGE/var/mobile/tools/rsync/rsync"
 ldid -e "$STAGE/var/mobile/tools/rsync/rsync" >/dev/null
 
 ln -sf /var/mobile/tools/rsync/rsync "$STAGE/var/mobile/tools/bin/rsync"
+ln -sf /var/mobile/tools/rsync/rsync "$STAGE/usr/bin/rsync"
 
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: rsync4
@@ -40,7 +43,7 @@ Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
 Description: rsync 3.3.0 for iOS 10.3.3 armv7
  Fast incremental file transfer.  popt/zlib bundled in-tree; built without
  iconv/acl/xattr/xxhash/openssl extras (see rsync/build.sh for the probe
- overrides).  Over ssh use --rsync-path=/var/mobile/tools/bin/rsync.
+ overrides).  3.3.0-2: /usr/bin/rsync symlink added -- rsync-over-ssh works without --rsync-path.
 Section: net
 Priority: optional
 EOF
@@ -51,6 +54,7 @@ cat > "$STAGE/DEBIAN/postinst" <<'EOF'
 set -e
 BIN="/var/mobile/tools/rsync/rsync"
 [ -x "$BIN" ] && ldid -e "$BIN" >/dev/null 2>&1
+ln -sf /var/mobile/tools/rsync/rsync /usr/bin/rsync || true
 exit 0
 EOF
 chmod 755 "$STAGE/DEBIAN/postinst"
@@ -60,6 +64,7 @@ cat > "$STAGE/DEBIAN/prerm" <<'EOF'
 #!/bin/sh
 set -e
 [ -L "/var/mobile/tools/bin/rsync" ] && rm -f "/var/mobile/tools/bin/rsync" || true
+[ -L "/usr/bin/rsync" ] && rm -f "/usr/bin/rsync" || true
 exit 0
 EOF
 chmod 755 "$STAGE/DEBIAN/prerm"

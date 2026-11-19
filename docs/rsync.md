@@ -10,7 +10,7 @@
 |---|---|
 | 版本 | 3.3.0 |
 | 包名 | `rsync4_3.3.0-1_iphoneos-arm.deb` |
-| 安装路径 | `/var/mobile/tools/bin/rsync` |
+| 安装路径 | `/var/mobile/tools/rsync/rsync`(+`/usr/bin/rsync`、`/var/mobile/tools/bin/rsync` 链接) |
 | 验收 | ✅ **增量同步 291B / 2817 字节**（改 1 加 1 只传增量） |
 
 **立项动机**：部署是日常痛点（此前一切都走 `scp`），rsync 给出**增量传输
@@ -22,7 +22,8 @@
 ## 2. ★ 用法注意：非登录 shell 的 PATH
 
 ```sh
-rsync --rsync-path=/var/mobile/tools/bin/rsync ...
+rsync ... # 3.3.0-2 起 /usr/bin/rsync 链接就位,rsync-over-ssh 直接可用
+# (旧用法 --rsync-path=/var/mobile/tools/bin/rsync 仍有效)
 ```
 
 **过 ssh 时必须显式指定 `--rsync-path`**——非登录 shell 的 `PATH`
@@ -90,3 +91,12 @@ rsync --rsync-path=/var/mobile/tools/bin/rsync ...
 | `rsync/make-deb.sh` | 打包 |
 | `tools/check-undefined.sh` | 链接后审计门禁 |
 | `docs/toolchain.md` §15 | dynamic_lookup 恒真探针、ac_cv 压制清单、configure 后断言 |
+
+## 墙:rsync-over-ssh 的 PATH(2026-11-20 修复)
+
+dropbear 非交互会话 `PATH=/usr/bin:/bin`,rsync 不在其中——`rsync -e ssh`
+远端起 `rsync --server` 报 `command not found`,连接秒断("connection
+unexpectedly closed (0 bytes received)")。原设计要求每次显式
+`--rsync-path=...`,3.3.0-2 起 postinst 建 `/usr/bin/rsync` 链接,直接
+可用(与 curl 的"默认化"先例一致)。验收:push 全量 + 增量(改 1 加 1,
+236B) + 拉取,三向全通。
