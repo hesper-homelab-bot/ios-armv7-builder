@@ -30,11 +30,18 @@ PREFIX="${PREFIX:-/var/mobile/tools}"
 
 [ -d "$SRC" ] || { echo "missing $SRC" >&2; exit 1; }
 [ -f "$OSSL/libssl.a" ] || { echo "build OpenSSL first (openssl/build.sh)" >&2; exit 1; }
-export IOS_SYSROOT="$root/tmp/sysroot"
-[ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }
-export IOS_LD64="$LD64" IOS_STUBDIR="$root"
+# sysroot: the 2026-11-15 ruling makes the REAL Apple SDK the default for
+# ports.  curl 8.16.0 predated it and shipped with the musl-derived sysroot,
+# whose Linux TCP option numbers made the default keepalive setup set
+# TCP_NOPUSH (musl TCP_KEEPIDLE=4 collides with Darwin's 0x04) -- every
+# request then sat corked in the kernel for ~5s (device curl report,
+# 2026-11-19).  The SDK's own headers carry the real Darwin constants.
+# Override with IOS_SYSROOT=$root/tmp/sysroot for the legacy musl build.
+export IOS_SYSROOT="${IOS_SYSROOT:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
+[ -d "$IOS_SYSROOT/usr/include" ] || { echo "missing $IOS_SYSROOT (see docs/toolchain.md §16)" >&2; exit 1; }
+export IOS_LD64="$LD64" IOS_STUBDIR="$HOME/ios-tool"
 export LD_LIBRARY_PATH="${LD64_LIBS:-}:${LD_LIBRARY_PATH:-}"
-export CROSS_TOP="$root/tmp" CROSS_SDK=sysroot
+export CROSS_TOP="$(dirname "$IOS_SYSROOT")" CROSS_SDK="$(basename "$IOS_SYSROOT")"
 
 # configure looks for <prefix>/lib/libssl.a; OpenSSL's build tree keeps the
 # archives in its root.  Give it the layout it expects.
@@ -45,8 +52,17 @@ ln -sfn ../libssl.a "$OSSL/lib/libssl.a"
 cd "$SRC"
 make distclean >/dev/null 2>&1 || true
 
-CC="$root/tools/cc-wrapper.sh" AR="$root/tools/darwin-ar" \
-RANLIB="$root/tools/darwin-ranlib" \
+export CC="$root/tools/cc-wrapper.sh" AR="$root/tools/darwin-ar" \
+RANLIB="$root/tools/darwin-ranlib"
+
+# __atomic_is_lock_free shim (docs/go.md wall #7): the OpenSSL 4.0.3 static
+# archives (2026-11-16 rebuild) reference the clang builtin, iOS 10 libSystem
+# has the load/store/CAS operators but NOT the predicate -- same dangling
+# reference nginx hit.  Link the shared honest thumb shim.
+C8OBJ="$root/tmp/curl-c8fixed.o"
+mkdir -p "$root/tmp"
+"$CC" -c "$root/tools/shims/c8fixed.S" -o "$C8OBJ"
+
 ./configure --host=armv7-apple-darwin --prefix="$PREFIX" \
     --disable-shared --enable-static \
     --with-openssl="$OSSL" \
@@ -55,6 +71,7 @@ RANLIB="$root/tools/darwin-ranlib" \
     --without-libgsasl \
     --disable-ldap --disable-ldaps --disable-manual \
     --disable-threaded-resolver \
+    LDFLAGS="$C8OBJ" \
     >/dev/null
 
 # Link tests lie (see header comment): turn off everything iOS 10 lacks.
