@@ -636,8 +636,8 @@ write_probe() {
  *   export IOS_STUBDIR="\$HOME/ios-tool"
  *   \$HOME/ios-armv7-builder/tools/cc-wrapper.sh $(basename "$out") -o ${base}-probe
  *   ldid -S ${base}-probe
- *   scp -q ${base}-probe ipad:/var/mobile/scratch/ && \\
- *       ssh ipad '/var/mobile/scratch/${base}-probe; echo rc=\$?'
+ *   scp -q ${base}-probe <device>:/var/mobile/scratch/ && \\
+ *       ssh <device> '/var/mobile/scratch/${base}-probe; echo rc=\$?'
  *
  * Rules learned the hard way:
  *   - constants must be measured, never remembered (MCAST_JOIN_GROUP is 80

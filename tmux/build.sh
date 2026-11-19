@@ -308,9 +308,9 @@ summary() {
     links    : libSystem + the device's libncursesw
 
     Install on the device:
-        scp $OUT/tmux-$TMUX_VERSION-$ARCH root@<ipad>:/var/mobile/tmux
-        ssh root@<ipad> 'chmod +x /var/mobile/tmux && ldid -S /var/mobile/tmux'
-        ssh root@<ipad> '/var/mobile/tmux -V'
+        scp $OUT/tmux-$TMUX_VERSION-$ARCH root@<device>:/var/mobile/tmux
+        ssh root@<device> 'chmod +x /var/mobile/tmux && ldid -S /var/mobile/tmux'
+        ssh root@<device> '/var/mobile/tmux -V'
 EOF
 }
 

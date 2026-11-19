@@ -48,3 +48,32 @@ __atomic_load_n(4字节对齐的 int64)  ->  Bus error: 10   ← SIGBUS
 "是设备/网络问题"还是"是我们编译的东西有问题"。
 **实测结果**：`fd=3` + `connect` 成功 → 设备网络栈完全正常，
 问题 100% 在 CPython 侧（最终定位到 8 字节原子）。
+
+### `probe-tsd-layout.c` ★ Go 移植 TLS 的决定性证据
+
+**问题**：iOS 10.3.3 的 pthread TSD 到底长什么样？`TPIDRURO` 与
+`pthread_self()` 什么关系？`pthread_key_create` 给的 key 会落在哪？
+
+**用途**：Go 移植的 `tlsinit` 需要在 TSD 里找 g 的槽位，而 1.14 的
+注释只写了"第一个 key 应该是 258"，没有布局图。
+
+**实测结果**（iPad4 / iOS 10.3.3）：
+- `pthread_key_create` → **k=258**（与 1.14 注释精确吻合）；
+- `TPIDRURO = 基址+1`（**可能不对齐**，需 `BIC $3`）；
+- `pthread_setspecific` 写入的 magic 落在 **`基址+0x408`（槽 258）**；
+- `TPIDRURO ±4KB` 全部可读（正常进程里 512 槽扫描不会出界）。
+
+**结论**：1.14 的扫描方案在**正常 PIE 布局**下可用；Go 非 PIE 早期
+进程里布局会漂移，故移植最终改用"固定槽 + 直接存槽地址"的方案
+（见 `docs/go.md` §3.6）。
+
+### `probe-tsd-direct.c`
+
+**问题**：iOS 10.3.3 是否导出 `_pthread_setspecific_direct` /
+`_pthread_getspecific_direct`（可省掉 TSD 扫描的直连槽 API）？
+
+**用途**：如果能用直连槽，Go 的 TLS 初始化会简单得多。
+
+**实测结果**：`dlsym` 两者都返回 **0x0**；查
+`libsystem_pthread.tbd` 确认**该 API 在 iOS 10.3.3 未导出**
+→ 直连槽路线判死（省下一次弯路）。

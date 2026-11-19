@@ -1,0 +1,211 @@
+--- old/src/internal/platform/supported.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/internal/platform/supported.go	2026-11-17 03:42:54.880480142 +0800
+@@ -183,7 +183,7 @@
+ 		case "linux/386", "linux/amd64", "linux/arm", "linux/arm64", "linux/loong64", "linux/ppc64", "linux/ppc64le", "linux/riscv64", "linux/s390x",
+ 			"android/amd64", "android/arm", "android/arm64", "android/386",
+ 			"freebsd/amd64",
+-			"darwin/amd64", "darwin/arm64",
++			"darwin/amd64", "darwin/arm64", "darwin/arm",
+ 			"ios/amd64", "ios/arm64",
+ 			"aix/ppc64",
+ 			"openbsd/arm64",
+@@ -217,7 +217,7 @@
+ func InternalLinkPIESupported(goos, goarch string) bool {
+ 	switch goos + "/" + goarch {
+ 	case "android/arm64",
+-		"darwin/amd64", "darwin/arm64",
++		"darwin/amd64", "darwin/arm64", "darwin/arm",
+ 		"linux/amd64", "linux/arm64", "linux/loong64", "linux/ppc64", "linux/ppc64le", "linux/s390x",
+ 		"windows/386", "windows/amd64", "windows/arm64":
+ 		return true
+@@ -240,7 +240,11 @@
+ 		}
+ 		return true
+ 	case "darwin":
+-		return true
++		// darwin/arm (revived port): plain builds stay non-PIE to match
++		// Go 1.14's behaviour on this target.  PIE is available and is
++		// used explicitly via -buildmode=pie (see BuildModeSupported and
++		// InternalLinkPIESupported above).
++		return goarch != "arm"
+ 	}
+ 	return false
+ }
+--- old/src/internal/platform/zosarch.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/internal/platform/zosarch.go	2026-11-16 13:27:09.626356523 +0800
+@@ -15,6 +15,7 @@
+ 	{"android", "arm64"},
+ 	{"darwin", "amd64"},
+ 	{"darwin", "arm64"},
++	{"darwin", "arm"},
+ 	{"dragonfly", "amd64"},
+ 	{"freebsd", "386"},
+ 	{"freebsd", "amd64"},
+@@ -67,6 +68,7 @@
+ 	{"android", "arm64"}:   {CgoSupported: true},
+ 	{"darwin", "amd64"}:    {CgoSupported: true, FirstClass: true},
+ 	{"darwin", "arm64"}:    {CgoSupported: true, FirstClass: true},
++	{"darwin", "arm"}:      {},
+ 	{"dragonfly", "amd64"}: {CgoSupported: true},
+ 	{"freebsd", "386"}:     {CgoSupported: true},
+ 	{"freebsd", "amd64"}:   {CgoSupported: true},
+--- old/src/internal/syscall/unix/net_darwin.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/internal/syscall/unix/net_darwin.go	2026-11-17 16:22:35.334804363 +0800
+@@ -2,6 +2,14 @@
+ // Use of this source code is governed by a BSD-style
+ // license that can be found in the LICENSE file.
+ 
++//go:build darwin && !netgo
++
++// darwin/arm (revived port): this file only serves the cgo-style DNS path
++// (net/cgo_unix_syscall.go, tag !netgo). With -tags netgo it must not
++// compile: its libresolv cgo_import_dynamic trampolines make the linker
++// emit an LC_LOAD_DYLIB for /usr/lib/libresolv.9.dylib, which iOS does
++// not ship, and dyld then refuses to load the binary outright.
++
+ package unix
+ 
+ import (
+@@ -10,23 +18,6 @@
+ 	"unsafe"
+ )
+ 
+-const (
+-	AI_CANONNAME = 0x2
+-	AI_ALL       = 0x100
+-	AI_V4MAPPED  = 0x800
+-	AI_MASK      = 0x1407
+-
+-	EAI_ADDRFAMILY = 1
+-	EAI_AGAIN      = 2
+-	EAI_NODATA     = 7
+-	EAI_NONAME     = 8
+-	EAI_SERVICE    = 9
+-	EAI_SYSTEM     = 11
+-	EAI_OVERFLOW   = 14
+-
+-	NI_NAMEREQD = 4
+-)
+-
+ type Addrinfo struct {
+ 	Flags     int32
+ 	Family    int32
+@@ -98,28 +89,6 @@
+ 	return GoString((*byte)(unsafe.Pointer(r1)))
+ }
+ 
+-// Implemented in the runtime package.
+-func gostring(*byte) string
+-
+-func GoString(p *byte) string {
+-	return gostring(p)
+-}
+-
+-//go:linkname syscall_syscall syscall.syscall
+-func syscall_syscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
+-
+-//go:linkname syscall_syscallPtr syscall.syscallPtr
+-func syscall_syscallPtr(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
+-
+-//go:linkname syscall_syscall6 syscall.syscall6
+-func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
+-
+-//go:linkname syscall_syscall6X syscall.syscall6X
+-func syscall_syscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
+-
+-//go:linkname syscall_syscall9 syscall.syscall9
+-func syscall_syscall9(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9 uintptr) (r1, r2 uintptr, err syscall.Errno)
+-
+ type ResState struct {
+ 	unexported [69]uintptr
+ }
+--- old/src/internal/syscall/unix/syscall_hooks_darwin.go	1970-01-01 08:00:00.000000000 +0800
++++ new/src/internal/syscall/unix/syscall_hooks_darwin.go	1970-01-01 08:00:00.000000000 +0800
+@@ -0,0 +1,53 @@
++// Copyright 2022 The Go Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style
++// license that can be found in the LICENSE file.
++
++//go:build darwin
++
++package unix
++
++import (
++	_ "unsafe"
++
++	"syscall"
++)
++
++// darwin/arm (revived port): moved out of net_darwin.go (now !netgo-tagged)
++// because arc4random_darwin.go / at_darwin.go / faccessat_darwin.go use these
++// linkname hooks regardless of the netgo build tag.
++
++//go:linkname syscall_syscall syscall.syscall
++func syscall_syscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
++//go:linkname syscall_syscallPtr syscall.syscallPtr
++func syscall_syscallPtr(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
++//go:linkname syscall_syscall6 syscall.syscall6
++func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
++//go:linkname syscall_syscall6X syscall.syscall6X
++func syscall_syscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
++//go:linkname syscall_syscall9 syscall.syscall9
++func syscall_syscall9(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9 uintptr) (r1, r2 uintptr, err syscall.Errno)
++
++// gostring is implemented in the runtime package.
++func gostring(*byte) string
++
++func GoString(p *byte) string {
++	return gostring(p)
++}
++
++const (
++	AI_CANONNAME = 0x2
++	AI_ALL       = 0x100
++	AI_V4MAPPED  = 0x800
++	AI_MASK      = 0x1407
++
++	EAI_ADDRFAMILY = 1
++	EAI_AGAIN      = 2
++	EAI_NODATA     = 7
++	EAI_NONAME     = 8
++	EAI_SERVICE    = 9
++	EAI_SYSTEM     = 11
++	EAI_OVERFLOW   = 14
++
++	NI_NAMEREQD = 4
++)
++
+--- old/src/vendor/golang.org/x/sys/cpu/cpu_darwin_arm.go	1970-01-01 08:00:00.000000000 +0800
++++ new/src/vendor/golang.org/x/sys/cpu/cpu_darwin_arm.go	1970-01-01 08:00:00.000000000 +0800
+@@ -0,0 +1,30 @@
++// Copyright 2026 The Go Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style
++// license that can be found in the LICENSE file.
++
++//go:build darwin && arm && gc
++
++package cpu
++
++func doinit() {
++	setMinimalFeatures()
++
++	// darwin/arm (revived port for iOS 10.3.3 armv7).
++	// armv7 has NEON (Advanced SIMD) and VFPv4.
++	ARM.HasNEON = true
++	ARM.HasVFPv4 = true
++	ARM.HasVFPv3 = true
++	ARM.HasVFPv2 = true
++	// ARMv7-A has integer division in Thumb-2
++	ARM.HasIDIVA = true
++	// Large Physical Address Extension (LPAE) - not on standard armv7
++	ARM.HasLPAE = false
++	// CRC32 - not on armv7
++	ARM.HasCRC32 = false
++	// AES/SHA - not on armv7
++	ARM.HasAES = false
++	ARM.HasSHA1 = false
++	ARM.HasSHA2 = false
++	// ATOMICS (LSE) - armv8.1 feature
++	ARM.HasATOMICS = false
++}
+\ No newline at end of file

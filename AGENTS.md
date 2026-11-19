@@ -24,6 +24,7 @@
 | ★ `docs/python.md` | **Python 索引页**：3.13/3.14 双版本导航、重建、两个必知坑 |
 | `docs/python3.md` | CPython 移植主文档（13 道墙、原子根因、全部验收） |
 | `docs/node.md` | Node 22.23.4（墙列表、链接配方、JIT 判死证据链） |
+| ★ `docs/go.md` | **Go 1.27.2 darwin/arm32 移植**（14 个坑 → 根因 → 调试方法；真机验证通过） |
 | `docs/quickjs.md` | QuickJS（Phase 1） |
 | `docs/libcxx-filesystem.md` | libc++ filesystem（C++ 运行时） |
 
@@ -84,7 +85,7 @@
 2. `~/scratch/node-research/BUILD-STATE.md` 是 node 的权威流水账（仓库外），
    docs/node.md 只保留**提炼后的当前状态**，细节引用流水账。
 3. 设备部署一律走部署三件套 + 新文件名（见 docs/toolchain.md §5）。
-3.5. **ssh 默认用 mobile**（`ssh ipad`）；root（`ssh root@ipad`）只用于
+3.5. **ssh 默认用 mobile**（`ssh <device>`）；root（`ssh root@<device>`）只用于
     dpkg 安装、改设备权限等系统级操作，且要在汇报里点名。理由：用户日常
     也是 mobile，root 下能跑通的探针会掩盖权限问题（/dev/bpf* 事件教训）。
 4. 用户级准则若需修订 → 改 `~/.dsh/AGENTS.md`，不要在本仓库重复。
