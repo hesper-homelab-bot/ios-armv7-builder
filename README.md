@@ -19,6 +19,7 @@ What is inside:
 | `curl/` | **curl 8.16.0** with working HTTPS, statically linked against the above |
 | `openssh/` | **OpenSSH 10.6p2** — builds, logs in, ssh/scp/sftp all work (sftp directory listings included); ships the `com.hesper.osshd` daemon, defaulting to port 22 |
 | `node/` | **Node.js 22.23.4** (V8 12.4) — the first full Node runtime for armv7 iOS, jitless by force of the device memory model, with a real embedded code blob + startup snapshot from a custom arm32-capable `mksnapshot` |
+| `go/` | **Go 1.27.2** darwin/arm revived port (upstream dropped darwin/arm after 1.14) — a full toolchain that cross-compiles from the host **and runs `go build` on the device itself**. **Testing only**: the port passes a 10-group conformance test and builds real programs (tailcat), but it is an experimental revival — not audited for production use, single-device verified, and several syscall paths (SVC-direct zsyscalls) are known-unfinished |
 | `wget/` | **GNU wget 1.25.0** with HTTPS, statically linked against the OpenSSL 4 build |
 | `git/` | **git 2.51.2** — the first working git for armv7 iOS; static zlib (cross-built here) + libcurl + OpenSSL; clone/fetch/push over HTTPS verified on device |
 | `vim/` | **Vim 9.1** (huge, no GUI) linked against the device's own libncursesw, with the full runtime tree |
@@ -41,7 +42,7 @@ assumption. Both build and run on an iPad 4 / iOS 10.3.3.
 export LD64=/path/to/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD64_LIBS=/path/to/x-libdispatch/lib:/path/to/x-tapi/lib
 
-(cd tmux && TMUX_VERSION=3.8 ./build.sh DEVICE=ipad)   # build tmux
+(cd tmux && TMUX_VERSION=3.8 ./build.sh DEVICE=<device>)   # build tmux
 ./scripts/make-deb.sh                                  # sign + package
 ./scripts/make-repo.sh                                 # regenerate the APT repo
 git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
@@ -56,6 +57,9 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 
 (cd node && ./build.sh)         # Node 22.23.4; the load-bearing recipe is node/patches/ + docs/node.md
 ./node/make-deb.sh              # node4 .deb: jitless wrapper + signed binary
+
+(cd go && ./build.sh)           # Go 1.27.2 darwin/arm: host cross toolchain + on-device toolchain tgz
+./go/make-deb.sh                # go4 .deb: run `go build` on the iPad itself (TESTING ONLY — experimental port, see docs/go.md)
 
 # ---- the 2026-11 application batch ----
 ./wget/make-deb.sh              # wget4 .deb (build was already in the tree)

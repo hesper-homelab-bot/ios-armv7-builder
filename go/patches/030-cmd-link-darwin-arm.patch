@@ -1,0 +1,541 @@
+diff -ruN old/src/cmd/link/internal/arm/asm.go new/src/cmd/link/internal/arm/asm.go
+--- old/src/cmd/link/internal/arm/asm.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/cmd/link/internal/arm/asm.go	2026-11-17 22:50:04.250479162 +0800
+@@ -39,6 +39,7 @@
+ 	"debug/elf"
+ 	"fmt"
+ 	"log"
++	"os"
+ )
+ 
+ // This assembler:
+@@ -97,7 +98,6 @@
+ }
+ 
+ func adddynrel(target *ld.Target, ldr *loader.Loader, syms *ld.ArchSyms, s loader.Sym, r loader.Reloc, rIdx int) bool {
+-
+ 	targ := r.Sym()
+ 	var targType sym.SymKind
+ 	if targ != 0 {
+@@ -111,6 +111,21 @@
+ 			return false
+ 		}
+ 
++	// MACHO-encoded BL from darwin/arm assembly (revived port).
++	case objabi.MachoRelocOffset + ld.MACHO_ARM_RELOC_BR24*2 + 1: // pcrel
++		su := ldr.MakeSymbolUpdater(s)
++		su.SetRelocType(rIdx, objabi.R_CALLARM)
++		if targType == sym.SDYNIMPORT {
++			addpltsym(target, ldr, syms, targ)
++			su.SetRelocSym(rIdx, syms.PLT)
++			// Bake the PLT index into the instruction's imm24 field,
++			// exactly like the ELF R_ARM_PLT32 case below. Without this
++			// every BL keeps imm24=0 and lands on PLT stub 0 (all calls
++			// became _open — found by live-debugging on 2026-11-16).
++			su.SetRelocAdd(rIdx, int64(braddoff(int32(r.Add()), ldr.SymPlt(targ)/4)))
++		}
++		return true
++
+ 	// Handle relocations found in ELF object files.
+ 	case objabi.ElfRelocOffset + objabi.RelocType(elf.R_ARM_PLT32):
+ 		su := ldr.MakeSymbolUpdater(s)
+@@ -200,6 +215,35 @@
+ 		}
+ 
+ 		return true
++
++	case objabi.R_ADDR:
++		// darwin/arm (revived port).  Must be handled HERE, in the first
++		// switch: the gate below ("Handle references to ELF symbols from
++		// our own object files") returns early for every non-SDYNIMPORT
++		// target, and the R_ADDR cases that matter for a PIE point at
++		// plain in-image symbols (rodata strings, .plt literals, itabs).
++		//
++		// Every absolute word in the image has to be recorded so dyld can
++		//  * rebase it (in-image target, must slide), or
++		//  * bind it (dynamic import).
++		// Miss these and a PIE starts with unrelocated pointers and jumps
++		// into garbage: crash 2026-11-17 showed rebase=0 bind=51, with pc
++		// equal to an instruction encoding.
++		if target.IsDarwin() && !target.IsExternal() {
++			// The PLT literal relocations are authored by addpltsym as
++			// R_PCREL and are already fully described; re-processing them
++			// here would turn them into rebase entries pointing at the
++			// wrong slot (that bug made every stub load GOT[0]).
++			if ldr.SymName(s) == ".plt" || ldr.SymName(targ) == ".got" {
++				return false
++			}
++			if targType == sym.SDYNIMPORT {
++				ld.MachoAddBind(s, int64(r.Off()), targ)
++			} else {
++				ld.MachoAddRebase(s, int64(r.Off()))
++			}
++			return true
++		}
+ 	}
+ 
+ 	// Handle references to ELF symbols from our own object files.
+@@ -217,6 +261,20 @@
+ 			// External linker will do this relocation.
+ 			return true
+ 		}
++		if target.IsDarwin() {
++			// darwin/arm (revived port): route through the PLT stub.
++
++			// Bake the PLT index into the imm24 field like the ELF path
++			// below — archreloc only adds SymValue(plt)-pc-8 on top of the
++			// baked imm. Without this every BL kept imm24=0 and jumped to
++			// PLT stub 0 (all libc calls became _open — live-debugged on
++			// 2026-11-16).
++			addpltsym(target, ldr, syms, targ)
++			su := ldr.MakeSymbolUpdater(s)
++			su.SetRelocSym(rIdx, syms.PLT)
++			su.SetRelocAdd(rIdx, int64(braddoff(int32(r.Add()), ldr.SymPlt(targ)/4)))
++			return true
++		}
+ 		addpltsym(target, ldr, syms, targ)
+ 		su := ldr.MakeSymbolUpdater(s)
+ 		su.SetRelocSym(rIdx, syms.PLT)
+@@ -329,8 +387,81 @@
+ 	}
+ }
+ 
+-func machoreloc1(*sys.Arch, *ld.OutBuf, *loader.Loader, loader.Sym, loader.ExtReloc, int64) bool {
+-	return false
++func machoreloc1(arch *sys.Arch, out *ld.OutBuf, ldr *loader.Loader, s loader.Sym, r loader.ExtReloc, sectoff int64) bool {
++	// Revived darwin/arm port: ported from the Go 1.14 implementation
++	// (cmd/link/internal/arm/asm.go), which ran on exactly this OS/arch.
++	// Uses the modern ExtReloc signature like arm64's machoreloc1.
++	var v uint32
++
++	rs := r.Xsym
++	rt := r.Type
++	siz := r.Size
++
++	if rt == objabi.R_PCREL {
++		// emit a pair of "scattered" relocations that resolve to the
++		// difference of section addresses of the symbol and the
++		// instruction (used for DWARF section diffs).
++		if ldr.SymType(rs).IsText() || ldr.SymType(rs).IsDWARF() {
++			// 1.14 only ever saw non-text here; keep the pair form.
++		}
++		o1 := uint32(sectoff)
++		o1 |= 1 << 31 // scattered bit
++		o1 |= ld.MACHO_ARM_RELOC_SECTDIFF << 24
++		o1 |= 2 << 28 // size = 4
++		o2 := uint32(0)
++		o2 |= 1 << 31 // scattered bit
++		o2 |= ld.MACHO_ARM_RELOC_PAIR << 24
++		o2 |= 2 << 28 // size = 4
++		out.Write32(o1)
++		out.Write32(uint32(ldr.SymAddr(rs)))
++		out.Write32(o2)
++		out.Write32(uint32(ldr.SymValue(s) + sectoff))
++		return true
++	}
++
++	if ldr.SymType(rs) == sym.SHOSTOBJ || rt == objabi.R_CALLARM {
++		if ldr.SymDynid(rs) < 0 {
++			ldr.Errorf(s, "reloc %d (%s) to non-macho symbol %s type=%d (%s)",
++				rt, sym.RelocName(arch, rt), ldr.SymName(rs), ldr.SymType(rs), ldr.SymType(rs))
++			return false
++		}
++		v = uint32(ldr.SymDynid(rs))
++		v |= 1 << 27 // external relocation
++	} else {
++		v = uint32(ldr.SymSect(rs).Extnum)
++		if v == 0 {
++			ldr.Errorf(s, "reloc %d (%s) to symbol %s in non-macho section %s type=%d (%s)",
++				rt, sym.RelocName(arch, rt), ldr.SymName(rs), ldr.SymSect(rs).Name, ldr.SymType(rs), ldr.SymType(rs))
++			return false
++		}
++	}
++
++	switch rt {
++	default:
++		return false
++	case objabi.R_ADDR:
++		v |= ld.MACHO_GENERIC_RELOC_VANILLA << 28
++	case objabi.R_CALLARM:
++		v |= 1 << 24 // pc-relative bit
++		v |= ld.MACHO_ARM_RELOC_BR24 << 28
++	}
++
++	switch siz {
++	default:
++		return false
++	case 1:
++		v |= 0 << 25
++	case 2:
++		v |= 1 << 25
++	case 4:
++		v |= 2 << 25
++	case 8:
++		v |= 3 << 25
++	}
++
++	out.Write32(uint32(sectoff))
++	out.Write32(v)
++	return true
+ }
+ 
+ func pereloc1(arch *sys.Arch, out *ld.OutBuf, ldr *loader.Loader, s loader.Sym, r loader.ExtReloc, sectoff int64) bool {
+@@ -620,6 +751,17 @@
+ 
+ 	ld.Adddynsym(ldr, target, syms, s)
+ 
++	if target.IsDarwin() && !target.IsExternal() && ldr.SymGot(s) < 0 {
++		// darwin/arm (revived port): the PLT literal below addresses the
++		// GOT slot via this symbol's SymGot.  Allocate the slot (and the
++		// dyld bind entry) here; without it the stub reads a slot index of
++		// -1 and every call lands on garbage (libc sysctl died at
++		// pc=0x14 inside the stub, 2026-11-17 — addpltsym was reached for
++		// symbols that never went through AddGotSym, e.g. when the only
++		// reference is a JMP from a libc trampoline).
++		ld.AddGotSym(target, ldr, syms, s, 0)
++	}
++
+ 	if target.IsElf() {
+ 		plt := ldr.MakeSymbolUpdater(syms.PLT)
+ 		got := ldr.MakeSymbolUpdater(syms.GOTPLT)
+@@ -647,6 +789,70 @@
+ 		rel.AddAddrPlus(target.Arch, got.Sym(), int64(ldr.SymGot(s)))
+ 
+ 		rel.AddUint32(target.Arch, elf.R_INFO32(uint32(ldr.SymDynid(s)), uint32(elf.R_ARM_JUMP_SLOT)))
++	} else if target.IsDarwin() {
++		// darwin/arm (revived port): GOT + bind-table scheme, mirroring
++		// arm64's addpltsym.
++		//
++		// The stub must NOT contain an absolute address: a PLT lives in
++		// __TEXT, and dyld refuses to rebase a non-writable segment
++		// ("REBASE_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB has segment 1 which
++		// is not a writable segment").  arm64 avoids the problem with
++		// adrp (PC-relative, +/-4GB); arm32 has no such addressing mode,
++		// and __TEXT to __DATA_CONST is far beyond one instruction's
++		// reach, so the stub computes the address at run time instead:
++		//
++		//   add r12, pc, #8        ; r12 = address of the literal below
++		//   ldr r12, [r12]         ; r12 = GOT offset from that literal
++		//   add r12, pc, r12       ; r12 = &GOT slot (PC already slid)
++		//   ldr r12, [r12]         ; r12 = *GOT slot (dyld-bound import)
++		//   bx  r12
++		//   .word &GOT[n] - .      ; link-time constant, no rebase needed
++		//
++		// The final word is a plain difference of two link-time addresses,
++		// so it is slide-invariant and needs no dyld fixup.  The GOT slot
++		// itself is bound by dyld via LC_DYLD_INFO bind entries
++		// (MachoAddBind in AddGotSym).
++		ld.AddGotSym(target, ldr, syms, s, 0)
++		if f, err := os.OpenFile("/tmp/pltsym.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
++			fmt.Fprintf(f, "pltsym s=%s got=%d dynid=%d pltsize=%d\n", ldr.SymName(s), ldr.SymGot(s), ldr.SymDynid(s), 0)
++			f.Close()
++		}
++
++		sDynid := ldr.SymDynid(s)
++		lep := ldr.MakeSymbolUpdater(syms.LinkEditPLT)
++		lep.AddUint32(target.Arch, uint32(sDynid))
++
++		plt := ldr.MakeSymbolUpdater(syms.PLT)
++		ldr.SetPlt(s, int32(plt.Size()))
++
++		// add r12, pc, #12 : this instruction sits at stub+0, so its PC is
++		// stub+8, and r12 = stub+20 — exactly where the literal lives.
++		// (Device trace 2026-11-17: with #4 the stub loaded from stub+12,
++		// i.e. the 4th instruction word, and jumped into garbage.)
++		plt.AddUint32(target.Arch, 0xe28fc00c)
++		plt.AddUint32(target.Arch, 0xe59cc000) // ldr r12, [r12]
++		plt.AddUint32(target.Arch, 0xe08fc00c) // add r12, pc, r12
++		plt.AddUint32(target.Arch, 0xe59cc000) // ldr r12, [r12]
++		plt.AddUint32(target.Arch, 0xe12fff1c) // bx  r12
++		// Literal: a slide-invariant constant V such that "add r12, pc, r12"
++		// yields the GOT slot address.
++		//
++		// Layout: add r12,pc,#12 at stub+0 (loads the literal address),
++		// ldr r12,[r12] at +4, then "add r12, pc, r12" at +8 -- so that
++		// instruction's PC is stub+16, NOT stub+24.  The literal therefore
++		// has to be (GOT slot - (stub+16)), and with R_PCREL resolving to
++		// (target + addend) - (SymValue(P) + off + 4) for a literal at
++		// stub+20, the addend is SymGot(s) + 8.
++		//
++		// Getting this wrong by 8 loads a GOT slot two entries too low,
++		// which silently calls the wrong libc function: mmap ran getpid,
++		// sysctl ran usleep, and pthread_key_create reported success
++		// without writing the key (all diagnosed 2026-11-17 the hard way).
++		plt.AddAddrPlus(target.Arch, syms.GOT, int64(ldr.SymGot(s)))
++		relocs := plt.Relocs()
++		ri := relocs.Count() - 1
++		plt.SetRelocType(ri, objabi.R_PCREL)
++		plt.SetRelocAdd(ri, 8+int64(ldr.SymGot(s)))
+ 	} else {
+ 		ldr.Errorf(s, "addpltsym: unsupported binary format")
+ 	}
+diff -ruN old/src/cmd/link/internal/arm/obj.go new/src/cmd/link/internal/arm/obj.go
+--- old/src/cmd/link/internal/arm/obj.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/cmd/link/internal/arm/obj.go	2026-11-16 14:51:50.860475916 +0800
+@@ -91,6 +91,15 @@
+ 			*ld.FlagTextAddr = ld.Rnd(4096, *ld.FlagRound) + int64(ld.HEADR)
+ 		}
+ 
++	case objabi.Hdarwin: /* apple MACH (revived darwin/arm port) */
++		ld.HEADR = ld.INITIAL_MACHO_HEADR
++		if *ld.FlagTextAddr == -1 {
++			*ld.FlagTextAddr = 4096 + int64(ld.HEADR)
++		}
++		if *ld.FlagRound == -1 {
++			*ld.FlagRound = 4096
++		}
++
+ 	case objabi.Hlinux, /* arm elf */
+ 		objabi.Hfreebsd,
+ 		objabi.Hnetbsd,
+--- old/src/cmd/link/internal/ld/lib.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/cmd/link/internal/ld/lib.go	2026-11-18 10:22:39.203294183 +0800
+@@ -3103,7 +3103,7 @@
+ 	} else if target.IsDarwin() {
+ 		leg := ldr.MakeSymbolUpdater(syms.LinkEditGOT)
+ 		leg.AddUint32(target.Arch, uint32(ldr.SymDynid(s)))
+-		if target.IsPIE() && target.IsInternal() {
++		if target.IsInternal() {
+ 			// Mach-O relocations are a royal pain to lay out.
+ 			// They use a compact stateful bytecode representation.
+ 			// Here we record what are needed and encode them later.
+--- old/src/cmd/link/internal/ld/macho.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/cmd/link/internal/ld/macho.go	2026-11-19 09:35:09.824477982 +0800
+@@ -503,9 +503,15 @@
+ 
+ 		s = ctxt.loader.LookupOrCreateSym(".got", 0) // will be __got
+ 		sb = ctxt.loader.MakeSymbolUpdater(s)
+-		if ctxt.UseRelro() {
++		if ctxt.UseRelro() && !ctxt.IsARM() {
+ 			sb.SetType(sym.SMACHORELROSECT)
+ 		} else {
++			// darwin/arm (revived port) on iOS 10 deliberately keeps the GOT
++			// out of relro.  Relro would move it to __DATA_CONST
++			// (SG_READ_ONLY, maxprot=3), and the iOS 10.3.3 dyld then loads
++			// the image without applying the LC_DYLD_INFO bind table at all,
++			// leaving every GOT slot zero (probed 2026-11-17).  Plain
++			// writable __DATA makes the binding stick.
+ 			sb.SetType(sym.SMACHOGOT)
+ 		}
+ 		sb.SetReachable(true)
+@@ -620,10 +626,14 @@
+ 	}
+ 
+ 	if sect.Name == ".plt" {
+-		msect.name = "__symbol_stub1"
+-		msect.flag = S_ATTR_PURE_INSTRUCTIONS | S_ATTR_SOME_INSTRUCTIONS | S_SYMBOL_STUBS
+-		msect.res1 = 0 //nkind[SymKindLocal];
+-		msect.res2 = 6
++		// Revived darwin/arm: the PLT section must NOT carry
++		// S_SYMBOL_STUBS.  That flag makes dyld interpret the section
++		// with the stub stride (res2=6 = amd64 jmp stubs) and the
++		// indirect symbol table, which our self-contained stubs
++		// (ldr literal / ldr / bx, driven by the LC_DYLD_INFO bind
++		// table) do not use — the mismatch poisoned the whole load.
++		msect.name = "__plt"
++		msect.flag = S_ATTR_PURE_INSTRUCTIONS | S_ATTR_SOME_INSTRUCTIONS
+ 	}
+ 
+ 	if sect.Name == ".got" {
+@@ -679,6 +689,10 @@
+ 	case sys.ARM64:
+ 		mh.cpu = MACHO_CPU_ARM64
+ 		mh.subcpu = MACHO_SUBCPU_ARM64_ALL
++
++	case sys.ARM:
++		mh.cpu = MACHO_CPU_ARM
++		mh.subcpu = MACHO_SUBCPU_ARMV7
+ 	}
+ 
+ 	var ms *MachoSeg
+@@ -750,9 +764,15 @@
+ 	/* dwarf */
+ 	if !*FlagW {
+ 		if ctxt.LinkMode != LinkExternal {
++			// iOS 10's dyld rejects segments with filesize > vmsize
++			// ("malformed mach-o image"), which is exactly the shape the
++			// upstream macOS layout gives __DWARF (vsize=0, filelen=N).
++			// Give the segment a real vsize and its own address range high
++			// above the loaded image; nothing is ever mapped from it
++			// (protections stay zero), but dyld accepts the segment.
+ 			ms = newMachoSeg("__DWARF", 20)
+-			ms.vaddr = Segdwarf.Vaddr
+-			ms.vsize = 0
++			ms.vaddr = Segdwarf.Vaddr + 0x40000000
++			ms.vsize = Segdwarf.Filelen
+ 			ms.fileoffset = Segdwarf.Fileoff
+ 			ms.filesize = Segdwarf.Filelen
+ 		}
+@@ -773,6 +793,25 @@
+ 			ml.data[2+32] = uint32(Entryvalue(ctxt)) /* start pc */
+ 			ml.data[2+32+1] = uint32(Entryvalue(ctxt) >> 32)
+ 
++		case sys.ARM:
++			// darwin/arm (revived port).  LC_UNIXTHREAD carries an
++			// absolute pc, which dyld does NOT slide for a PIE — the
++			// process then starts at the pre-slide address and jumps
++			// into garbage (crash 2026-11-16: pc=0x69746e74 with the
++			// image slid to 0xad000).  Non-PIE keeps the 1.14-era
++			// UNIXTHREAD form (proven on iOS 10 armv7), PIE uses
++			// LC_MAIN with a file offset, exactly like arm64.
++			if ctxt.IsPIE() {
++				ml := newMachoLoad(ctxt.Arch, imacho.LC_MAIN, 4)
++				ml.data[0] = uint32(uint64(Entryvalue(ctxt)) - (Segtext.Vaddr - uint64(HEADR)))
++				ml.data[1] = 0
++			} else {
++				ml := newMachoLoad(ctxt.Arch, imacho.LC_UNIXTHREAD, 17+2)
++				ml.data[0] = 1                           /* thread type */
++				ml.data[1] = 17                          /* word count */
++				ml.data[2+15] = uint32(Entryvalue(ctxt)) /* start pc */
++			}
++
+ 		case sys.ARM64:
+ 			ml := newMachoLoad(ctxt.Arch, imacho.LC_MAIN, 4)
+ 			ml.data[0] = uint32(uint64(Entryvalue(ctxt)) - (Segtext.Vaddr - uint64(HEADR)))
+@@ -803,7 +842,10 @@
+ 			codesigOff = linkoff + s1 + s2 + s3 + s4 + s5 + s6
+ 		}
+ 
+-		if ctxt.LinkMode != LinkExternal && ctxt.IsPIE() {
++		if ctxt.LinkMode != LinkExternal {
++			// Revived darwin/arm: non-PIE internal links carry the bind
++			// table too (GOT slots for libc imports); rebase entries are
++			// simply empty for non-PIE.
+ 			ml := newMachoLoad(ctxt.Arch, imacho.LC_DYLD_INFO_ONLY, 10)
+ 			ml.data[0] = uint32(linkoff)      // rebase off
+ 			ml.data[1] = uint32(s1)           // rebase size
+@@ -887,6 +929,13 @@
+ }
+ 
+ func symkind(ldr *loader.Loader, s loader.Sym) int {
++	if _, isStub := machoPltStubSyms[s]; isStub {
++		// Synthesized PLT-stub symbols (see doMachoLink) are defined
++		// N_SECT symbols: they must not count as dyld undefined imports
++		// (dyld would try to resolve them and refuse the load), so
++		// bucket them with extdef regardless of their zero type.
++		return SymKindExtdef
++	}
+ 	if t := ldr.SymType(s); t == sym.SDYNIMPORT || t == sym.SHOSTOBJ || t == sym.SUNDEFEXT {
+ 		return SymKindUndef
+ 	}
+@@ -1068,12 +1117,42 @@
+ 	return ldr.SymType(s) >= sym.SFirstWritable // only writable sections
+ }
+ 
++// machoPltStubSyms maps a synthesized PLT-stub symbol to the dynamic import
++// it stubs for. Populated in doMachoLink, consumed in machosymtab.
++//
++// Revived darwin/arm (2026-11-18): the __plt section deliberately does NOT
++// carry S_SYMBOL_STUBS (the stub-stride + indirect-binding semantics poison
++// dyld on iOS 10), so without these synthetic entries the stubs are invisible
++// to tooling: lldb denames/shifts every stub address (the "stubs at +12"
++// illusion) and crash reports dename every libc frame. One N_SECT|N_EXT
++// symbol per stub, value = __plt base + SymPlt, restores symbolization
++// without changing anything dyld reads.
++var machoPltStubSyms = map[loader.Sym]loader.Sym{}
++
+ func machosymtab(ctxt *Link) {
+ 	ldr := ctxt.loader
+ 	symtab := ldr.CreateSymForUpdate(".machosymtab", 0)
+ 	symstr := ldr.CreateSymForUpdate(".machosymstr", 0)
+ 
+ 	for _, s := range sortsym[:nsortsym] {
++		if imp, isStub := machoPltStubSyms[s]; isStub {
++			symtab.AddUint32(ctxt.Arch, uint32(symstr.Size()))
++			symstr.AddUint8('_')
++			symstr.Addstring(strings.ReplaceAll(ldr.SymExtname(s), "·", "."))
++
++			symtab.AddUint8(0x0f) // N_SECT | N_EXT
++			pltSect := ldr.SymSect(ctxt.ArchSyms.PLT)
++			if pltSect == nil {
++				Errorf("machosymtab: .plt has no section")
++				symtab.AddUint8(0)
++			} else {
++				symtab.AddUint8(uint8(pltSect.Extnum))
++			}
++			symtab.AddUint16(ctxt.Arch, 0) // desc
++			val := ldr.SymAddr(ctxt.ArchSyms.PLT) + int64(ldr.SymPlt(imp))
++			symtab.AddUintXX(ctxt.Arch, uint64(val), ctxt.Arch.PtrSize)
++			continue
++		}
+ 		symtab.AddUint32(ctxt.Arch, uint32(symstr.Size()))
+ 
+ 		export := machoShouldExport(ctxt, ldr, s)
+@@ -1158,6 +1237,24 @@
+ }
+ 
+ func doMachoLink(ctxt *Link) int64 {
++	// Revived darwin/arm (2026-11-18): synthesize one symtab entry per PLT
++	// stub (name "<import>.pltstub", value = __plt base + SymPlt) so that
++	// lldb / crash reports can symbolize stub addresses.  addpltsym has run
++	// by now (dynreloc), so SymPlt is final; SymAddr/sym.Sect are final too.
++	// The stubs are appended after the sort with kind=Undef (type is
++	// SDYNIMPORT here for that reason only), which keeps the
++	// local/extdef/undef partition that machodysymtab indexes into
++	// contiguous.  machosymtab writes the real N_SECT entry and a real
++	// value for these; nothing dyld reads changes.
++	machoPltStubSyms = map[loader.Sym]loader.Sym{}
++	ldr0 := ctxt.loader
++	for _, s := range sortsym[:nsortsym] {
++		if ldr0.SymType(s) == sym.SDYNIMPORT && ldr0.SymPlt(s) >= 0 {
++			stub := ldr0.CreateSymForUpdate(ldr0.SymName(s)+".pltstub", 0)
++			machoPltStubSyms[stub.Sym()] = s
++			AddMachoSym(ldr0, stub.Sym())
++		}
++	}
+ 	machosymtab(ctxt)
+ 	machoDyldInfo(ctxt)
+ 
+@@ -1394,6 +1491,8 @@
+ 
+ var machobind []machoBindRecord
+ 
++var debugMachoTables = os.Getenv("GODEBUG_MACHO_TABLES") != ""
++
+ func MachoAddBind(sym loader.Sym, off int64, targ loader.Sym) {
+ 	machobind = append(machobind, machoBindRecord{sym, off, targ})
+ }
+@@ -1406,7 +1505,10 @@
+ 	rebase := ldr.CreateSymForUpdate(".machorebase", 0)
+ 	bind := ldr.CreateSymForUpdate(".machobind", 0)
+ 
+-	if !(ctxt.IsPIE() && ctxt.IsInternal()) {
++	if !ctxt.IsInternal() {
++		// Revived darwin/arm: non-PIE internal links also need the bind
++		// table (GOT slots for libc imports).  Rebase entries are simply
++		// empty there (non-PIE addresses are fixed).
+ 		return
+ 	}
+ 
+@@ -1455,10 +1557,16 @@
+ 	// Bind table.
+ 	// TODO: compact encoding, as above.
+ 	// TODO: lazy binding?
++	if debugMachoTables {
++		fmt.Fprintf(os.Stderr, "macho: rebase=%d bind=%d\n", len(machorebase), len(machobind))
++	}
+ 	bind.AddUint8(BIND_OPCODE_SET_TYPE_IMM | BIND_TYPE_POINTER)
+ 	for _, r := range machobind {
+ 		seg := ldr.SymSect(r.sym).Seg
+ 		off := uint64(ldr.SymValue(r.sym)+r.off) - seg.Vaddr
++		if os.Getenv("GODEBUG_MACHO_BIND") != "" && (seg != &Segdata) {
++			fmt.Fprintf(os.Stderr, "macho bind: segptr=%p off=0x%x targ=%s gotSlot=%d\n", seg, off, ldr.SymName(r.targ), r.off)
++		}
+ 		bind.AddUint8(BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB | segId(seg))
+ 		bind.AddUleb(off)
+ 
+--- old/src/cmd/link/internal/ld/sym.go	2026-10-03 04:28:03.000000000 +0800
++++ new/src/cmd/link/internal/ld/sym.go	2026-11-16 14:43:46.844987362 +0800
+@@ -111,6 +111,12 @@
+ 
+ 		case sys.ARM64:
+ 			ctxt.Tlsoffset = 0 // dummy value, not needed
++
++		case sys.ARM:
++			// darwin/arm (revived port): runtime.tls_g is a plain NOPTR
++			// variable initialized by runtime.tlsinit (pthread key scan),
++			// exactly like the arm64 dummy case — no linker TLS needed.
++			ctxt.Tlsoffset = 0 // dummy value, not needed
+ 		}
+ 	}
+ 

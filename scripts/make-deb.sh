@@ -6,7 +6,7 @@
 # the device's own ldid, and fetched back.
 #
 # Usage:
-#   TMUX_VERSION=3.8 DEVICE=ipad ./scripts/make-deb.sh
+#   TMUX_VERSION=3.8 DEVICE=<device> ./scripts/make-deb.sh
 #   TMUX_VERSION=3.8 SIGNED_BIN=out/tmux-3.8-armv7.signed ./scripts/make-deb.sh
 set -euo pipefail
 

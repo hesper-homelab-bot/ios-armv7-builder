@@ -1,6 +1,12 @@
 # 移植候选清单（backlog）
 
 > **本文件只放"还没做的"和"判死的"。**
+>
+> **待办(2026-11-19):用设备端 Go 工具链编译 tailcat**(终极自举验证)。
+> 设备端工具链已就绪:`go4` deb / `/var/mobile/goroot2`(go+compile/link/asm/vet)。
+> 设备端 go 已验证可编译 complex 多包测试(10 组全过,见 docs/tailcat-porting.md 九)。
+> tailcat 源码在设备 `/var/mobile/complex`(需换成 tailcat 树 + 依赖模块
+> goproxy.cn 拉取或宿主推 modcache);A6X 上预计 30-60 分钟。
 > 已上线的包，详情在各自的 `docs/<pkg>.md` 专项文档里（索引见下）。
 >
 > 2026-11-14 从 BigBoss 索引盘点产生（分析底稿：`~/scratch/bigboss/bigboss.db`，
@@ -49,21 +55,32 @@
 
 ## 进行中
 
-**（暂无）**
+- **tailcat(Go 1.27.2 darwin/arm)**:编译/部署已通,`--help`/`genkey`/`serve`
+  在设备上跑通(2026-11-17 深夜)。剩最后一关:6/2 参 libc 调用经
+  `syscallN_trampoline` 后崩(SIGSEGV,libc 本体正常)。全记录:
+  [tailcat-porting.md](tailcat-porting.md)。
+
+## 已完成
+
+- **Go 1.27.2 darwin/arm32 移植**：**✅ 2026-11-17 真机验证通过**。
+  用户 2026-11-16 拍板开工（"Go 移植开干"），2026-11-15 立项侦察；
+  实际耗时约 22 小时（其中大半花在设备活体调试上）。
+  - 成果：宿主 go1.27.2 交叉产出可运行的 `Mach-O armv7`，
+    hello world + goroutine + time + sort 在 iPad4 实测通过（exit 0）。
+  - 规模：改 7 个文件 + 新增 12 个（runtime 6 / syscall 6），
+    补丁 618 行。
+  - **专项文档**：`docs/go.md`（14 个坑 → 根因 → 复现方法）。
+  - **进展流水账**：`~/ios-armv7-builder/tmp/GO-STATE.md`（历史全过程）。
+  - 移植代码**不入库**（宿主侧工具链，非设备包），保存在
+    `~/scratch/go-port/`。
+  - 遗留（独立工作，未做）：设备端 `go build` 需要先补
+    vendored `golang.org/x/sys/unix` 的 darwin/arm 类型定义。
 
 ## 待表态（用户未点头，不动）
 
 - **node JIT（内核 patch 级）**：**用户 2026-11-15 判死**（"有那精力不如
   研究 Go 移植"）。用户态路线全灭实验证据链 `docs/node.md`（entitlement×2
   / RWX 直建 / vm_remap 四路全 SIGBUS）。
-- **Go 最新版移植（1.27.x，darwin/arm32 复活）**：2026-11-15 立项侦察。
-  基建级：编译器后端（gc arm）健在（linux/arm 是 tier-1），缺的只是
-  darwin 薄层 6-8 文件（os/rt0/signal/sys_darwin_arm）零残留——从
-  darwin/arm64 的 libc 调用桩 × linux/arm 的 32 位 asm 拼装（Go 1.17+
-  darwin runtime 全走 libc 调用，转写工整）+ cmd/link 的 macho32 +
-  buildcfg 合法组合表。源码在 `~/go-sdk/go1.27.2/src`（tarball 自带）。
-  预估 3-7 天级，风险点 = libc 调用约定细节（armv7 Darwin 的 struct
-  return/vfp）与 ucontext 字段。
 - **tailcat（Rust 复刻）**：用户 2026-11-15 裁掉（放弃 Rust，磁盘约束 +
   DERP/STUN/netstack 生态全空白需自写数周）。宿主侧 tailcat server +
   跨机 ping 已验证（`~/scratch/tailcat/`，server 已按用户指示关停，

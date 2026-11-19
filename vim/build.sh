@@ -10,7 +10,7 @@
 #  Usage:
 #     ./vim/build.sh                       # Vim 9.1.0000 (default)
 #     VIM_VERSION=9.1.0000 ./build.sh
-#     DEVICE=ipad ./build.sh               # ssh host, only needed to re-pull
+#     DEVICE=<device> ./build.sh           # ssh host, only needed to re-pull
 #                                          # ncurses headers if the sysroot
 #                                          # does not have them yet
 #
@@ -32,7 +32,7 @@ VIM_VERSION="${VIM_VERSION:-9.1.0000}"
 ARCH="${ARCH:-armv7}"
 TARGET_IOS="${TARGET_IOS:-10.3}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
-DEVICE="${DEVICE:-ipad}"          # ssh host; used only for the ncurses headers
+DEVICE="${DEVICE:-}"              # ssh host; needed only when re-pulling
 
 WORK="${WORK:-$root/tmp/vim-work}"
 OUT="${OUT:-$root/out}"
@@ -108,6 +108,7 @@ ensure_ncurses_headers() {
         echo "    $inc/ncurses.h"
         return 0
     fi
+    [ -n "$DEVICE" ] || die "set DEVICE=<device> (ssh host; see DEVICE.md) to re-pull ncurses headers"
     say "pulling ncurses headers off the device ($DEVICE)"
     command -v ssh >/dev/null || die "ssh not found and headers are missing"
     local tmp; tmp="$(mktemp)"
@@ -125,6 +126,7 @@ ensure_ncurses_headers() {
 ensure_ncurses_dylib() {
     say "device ncurses dylib"
     if [ ! -s "$NCDYLIB" ]; then
+        [ -n "$DEVICE" ] || die "set DEVICE=<device> (ssh host; see DEVICE.md) to re-pull libncursesw"
         mkdir -p "$(dirname "$NCDYLIB")"
         ssh -o BatchMode=yes "$DEVICE" 'cat /usr/lib/libncursesw.5.dylib' \
             > "$NCDYLIB" || die "could not read libncursesw from $DEVICE"

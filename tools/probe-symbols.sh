@@ -15,7 +15,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
-DEV="${DEV:-ipad}"
+DEV="${DEV:?set DEV=<device> (ssh host alias; real value in DEVICE.md)}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 

@@ -10,7 +10,7 @@ change).
 
 ```sh
 cd tmux
-TMUX_VERSION=3.8 ./build.sh DEVICE=ipad    # or TMUX_VERSION=latest
+TMUX_VERSION=3.8 ./build.sh DEVICE=<device>    # or TMUX_VERSION=latest
 ```
 
 Requires the top-level prerequisites (`LD64`, `LD64_LIBS`) and an ssh alias
