@@ -77,7 +77,8 @@ libcall**（`toolchain.md` §4）。
 **判别方法**：看**反汇编**（`grep ldrd` 会对 64 位参数搬移产生假阳性），
 **不要看 `nm`**。
 
-`node/patches/shims/` 的 `at64.o`/`c8fixed.o` 仍**防御性地链着**（成本低），
+`node/patches/shims/` 的 `at64.o` 与 `tools/shims/` 的 `c8fixed.o`
+（2026-11-19 公共化）仍**防御性地链着**（成本低），
 以防 libcall 形式在别处冒出来。
 
 **为什么这条重要**：它精确划出了原子雷区的边界——

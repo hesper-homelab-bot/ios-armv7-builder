@@ -65,8 +65,11 @@ first element is always aligned).
   the device __atomic_load_8/libatomic is a silent no-op
   (returns garbage), which corrupted OpenSSL CSPRNG. Provides
   load/store/exchange/CAS/fetch_* for 8-byte.
-- c8fixed.S - __atomic_is_lock_free: return 1 only for size <= 4
-  (the generic libatomic lies that 8 is lock-free).
+- c8fixed.S -> moved 2026-11-19 to ../../tools/shims/c8fixed.S (shared
+  with nginx/mosh): __atomic_is_lock_free returning 1 only for size <= 4
+  (the generic libatomic lies that 8 is lock-free).  link-node.sh still
+  uses the compiled object at /tmp/c8fixed.o and now recompiles it from
+  the shared source when the object is missing or stale.
 - btshim.c - backtrace/backtrace_symbols via frame-pointer chain:
   the device lib lacks them, and node error printing dies in dyld
   without them.

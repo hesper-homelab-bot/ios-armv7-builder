@@ -106,7 +106,8 @@
    `node_main.o`（定义 `_main`，cc-wrapper 硬编码 `-e _main`）、
    `node_snapshot_stub.o`（`GetEmbeddedSnapshotData → nullptr`）、
    `v8_base_without_compiler/.../setup-isolate-deserialize.o`（DESERIALIZING
-   delegate，标准配置）、`/tmp/c8fixed.o`（墙#7/11 修法）、
+   delegate，标准配置）、`/tmp/c8fixed.o`（墙#7/11 修法，源已公共化为
+   `tools/shims/c8fixed.S`）、
    `mksnapshot_dev/shims_arm.o`（C-4 futimens/utimensat + 墙#2 ArmUsingHardFloat）。
    **教训**：embedded-empty/snapshot-empty 桩对象曾静默遮蔽
    `libv8_snapshot.flat.a` 里的真身 geni/{snapshot,embedded}.o——真快照由该归档
@@ -131,7 +132,7 @@
 | 权威流水账（节 (a)–(v)） | `~/scratch/node-research/BUILD-STATE.md` |
 | node 源树（已按补丁改造，非 pristine） | `~/scratch/node-research/node-v22.23.4/` |
 | 补丁（对 node 源树，33 个） | `~/scratch/node-patches/*.patch`（README.md 有增量说明） |
-| 链接 shim 源 | `~/scratch/node-shims/shims.cc`、`libcxx-shim.c`；is_lock_free 真话版 `/tmp/c8fixed.S` → `/tmp/c8fixed.o` |
+| 链接 shim 源 | `~/scratch/node-shims/shims.cc`、`libcxx-shim.c`；is_lock_free 真话版 `tools/shims/c8fixed.S`（公共垫片，2026-11-19 起）→ `/tmp/c8fixed.o` |
 | 设备端 mksnapshot 构建 | `~/scratch/mkdev/build.sh`（→ 源树 `out/Release/mksnapshot.arm`）；扁平归档重建 `~/scratch/mkdev/rebuild-flat2.sh` |
 | 快照产物（设备回填） | `~/scratch/snapshot_gen/{snapshot.cc,embedded.S,embedded_code.bin,embedded_data.bin}` |
 | 链接脚本 | `/tmp/link-node.sh`（/tmp 易失；固化配方以本文为准） |

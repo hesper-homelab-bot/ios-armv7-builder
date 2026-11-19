@@ -127,6 +127,11 @@ def do_endianness(s):
 def do_stapling(s):
     if "ASN1_STRING_get0_data(serial)" in s:
         return s
+    if "serial->" not in s:
+        # nginx >= 1.31 rewrote ngx_ssl_ocsp_create_key() to serialize the
+        # serial with i2d_ASN1_INTEGER(serial, &p) -- opaque-safe accessors,
+        # so there is nothing left to patch (verified against 1.31.9).
+        return s
     old = """    serial = X509_get_serialNumber(ctx->cert);
     if (serial->length > 20) {
         return NGX_ERROR;

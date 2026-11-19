@@ -19,8 +19,9 @@
 #      retry loop on armv7 — it never calls the device's dead
 #      ___atomic_load_8 libcall (docs/toolchain.md §4).  Judge by the
 #      disassembly ("grep ldrd" false-positives on 64-bit argument moves),
-#      not by nm.  at64.o/c8fixed.o from node/patches/shims/ are still
-#      linked defensively (cheap) in case libcall form shows up elsewhere.
+#      not by nm.  at64.o (node/patches/shims/) and c8fixed.o
+#      (tools/shims/c8fixed.S, shared with nginx) are still linked
+#      defensively (cheap) in case libcall form shows up elsewhere.
 #   4. mosh's configure probes lie like every other autoconf package under
 #      -undefined dynamic_lookup:
 #        - HAVE_MACH_ABSOLUTE_TIME 1 (no mach headers here at all) and
