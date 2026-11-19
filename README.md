@@ -45,6 +45,7 @@ What is inside:
 | `class-dump/` | **class-dump 3.5.2** (nygard fork) — dumps ObjC classes/ivars/properties/methods out of device binaries |
 | `uuid/` | **uuidgen 1.47.2** (from e2fsprogs `misc/uuidgen.c`) replacing BigBoss's uuid |
 | `tailcat/` | **tailcat 0.7.0** — a WireGuard data-plane tool, the first complete Go program on this target (built with the `go/` toolchain) |
+| `tailscale/` | **tailscale 1.104.7** (CLI + daemon) — the first full tailscale on 32-bit iOS: control plane, WireGuard data plane and the userspace-netstack SOCKS5 proxy all verified on device (no `/dev/tun`, so `--tun=userspace-networking`) |
 | `tweak/nocablewarn/` | a MobileSubstrate tweak built with the same toolchain |
 | `scripts/` | `.deb` packaging and self-hosted APT/Cydia repository publishing |
 
@@ -219,6 +220,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | class-dump 3.5.2 | dissects a deployed ObjC test binary into full class/ivar/property/method tables |
 | uuidgen 1.47.2 | prints v4 UUIDs on the device (e2fsprogs-derived) |
 | tailcat 0.7.0 | `help`/`genkey`/`serve` verified on device; the Go `complex` conformance binary passes 10/10 groups — built by the on-device Go toolchain itself |
+| tailscale 1.104.7 | logged into a live tailnet (`ipad4-1`); `tailscale ping` pong 5 ms direct; SOCKS5 (127.0.0.1:1055) → WireGuard → remote sshd banner round-trip verified with a raw-socket client (device curl is a known-bad instrument, see `docs/tailscale.md` §4) |
 | dropbear 2026.94 | the device's production sshd on port 22 since 2026-11-10, with the v2.1 self-heal wrapper |
 
 TLS 1.3 is compiled in but every public test host refused it from this
