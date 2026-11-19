@@ -49,6 +49,18 @@ export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/li
   返回垃圾；store 正常）。64 位 `std::atomic` 在 node/V8/libc++ 里都会中招。
 - 修法：自备 armv7 原子 shim（LDREXD/STREXD + `dmb ish`），并让
   `__atomic_is_lock_free` 对 armv7 只认 `size <= 4`（8 字节走带锁路径）。
+- **`___atomic_is_lock_free` 谓词本身在设备 libSystem 里没有导出**——
+  `___atomic_load`/`___atomic_store`/`___atomic_compare_exchange` 三个
+  操作符都在，唯独谓词不在。clang 新版会为 OpenSSL 4 这类库生成该
+  libcall：链接"成功"（flat namespace 兜底），设备端一进
+  `CRYPTO_atomic_*` 就被 dyld 杀（`_setproctitle` 同款死法）。
+  修法：链 `tools/shims/c8fixed.S`（2026-11-19 从 node/patches/shims/
+  提升为公共垫片，node/nginx/mosh 共用）——≤4 且指针对齐 → 1，否则 0。
+- **静态库会带着这个引用漂移**：openssl-4.0.3 于 2026-11-16 重建后，
+  threads_pthread.o 开始引用 `___atomic_is_lock_free`；此前链接干净的
+  nginx 1.26.3 换 1.31.9 重链即中招（nginx 墙#7）。教训：每个新链接的
+  二进制都要跑 `tools/check-undefined.sh`，不要引用"上次没有这个符号"
+  的历史结论。
 - 症状特征：插入成功、紧跟的查找失败；成功/失败集合随构建漂移（栈垃圾决定）。
 
 ## 5. 部署与验证

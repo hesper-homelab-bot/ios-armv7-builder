@@ -183,6 +183,28 @@ CC_OPT="-O2 -I$PCRE_DIR/src -I$ZLIB -I$OSSL/include -Wno-error"
 # explicit archives, last on the link line (wall #4)
 LD_OPT="$PCRE_A $ZLIB/libz.a $OSSL/libssl.a $OSSL/libcrypto.a -L$OSSL"
 
+# --- __atomic_is_lock_free shim (wall #7, found 2026-11-19 on 1.31.9) ------
+# The 2026-11-16 rebuild of OpenSSL 4.0.3 left libcrypto's threads_pthread.o
+# calling the clang builtin __atomic_is_lock_free next to the ___atomic_load/
+# ___atomic_store/___atomic_compare_exchange libcalls.  iOS 10 libSystem
+# exports the three operators but NOT the predicate, so the reference stays
+# undefined through the link and dyld would kill every worker on the first
+# CRYPTO_atomic_* call -- the same shape as the _setproctitle death (wall #5).
+# check-undefined.sh caught it before deployment; nginx 1.26.3 links cleanly
+# only because it predates the libcrypto rebuild.
+#
+# Fix: link the shared honest thumb shim (tools/shims/c8fixed.S, promoted
+# out of node/patches/shims/ on 2026-11-19; docs/node.md #11, device-
+# verified in the node port):
+# is_lock_free(8) answers 0 -- the device's 64-bit atomic libcall is a silent
+# no-op, so "lock-free 8" would corrupt data; <=4 is genuinely lock-free
+# (ldrex/strex).  C source cannot define a clang builtin (docs/toolchain.md);
+# assembly can.
+C8_OBJ="$root/tmp/nginx-c8fixed.o"
+mkdir -p "$root/tmp"
+"$CC" -c "$root/tools/shims/c8fixed.S" -o "$C8_OBJ"
+LD_OPT="$C8_OBJ $LD_OPT"
+
 sh ./configure \
     --crossbuild=Darwin:16.7.0:armv7 \
     --prefix="$PREFIX" \

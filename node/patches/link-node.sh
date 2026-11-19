@@ -31,12 +31,20 @@ export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/li
 
 OUT=${1:-$R/node_randfix}
 
+# C-8 shim source lives in the repo now: tools/shims/c8fixed.S (shared with
+# nginx).  The compiled object under /tmp is ephemeral -- recompile when it
+# is missing or older than the source instead of failing the relink.
+C8_SRC="$REPO_ROOT/tools/shims/c8fixed.S"
+if [ ! -f /tmp/c8fixed.o ] || [ "$C8_SRC" -nt /tmp/c8fixed.o ]; then
+    "$REPO_ROOT/tools/cc-wrapper.sh" -mthumb -march=armv7 -c "$C8_SRC" -o /tmp/c8fixed.o
+fi
+
 # --- runtime-bootstrap variant inputs -------------------------------------
 STUBS=(
   "$O/node/src/node_main.o"                # defines _main (cc-wrapper hardcodes -e _main)
   "$O/node/src/node_snapshot_stub.o"       # SnapshotBuilder::GetEmbeddedSnapshotData -> nullptr
   "$O/v8_base_without_compiler/deps/v8/src/init/setup-isolate-deserialize.o"  # DESERIALIZING delegate (standard config)
-  "/tmp/c8fixed.o"                         # C-8 __atomic_is_lock_free (armv7: only <=4 bytes lock-free)
+  "/tmp/c8fixed.o"                         # C-8 __atomic_is_lock_free (source: tools/shims/c8fixed.S; only <=4 bytes lock-free)
   "/tmp/at64.o"                            # REAL 64-bit atomics (device ___atomic_load_8 is a no-op)
   "/tmp/btshim.o"                          # backtrace/backtrace_symbols (device libSystem lacks them;
                                            # without it node's own fatal printer dies in dyld and

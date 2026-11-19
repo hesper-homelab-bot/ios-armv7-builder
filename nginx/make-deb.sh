@@ -52,7 +52,7 @@ mkdir -p "$w/DEBIAN" \
 
 cat > "$w/DEBIAN/control" <<CTRL
 Package: nginx4
-Name: nginx 1.26
+Name: nginx $NGINX_VERSION
 Version: $NGINX_VERSION-$DEBREV
 Section: Networking
 Priority: optional
@@ -172,7 +172,7 @@ Upstream-Name: nginx
 Source: https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz
 
 Files: *
-Copyright: 2002-2024 Igor Sysoev, 2011-2024 Nginx, Inc.
+Copyright: 2002-2026 Igor Sysoev, 2011-2026 Nginx, Inc.
 License: BSD-2-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
