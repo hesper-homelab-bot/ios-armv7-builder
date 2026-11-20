@@ -29,3 +29,8 @@ ffmpeg/obj/
 python3/obj/
 python3/obj3*/
 obj313/
+
+# cc-wrapper link mode drops .o next to sources
+ifconfig/ifconfig.tproj/*.o
+ifconfig/route.tproj/*.o
+*.o
