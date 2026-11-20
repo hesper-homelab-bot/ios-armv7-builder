@@ -55,6 +55,10 @@
 | pgrep/pkill | 1.0 | [pgrep.md](pgrep.md) | OpenBSD 血统,sysctl 路线(-f 需 root) |
 | ping | 1.0 | [ping.md](ping.md) | 自写;setuid root(ICMP 投递策略实测) |
 | ifconfig + route | network_cmds-457 | [ifconfig.md](ifconfig.md) | Apple 正版;-DPRIVATE + xnu-3789 内核头(§23 模式);iproute2 无 Darwin 版 |
+| arp/ndp | network_cmds-457 | [ifconfig.md](ifconfig.md) | 并入 ifconfig4 457-2;三次单行改动(§2.1) |
+| dig/nslookup/host | 1.0 | [dns.md](dns.md) | 自研 stub 解析器;设备 DNS 客户端 0→3 |
+| tree/watch/realpath/hexdump | 1.0 | [smalltools.md](smalltools.md) | 小件四连,一包带走 |
+| pgrep -f | 1.1 | [pgrep.md](pgrep.md) | 4 元 mib bug 翻案;PROCARGS2 权限模型落文档 |
 
 **未能凑齐专项文档的**：wget（信息散落在 `docs/curl.md` §4 的签名教训里）。
 
