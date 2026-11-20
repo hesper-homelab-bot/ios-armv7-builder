@@ -1,8 +1,8 @@
-# ifconfig + route(network_cmds-457)移植专项(armv7 iOS 10.3.3)
+# ifconfig + route + arp + ndp(network_cmds-457)移植专项(armv7 iOS 10.3.3)
 
-> 包:`ifconfig4_457-1_iphoneos-arm.deb`(root:wheel 0755,**不 setuid**)· 2026-11-20 完成并设备验证
+> 包:`ifconfig4_457-2_iphoneos-arm.deb`(root:wheel 0755,**不 setuid**)· 2026-11-20 完成并设备验证(457-2 增 arp/ndp)
 > 上游:Apple `network_cmds-457`(Darwin 16 / xnu-3789 时代,与 iOS 10.3.3 精确同代)
-> 二进制:`ifconfig/ifconfig.tproj/`(9 个 .c)+ `ifconfig/route.tproj/route.c`;**.c 零补丁**
+> 二进制:`ifconfig/ifconfig.tproj/`(9 个 .c)+ `route.tproj/route.c` + `arp.tproj/arp.c` + `ndp.tproj/ndp.c`
 
 ## 1. 状态
 
@@ -47,7 +47,14 @@ socket 族,无从移植。Homebrew 的 `iproute2mac` 只是拿 ifconfig/route/ne
 6. **uuid_t 的出处**:xnu `net/if.h` 的 `struct if_agentidreq`(PRIVATE
    段)用 uuid_t;内核构建从 KERNEL 侧 uuid 头拿,用户态 SDK 从
    `sys/_types/_uuid_t.h` 拿。stamped if.h 里补一行该 include(已注明)。
-7. **ld64 起不来**(`libBlocksRuntime.so not found`)= 环境变量不全。
+7. **arp/ndp 并入(457-2)**:两件与 ifconfig 同 include/ 集,**几乎零改动**——
+   arp.c 只删了未使用的 `<nlist.h>`、补了私有 NET_RT_DUMPX(8)/DUMPX_FLAGS(9)
+   define(xnu-3789 bsd/sys/socket.h:761-762 的内核值,SDK 公开头停在
+   DUMP2);ndp.c 同款 define + `<nlist.h>` 删除 + `sysctlbyname` 第 5 参
+   NULL→0(上游类型 bug,新头惯出来的)。`net/iso88025.h`(token-ring 遗物,
+   xnu-3789 已删)从 FreeBSD releng/10.3 原版取,`netinet/if_ether.h`、
+   `net/if_arp.h` 从 xnu 拉入端口 include/。
+8. **ld64 起不来**(`libBlocksRuntime.so not found`)= 环境变量不全。
    §1 的标准 export 必须整块带上(尤其 `LD_LIBRARY_PATH=x-libdispatch/
    lib:x-tapi/lib`);build.sh 已固化全默认值,裸跑即可。
 
@@ -79,7 +86,9 @@ scope6_var、kern_event(`#ifdef KERNEL` 区)、lacp(无真声明,整段包裹)�
 | mobile `lo0 <ip> alias` | **SIOCAIFADDR: permission denied**(接口 ioctl 需 root,符合预期) |
 | root `lo0 10.173.0.1 alias` → `ping 10.173.0.1` | **2/2 received, 0.33ms**;`-alias` 删除后恢复 |
 | root `route add -host 10.173.0.2 127.0.0.1` → `route -n get` | gateway 127.0.0.1 / lo0 / HOST,STATIC;`delete` 后回落 default 网关 |
-| check-undefined.sh | ifconfig 72/72、route 62/62 全解析 |
+| check-undefined.sh | ifconfig 72/72、route 62/62、arp 51/51、ndp 54/54 全解析 |
+| `arp -a`(mobile) | 9 条邻居全出:小米路由/gogs 主机/iPad 自身(permanent)/组播条目 |
+| `ndp -a`(mobile) | lo0/en0/awdl0 邻居与 Router 位全出 |
 
 ## 5. 用法
 

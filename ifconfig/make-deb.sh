@@ -15,8 +15,12 @@ OUT="$root/out"
 VER="${IFCONFIG_VERSION:-457}"
 BIN_IFC="$OUT/ifconfig-armv7"
 BIN_RTE="$OUT/route-armv7"
+BIN_ARP="$OUT/arp-armv7"
+BIN_NDP="$OUT/ndp-armv7"
 [ -f "$BIN_IFC" ] || { echo "missing $BIN_IFC (run ifconfig/build.sh)" >&2; exit 1; }
 [ -f "$BIN_RTE" ] || { echo "missing $BIN_RTE (run ifconfig/build.sh)" >&2; exit 1; }
+[ -f "$BIN_ARP" ] || { echo "missing $BIN_ARP (run ifconfig/build.sh)" >&2; exit 1; }
+[ -f "$BIN_NDP" ] || { echo "missing $BIN_NDP (run ifconfig/build.sh)" >&2; exit 1; }
 
 w="$(mktemp -d)"; trap 'rm -rf "$w"' EXIT
 mkdir -p "$w/DEBIAN" "$w/usr/bin" "$w/var/mobile/tools/ifconfig" \
@@ -25,15 +29,15 @@ mkdir -p "$w/DEBIAN" "$w/usr/bin" "$w/var/mobile/tools/ifconfig" \
 cat > "$w/DEBIAN/control" <<CTRL
 Package: ifconfig4
 Name: ifconfig + route (network_cmds-457)
-Version: $VER-1
+Version: $VER-2
 Section: Networking
 Priority: optional
 Architecture: iphoneos-arm
 Maintainer: Hesper <hesperup@users.noreply.github.com>
 Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Depends: firmware (>= 10.3)
-Description: BSD ifconfig + route for armv7 iOS 10+ (Apple network_cmds-457)
- Real Apple network_cmds-457 (Darwin 16 / xnu-3789 era) ifconfig and route,
+Description: BSD ifconfig/route/arp/ndp for armv7 iOS 10+ (network_cmds-457)
+ Real Apple network_cmds-457 (Darwin 16 / xnu-3789 era) ifconfig, route, arp and\n ndp,
  cross-built with -DPRIVATE against xnu-3789.70.16 kernel headers.  ifconfig
  does link/media/IPv4/IPv6 status and (as root) address alias add/delete;
  route does get/add/delete/flush/monitor via the routing socket.  Read-only
@@ -43,7 +47,7 @@ CTRL
 cat > "$w/DEBIAN/postinst" <<POST
 #!/bin/sh
 set -e
-for b in ifconfig route; do
+for b in ifconfig route arp ndp; do
     if command -v ldid >/dev/null 2>&1; then
         ldid -S /var/mobile/tools/ifconfig/\$b 2>/dev/null || true
     fi
@@ -66,6 +70,8 @@ chmod 0755 "$w/DEBIAN/prerm"
 # no -o/-g: host cannot chown to root; --root-owner-group sets it in the deb
 install -m 0755 "$BIN_IFC" "$w/var/mobile/tools/ifconfig/ifconfig"
 install -m 0755 "$BIN_RTE" "$w/var/mobile/tools/ifconfig/route"
+install -m 0755 "$BIN_ARP" "$w/var/mobile/tools/ifconfig/arp"
+install -m 0755 "$BIN_NDP" "$w/var/mobile/tools/ifconfig/ndp"
 cat > "$w/usr/share/doc/ifconfig4/copyright" <<COPYRIGHT
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: network_cmds (ifconfig.tproj, route.tproj)
@@ -80,7 +86,7 @@ License: APSL-2.0
 COPYRIGHT
 
 dpkg-deb --root-owner-group -Zgzip --build "$w" \
-    "$OUT/ifconfig4_${VER}-1_iphoneos-arm.deb" >/dev/null
+    "$OUT/ifconfig4_${VER}-2_iphoneos-arm.deb" >/dev/null
 rm -rf "$w"; trap - EXIT
-echo "==> $OUT/ifconfig4_${VER}-1_iphoneos-arm.deb"
-sha256sum "$OUT/ifconfig4_${VER}-1_iphoneos-arm.deb"
+echo "==> $OUT/ifconfig4_${VER}-2_iphoneos-arm.deb"
+sha256sum "$OUT/ifconfig4_${VER}-2_iphoneos-arm.deb"

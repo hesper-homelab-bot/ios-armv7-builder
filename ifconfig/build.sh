@@ -41,5 +41,13 @@ ldid -S "$OUT/ifconfig-armv7" 2>/dev/null || true
 echo "==> $OUT/ifconfig-armv7"
 
 "$CC" -O2 -Wall -DPRIVATE -I"$here/include" -o "$OUT/route-armv7" "$here/route.tproj/route.c"
+
+# arp + ndp (2026-11-20): same network_cmds-457 family, same include/ set.
+# arp.c: unused <nlist.h> include dropped; private NET_RT_DUMPX(8)/
+#   DUMPX_FLAGS(9) defines added (xnu-3789 kernel header values, SDK's
+#   public socket.h stops at DUMP2).  ndp.c: same NET_RT defines, unused
+#   <nlist.h> dropped, sysctlbyname newlen NULL->0 (upstream type bug).
+"$CC" -O2 -Wall -DPRIVATE -I"$here/include" -o "$OUT/arp-armv7" "$here/arp.tproj/arp.c"
+"$CC" -O2 -Wall -DPRIVATE -I"$here/include" -o "$OUT/ndp-armv7" "$here/ndp.tproj/ndp.c"
 ldid -S "$OUT/route-armv7" 2>/dev/null || true
 echo "==> $OUT/route-armv7"
