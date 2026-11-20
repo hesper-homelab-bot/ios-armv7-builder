@@ -10,9 +10,9 @@ root="$(cd "$here/.." && pwd)"
 OUT="$root/out"
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
-export IOS_STUBDIR="$HOME/ios-tool"   # hand-written stubs anchor -lSystem
-export IOS_LD64="$LD64"
-export LD_LIBRARY_PATH="${LD64_LIBS:-}:${LD_LIBRARY_PATH:-}"
+export IOS_STUBDIR="${IOS_STUBDIR:-$HOME/ios-tool}"   # hand-written stubs anchor -lSystem
+export IOS_LD64="${IOS_LD64:-${LD64:-$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld}}"
+export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 CC="$root/tools/cc-wrapper.sh"
 mkdir -p "$OUT"

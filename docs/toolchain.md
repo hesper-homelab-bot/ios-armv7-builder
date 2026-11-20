@@ -207,7 +207,7 @@ automake 生成的 `config.h: stamp-h1` 规则会在 configure 刚跑完后的**
 | `_uncompress`/`_compress` | **wrapper 丢弃 `-lz`**（"all inside libSystem"假设错，zlib 不在 libSystem）+ `-L+-lz` 搜索链失效 | launch 即 SIGABRT |
 | `_recvmmsg`/`_sendmmsg` | OpenSSL 4.x 静态 socket 助手；iOS 10.3.3 XNU 无此 syscall | 惰性绑定，踩到即死 |
 
-### 三件防雷工具（本次固化，后续移植必须走）
+### 13.1 三件防雷工具（本次固化，后续移植必须走）
 
 1. **`tools/check-undefined.sh <binary>`** — 链接后审计门禁（已接入
    mosh/nginx 的 build.sh，失败即构建失败）：每个 undefined 符号必须
@@ -228,7 +228,7 @@ automake 生成的 `config.h: stamp-h1` 规则会在 configure 刚跑完后的**
    tigetstr → curses ERR。设备没有的东西，桩给一个**可处理的错误返回**，
    而不是让 dyld 杀进程。未引用的成员不会被拉入。
 
-#### 13.1 桩清单（按加入原因分组）
+### 13.2 桩清单（按加入原因分组）
 
 | 桩 | 触发包 | 说明 |
 |---|---|---|
@@ -245,7 +245,7 @@ automake 生成的 `config.h: stamp-h1` 规则会在 configure 刚跑完后的**
 > **原则**：**冷路径符号进桩，热路径符号必须真解析**。
 > 判据 = `check-undefined.sh` 门禁（`docs/toolchain.md` §13 第 1 件工具）。
 
-### 排障时踩过的坑（本节配套）
+### 13.3 排障时踩过的坑（本节配套）
 
 - 设备 `/usr/lib/libSystem.B.dylib`、`libSystem.dylib` **打不开**——
   iOS 9+ 系统 dylib 都在 dyld 共享缓存里，独立文件是空壳。`nm -g` 一次

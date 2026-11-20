@@ -5,7 +5,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 OUT="$root/out"
-VER="${PGREP_VERSION:-1.0}"
+VER="${PGREP_VERSION:-1.1}"
 
 for b in "$OUT/pgrep-armv7" "$OUT/pkill-armv7"; do
     [ -f "$b" ] || { echo "missing $b (run pgrep/build.sh)" >&2; exit 1; }

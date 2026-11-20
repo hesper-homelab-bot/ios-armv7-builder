@@ -27,6 +27,7 @@ What is inside:
 | `tcpdump/` | **tcpdump 4.99.5** — live packet capture on `en0` verified (captured real SSH traffic); needs root, Wi-Fi refuses promiscuous mode with a warning |
 | `netstat/` | **netstat 1.0** — device-verified ABI (xinpgen/xinpcb/xtcpcb offsets measured on xnu-3789.70.16); `-a -t -u -r -i` all functional; 23/23 audit green |
 | `ifconfig/` | **ifconfig + route** (Apple network_cmds-457, Darwin 16 era) — real BSD interface tooling cross-built with `-DPRIVATE` against xnu-3789.70.16 kernel headers (the SDK ships public cuts only); status as `mobile`, address-alias/route add-del as root; `.c` files zero-patched |
+| `pgrep/` | **pgrep + pkill 1.1** (OpenBSD pkill 1.44 lineage, one binary two names) — sysctl(KERN_PROC_ALL) process table + KERN_PROCARGS2 full argv; `-f` full-args matching works same-uid, comm fallback cross-uid (kernel permission model, see docs/pgrep.md §3) |
 | `sqlite/` | **sqlite3 3.54.1** (32-bit) — direct amalgamation build, no configure; WAL/FTS-capable, fully static |
 | `jq/` | **jq 1.7.1** statically linked with oniguruma 6.9.10 — `test()` regex verified, UTF-8 round-trips |
 | `nmap/` | **Nmap 7.95** (nmap + ncat) — the most invasive port: five bundled libraries, libdnet backend surgery, OpenSSL 4 opaque-struct patches, and a cc-wrapper fix for `-MM` dependency scanning |
@@ -212,6 +213,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | Nmap 7.95 | `--version`; `--iflist` enumerates interfaces (lo0/en0/en2/awdl0/utun0); `-sT -n -p 22,22226 127.0.0.1` reports `22/tcp open ssh` + `22226/tcp open` in 0.17 s (data files shipped; Wi-Fi declines promiscuous mode) |
 | netstat 1.0 | `-a/-t/-u/-r/-i` all pass; active TCP/ESTABLISHED/CLOSE_WAIT/LISTEN, UDP/raw, routes (`default` via en0, Expire in seconds), 13 interfaces with MAC/IPv4/IPv6/stats; cross-checked with `lsof` and `ipconfig` |
 | ifconfig + route (network_cmds-457) | `ifconfig -a` lists lo0/en0-2/awdl0/utun0 with addresses; `ifconfig en0` shows `media: autoselect`, `status: active`, `type: Wi-Fi`; `route -n get default` → en0/gateway; root round-trip: `lo0 10.173.0.1 alias` → `ping` 2/2 (0.33 ms) → `-alias`; `route add -host 10.173.0.2 127.0.0.1` → get shows lo0/HOST → `delete` |
+| pgrep + pkill 1.1 | `pgrep -lf dropbear` (same-uid) prints full argv `/var/mobile/tools/db-dropbear -F -E -p 22 -r ...`; `pgrep -f host_ed25519` (deep argv token) hits rc=0; cross-uid rows fall back to `(comm)` — the KERN_PROCARGS2 permission model is now documented and the old "ENOENT even for root" conclusion withdrawn (docs/pgrep.md §3) |
 | nginx 1.31.9 | host-side curl `GET 200 (896 B in 8 ms)` + `HEAD 200`; `check-undefined` 233/233 symbols resolve; runs under the `com.hesper.nginx` LaunchDaemon (left stopped to save power); upgrade from 1.26.3-5 in place with device-ldid re-sign |
 | mosh 1.4.0 | end-to-end device verification complete (`mosh_1.4.0-4`); the 64-bit-atomic shims (`at64.o`/`c8fixed.o`) stay linked defensively |
 | FFmpeg 9.0.2 | `-version`; h264 decode → mpeg4 encode transcode on the device as `mobile` |

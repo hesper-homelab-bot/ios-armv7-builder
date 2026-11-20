@@ -386,20 +386,34 @@ static char *
 getargv(struct kinfo_proc *kp)
 {
 	static char out[64 * 1024];
-	int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROCARGS2, kp->kp_proc.p_pid };
+	int mib[3];
 	size_t len = sizeof(out);
 	int argc, i;
 	char *p, *end;
 	size_t o = 0;
 
-	if (sysctl(mib, 4, out, &len, NULL, 0) == -1)
-		return getcomm(kp);	/* EPERM/ESRCH: fall back */
+	/* 2026-11-20 fix: KERN_PROCARGS2 is a TOP-LEVEL kern node — the old
+	 * 4-element mib {CTL_KERN, KERN_PROC, KERN_PROCARGS2, pid} wrapped it
+	 * as a KERN_PROC sub-op and always failed (the "ENOENT even for root"
+	 * conclusion in pgrep.md was this bug + v1's real ENOENT conflated).
+	 * 3-element form per Apple ps print.c getproclline().  Permission
+	 * model (device-probed): same-uid OK; cross-uid EINVAL unless root —
+	 * getcomm() fallback covers that. */
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROCARGS2;
+	mib[2] = kp->kp_proc.p_pid;
+	if (sysctl(mib, 3, out, &len, NULL, 0) == -1)
+		return getcomm(kp);	/* cross-uid EINVAL / ESRCH: fall back */
 	memcpy(&argc, out, sizeof(argc));
 	if (argc < 0 || argc > 4096)
 		return getcomm(kp);
 	p = out + sizeof(argc);
 	end = out + len;
-	p += strlen(p) + 1;		/* skip the exec path */
+	while (p < end && *p == '\0')	/* skip padding NULs before exec_path */
+		p++;
+	if (p >= end)
+		return getcomm(kp);
+	p += strlen(p) + 1;		/* skip the exec path (lands on argv[0]) */
 	for (i = 0; i < argc && p < end; i++) {
 		size_t l = strlen(p);
 		if (o + l + 2 >= sizeof(out))
