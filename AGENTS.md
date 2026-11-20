@@ -90,9 +90,11 @@
     dpkg 安装、改设备权限等系统级操作，且要在汇报里点名。理由：用户日常
     也是 mobile，root 下能跑通的探针会掩盖权限问题（/dev/bpf* 事件教训）。
 4. 用户级准则若需修订 → 改 `~/.dsh/AGENTS.md`，不要在本仓库重复。
-5. **新移植默认走 SDK sysroot 模式**（2026-11-15 拍板）：
+5. **SDK sysroot 模式**（2026-11-15 拍板）：
    `IOS_SYSROOT=~/ios-tool/iPhoneOS10.3.sdk` + `IOS_STUBDIR=$HOME/ios-tool`。
    头用真 Apple SDK（NULL/getopt/net 系缺口根治）；`-lSystem` 锚点必须
    仍用手写 stub tbd——SDK 的 libSystem.tbd 是 re-export 壳，cctools ld64
-   追设备绝对路径必炸。存量 24 包不重编（musl sysroot 产物，可复现性
-   保留）。细节与金丝雀记录：docs/toolchain.md §16。
+   追设备绝对路径必炸。**2026-11-20 修订：存量 24 包出新版本（上游升级/
+   重打包）时也一律 SDK 模式**，musl sysroot 仅用于复现历史版本（build.sh
+   补丁不可原样携带，按 docs/toolchain.md §23 重新过墙）。细节与金丝雀
+   记录：docs/toolchain.md §16。

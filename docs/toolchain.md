@@ -20,8 +20,9 @@ export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib
 ```
 
-存量 24 包（musl sysroot 产物，build.sh 默认指 `tmp/sysroot`）的复现环境见
-`docs/musl-sysroot.md` §0——不要把那个 export 块用于新移植。
+存量 24 包（musl sysroot 产物，build.sh 默认指 `tmp/sysroot`）的**历史版本**
+复现环境见 `docs/musl-sysroot.md` §0——不要把那个 export 块用于新移植；
+存量包出**新版本**时也一律 SDK 模式（§16 2026-11-20 修订）。
 
 - C 驱动：`~/ios-armv7-builder/tools/cc-wrapper.sh`
 - C++ 驱动：`~/ios-tool/cxx-wrapper.sh`（内部转调 cc-wrapper，附加
@@ -304,7 +305,7 @@ configure 刚跑完时 **config.status 比 stamp-h1 新**，于是第一次 make
    tigetstr → curses ERR。设备没有的东西，桩给一个**可处理的错误返回**，
    而不是让 dyld 杀进程。未引用的成员不会被拉入。
 
-#### 3.1 桩清单（按加入原因分组）
+#### 13.1 桩清单（按加入原因分组）
 
 | 桩 | 触发包 | 说明 |
 |---|---|---|

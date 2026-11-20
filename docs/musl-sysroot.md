@@ -3,16 +3,19 @@
 > 定位:2026-11-06~11-15 期间,工具链用的是**手搓 musl sysroot**
 > (`~/ios-armv7-builder/tmp/sysroot`,musl 头 + `sysroot-overlay/usr/include/`
 > 达尔文化改写)。**2026-11-15 起(§16 拍板)新移植一律走 SDK 模式**
-> (`docs/toolchain.md` §16/§23),musl sysroot 只服务**存量 24 包**
-> (nginx/node/nmap 等的 build.sh 默认仍指 tmp/sysroot),不重编,
-> 可复现性保留在 git。
+> (`docs/toolchain.md` §16/§23),musl sysroot 只服务**存量 24 包的历史
+> 版本**(nginx/node/nmap 等的 build.sh 默认仍指 tmp/sysroot),不重编,
+> 可复现性保留在 git。**2026-11-20 修订:存量包出新版本(上游升级/重打包)
+> 一律改走 SDK 模式**,不再新增 musl 产物——musl 时代的 build.sh 补丁
+> (overlay -I、musl 头 sed、ac_cv 压制清单)不能原样带进 SDK 构建,
+> 按 toolchain §23 重新过墙。
 >
 > 本文收纳 musl 时代的头改写史与 ABI 陷阱——它们是当年 24 包能跑通的
 > 全部代价,也是理解 §16 为什么拍板的原始证据。**新移植不要按本文操作**,
 > 按工具链 §16/§23;但"Darwin 与 Linux 的 ABI 差异"事实本身永远成立,
 > 写新代码时仍需知道。
 
-## 0. 复现环境(存量 24 包)
+## 0. 复现环境(存量 24 包的历史版本;新版本见 §16 修订,走 SDK)
 
 ```sh
 export IOS_SYSROOT=$HOME/ios-armv7-builder/tmp/sysroot
