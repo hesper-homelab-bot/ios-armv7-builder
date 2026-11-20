@@ -26,6 +26,7 @@ What is inside:
 | `libpcap/` | **libpcap 1.10.5** with working live BPF capture (`/dev/bpf*` on the device); needs an XNU `net/bpf.h` that this repo now carries in `sysroot-overlay/` |
 | `tcpdump/` | **tcpdump 4.99.5** — live packet capture on `en0` verified (captured real SSH traffic); needs root, Wi-Fi refuses promiscuous mode with a warning |
 | `netstat/` | **netstat 1.0** — device-verified ABI (xinpgen/xinpcb/xtcpcb offsets measured on xnu-3789.70.16); `-a -t -u -r -i` all functional; 23/23 audit green |
+| `ifconfig/` | **ifconfig + route** (Apple network_cmds-457, Darwin 16 era) — real BSD interface tooling cross-built with `-DPRIVATE` against xnu-3789.70.16 kernel headers (the SDK ships public cuts only); status as `mobile`, address-alias/route add-del as root; `.c` files zero-patched |
 | `sqlite/` | **sqlite3 3.54.1** (32-bit) — direct amalgamation build, no configure; WAL/FTS-capable, fully static |
 | `jq/` | **jq 1.7.1** statically linked with oniguruma 6.9.10 — `test()` regex verified, UTF-8 round-trips |
 | `nmap/` | **Nmap 7.95** (nmap + ncat) — the most invasive port: five bundled libraries, libdnet backend surgery, OpenSSL 4 opaque-struct patches, and a cc-wrapper fix for `-MM` dependency scanning |
@@ -95,6 +96,8 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 ./nmap/make-deb.sh
 (cd netstat  && ./build.sh)     # netstat 1.0: hand-rolled from device-measured xinpgen/xinpcb/xtcpcb ABI
 ./netstat/make-deb.sh
+(cd ifconfig && ./build.sh)     # network_cmds-457 ifconfig + route; -DPRIVATE + port-local xnu headers
+./ifconfig/make-deb.sh
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
@@ -129,6 +132,7 @@ apt-get install wget4 git vim     # /var/mobile/tools/{wget,git,vim}
 apt-get install sqlite3 jq tcpdump # /var/mobile/tools/{sqlite3,jq,tcpdump}
 apt-get install nmap               # /var/mobile/tools/{nmap,ncat} + share/nmap
 apt-get install netstat4            # /var/mobile/tools/bin/netstat
+apt-get install ifconfig4           # /var/mobile/tools/ifconfig/{ifconfig,route} + /usr/bin links
 ```
 
 All seventeen packages this repository builds are in it — including `dropbear4`
@@ -207,6 +211,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | jq 1.7.1 | `--version`; `.a[1]`, `reduce range(100)`, `add` over 20000 values, `test("f..h")` regex (oniguruma), UTF-8 `café` round-trip, `sort` |
 | Nmap 7.95 | `--version`; `--iflist` enumerates interfaces (lo0/en0/en2/awdl0/utun0); `-sT -n -p 22,22226 127.0.0.1` reports `22/tcp open ssh` + `22226/tcp open` in 0.17 s (data files shipped; Wi-Fi declines promiscuous mode) |
 | netstat 1.0 | `-a/-t/-u/-r/-i` all pass; active TCP/ESTABLISHED/CLOSE_WAIT/LISTEN, UDP/raw, routes (`default` via en0, Expire in seconds), 13 interfaces with MAC/IPv4/IPv6/stats; cross-checked with `lsof` and `ipconfig` |
+| ifconfig + route (network_cmds-457) | `ifconfig -a` lists lo0/en0-2/awdl0/utun0 with addresses; `ifconfig en0` shows `media: autoselect`, `status: active`, `type: Wi-Fi`; `route -n get default` → en0/gateway; root round-trip: `lo0 10.173.0.1 alias` → `ping` 2/2 (0.33 ms) → `-alias`; `route add -host 10.173.0.2 127.0.0.1` → get shows lo0/HOST → `delete` |
 | nginx 1.31.9 | host-side curl `GET 200 (896 B in 8 ms)` + `HEAD 200`; `check-undefined` 233/233 symbols resolve; runs under the `com.hesper.nginx` LaunchDaemon (left stopped to save power); upgrade from 1.26.3-5 in place with device-ldid re-sign |
 | mosh 1.4.0 | end-to-end device verification complete (`mosh_1.4.0-4`); the 64-bit-atomic shims (`at64.o`/`c8fixed.o`) stay linked defensively |
 | FFmpeg 9.0.2 | `-version`; h264 decode → mpeg4 encode transcode on the device as `mobile` |

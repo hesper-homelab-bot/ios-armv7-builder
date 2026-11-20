@@ -734,3 +734,44 @@ Nothing in this port is believed until the device says so:
 | `IP_TTL` | 4 | xnu — Linux is 2 |
 | `SIGPWR` / `SIGSTKFLT` | *absent* | device signal dump showed the collisions they'd cause |
 
+
+## 23. SDK 头是"公开裁剪版":内核私有段要用 xnu 完整头 + `-DPRIVATE`(2026-11-20,ifconfig 移植确立)
+
+iOS SDK(`~/ios-tool/iPhoneOS10.3.sdk`)的内核系头(`net/if.h`、
+`sys/sockio.h`、`net/if_var.h` 等)是 **PUBLIC cut**——xnu 同名头里所有
+`#ifdef PRIVATE` 段被整体删除。Apple 自家工具(network_cmds 系 ifconfig/
+route/arp)却构建在这些 PRIVATE 段上(`if_descreq`、`SIOCSIFDESC`、
+`if_bandwidths`、`if_traffic_class`……)。撞墙形态全是
+"incomplete type / undeclared identifier",且名字都能在 xnu 源里找到——
+这就是"头被裁过"的签名。
+
+**模式(端口自带 include/,不污染共享 overlay):**
+
+```sh
+# xnu-3789.70.16 = 设备内核精确版本;从本地 sparse clone 落头
+git -C ~/scratch/sysctl-work/xnu cat-file -p xnu-3789.70.16:bsd/net/if.h
+# build.sh:
+"$CC" -O2 -Wall -DPRIVATE -I"$here/include" -o ...   # §1 环境变量整块带上
+```
+
+- include/ 只放 **SDK 真缺的**(fetch-darwin-header.sh 拉取、extern "C"
+  门禁处理)+ **必须整头换用的 shadow**(net/if.h、net/if_var.h、
+  sys/sockio.h),SDK 其余头原样生效。
+- **shadow 陷阱**:`-I` 指向装满 xnu 头的大目录会遮住 SDK 同名头
+  (overlay 的 `sys/param.h` 引 `endian.h` 直接雪崩)。include/ 必须
+  最小化,这与 §22 的 overlay 用法(musl sysroot 时代)不同。
+- `-DPRIVATE` 会打开所有 PRIVATE 段:注意 `uuid_t` 这类类型在内核世界
+  来自 KERNEL 侧头,用户态要补 `sys/_types/_uuid_t.h`(SDK 自带)。
+- `tmp/sysroot` 是 musl 时代的旧 sysroot(epoll.h/inotify.h 都在),
+  §16 拍板后只服务存量 24 包,新移植禁止;它连 SDK 自带的
+  `sys/queue.h` 都没有。
+- kldload/modstat(sys/module.h、sys/linker.h)在 Apple 的 C 源里已
+  包 `#ifndef __APPLE__`,零补丁。
+- 权限裁决:ifconfig/route 装成 root:wheel 0755、**不 setuid**——
+  接口 ioctl(SIOCAIFADDR)与 route add/delete 需 root;setuid 的话
+  等于把 en0 down 的能力交给 mobile。只读状态(mobile)与写操作
+  (root ssh)的边界在 docs/ifconfig.md §4 实测定界。
+
+适用:network_cmds 家族后续移植(arp/ndp/ip6fw……)与任何引用内核
+PRIVATE 段的工具。iproute2 本身无 Darwin 版(netlink 专属),BSD 侧
+对应物就是 ifconfig + route + netstat。
