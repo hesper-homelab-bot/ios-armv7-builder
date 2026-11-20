@@ -1,0 +1,56 @@
+timespec.o: timespec.c ../config.h timespec.h time.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/time.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/cdefs.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_symbol_aliasing.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_posix_availability.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/machine/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_pthread/_pthread_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/Availability.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/AvailabilityInternal.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_clock_t.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_null.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_size_t.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_time_t.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_timespec.h \
+  /usr/lib/llvm-21/lib/clang/21/include/stddef.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/stddef.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_header_macro.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_ptrdiff_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_size_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_rsize_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_wchar_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_null.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_max_align_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_offsetof.h
+../config.h:
+timespec.h:
+time.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/time.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/cdefs.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_symbol_aliasing.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_posix_availability.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/machine/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_pthread/_pthread_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/Availability.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/AvailabilityInternal.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_clock_t.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_null.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_size_t.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_time_t.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_timespec.h:
+/usr/lib/llvm-21/lib/clang/21/include/stddef.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/stddef.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_header_macro.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_ptrdiff_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_size_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_rsize_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_wchar_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_null.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_max_align_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_offsetof.h:

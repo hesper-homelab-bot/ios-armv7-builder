@@ -16,7 +16,7 @@
 
 ## 已上线（全部有专项文档）
 
-设备 kit 现有 **27 个包**（29 个 deb 文件，python3 有两个版本号，
+设备 kit 现有 **28 个包**（30 个 deb 文件，python3 有两个版本号，
 含一个被取代的旧版）。
 
 | 包 | 版本 | 专项文档 | 备注 |
@@ -56,6 +56,7 @@
 | ping | 1.0 | [ping.md](ping.md) | 自写;setuid root(ICMP 投递策略实测) |
 | ifconfig + route | network_cmds-457 | [ifconfig.md](ifconfig.md) | Apple 正版;-DPRIVATE + xnu-3789 内核头(§23 模式);iproute2 无 Darwin 版 |
 | arp/ndp | network_cmds-457 | [ifconfig.md](ifconfig.md) | 并入 ifconfig4 457-2;三次单行改动(§2.1) |
+| traceroute | 1.0 (network_cmds-457) | [traceroute.md](traceroute.md) | Apple 正版;-DPRIVATE + xnu-3789 内核头;setuid 4755(SOCK_RAW);上游仅 1 单行改动 |
 | dig/nslookup/host | 1.0 | [dns.md](dns.md) | 自研 stub 解析器;设备 DNS 客户端 0→3 |
 | tree/watch/realpath/hexdump | 1.0 | [smalltools.md](smalltools.md) | 小件四连,一包带走 |
 | pgrep -f | 1.1 | [pgrep.md](pgrep.md) | 4 元 mib bug 翻案;PROCARGS2 权限模型落文档 |

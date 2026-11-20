@@ -1,0 +1,36 @@
+full-write.o: full-write.c ../config.h full-write.h \
+  /usr/lib/llvm-21/lib/clang/21/include/stddef.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/stddef.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_header_macro.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_ptrdiff_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_size_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_wchar_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_null.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_max_align_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_offsetof.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/errno.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/errno.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/cdefs.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_symbol_aliasing.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_posix_availability.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_errno_t.h \
+  safe-write.h /usr/lib/llvm-21/lib/clang/21/include/__stddef_rsize_t.h
+../config.h:
+full-write.h:
+/usr/lib/llvm-21/lib/clang/21/include/stddef.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/stddef.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_header_macro.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_ptrdiff_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_size_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_wchar_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_null.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_max_align_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_offsetof.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/errno.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/errno.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/cdefs.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_symbol_aliasing.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_posix_availability.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_errno_t.h:
+safe-write.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_rsize_t.h:

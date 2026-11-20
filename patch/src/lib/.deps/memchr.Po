@@ -1,0 +1,73 @@
+memchr.o: memchr.c ../config.h string.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/string.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/cdefs.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_symbol_aliasing.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_posix_availability.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/machine/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_pthread/_pthread_types.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/Availability.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/AvailabilityInternal.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_size_t.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_null.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_rsize_t.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_errno_t.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_ssize_t.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/strings.h \
+  /usr/lib/llvm-21/lib/clang/21/include/stddef.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/stddef.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_header_macro.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_ptrdiff_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_size_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_rsize_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_wchar_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_null.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_max_align_t.h \
+  /usr/lib/llvm-21/lib/clang/21/include/__stddef_offsetof.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/secure/_string.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/secure/_common.h \
+  /usr/lib/llvm-21/lib/clang/21/include/limits.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/limits.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/machine/limits.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/limits.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/_limits.h \
+  /home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/syslimits.h
+../config.h:
+string.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/string.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/cdefs.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_symbol_aliasing.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_posix_availability.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/machine/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_pthread/_pthread_types.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/Availability.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/AvailabilityInternal.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_size_t.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_null.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_rsize_t.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_errno_t.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/_types/_ssize_t.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/strings.h:
+/usr/lib/llvm-21/lib/clang/21/include/stddef.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/stddef.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_header_macro.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_ptrdiff_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_size_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_rsize_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_wchar_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_null.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_max_align_t.h:
+/usr/lib/llvm-21/lib/clang/21/include/__stddef_offsetof.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/secure/_string.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/secure/_common.h:
+/usr/lib/llvm-21/lib/clang/21/include/limits.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/limits.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/machine/limits.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/limits.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/arm/_limits.h:
+/home/hesper/ios-tool/iPhoneOS10.3.sdk/usr/include/sys/syslimits.h:

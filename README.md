@@ -27,9 +27,11 @@ What is inside:
 | `tcpdump/` | **tcpdump 4.99.5** — live packet capture on `en0` verified (captured real SSH traffic); needs root, Wi-Fi refuses promiscuous mode with a warning |
 | `netstat/` | **netstat 1.0** — device-verified ABI (xinpgen/xinpcb/xtcpcb offsets measured on xnu-3789.70.16); `-a -t -u -r -i` all functional; 23/23 audit green |
 | `ifconfig/` | **ifconfig + route + arp + ndp** (Apple network_cmds-457, Darwin 16 era) — real BSD network tooling cross-built with `-DPRIVATE` against xnu-3789.70.16 kernel headers (the SDK ships public cuts only); status as `mobile`, address-alias/route/arp-table writes as root; arp/ndp needed only 3 one-line touches (unused nlist include, private NET_RT node values, sysctlbyname newlen) |
+| `traceroute/` | **traceroute 1.0** (Apple network_cmds-457, Darwin 16 era) — UDP/TCP/ICMP/GRE probe protocols, setuid 4755 (SOCK_RAW needs root on iOS 10, Apple's own install shape is 04555 root:wheel); upstream needed a single one-line `SO_RECV_ANYIF` guard on top of the xnu-3789 private headers; documented in [docs/traceroute.md](docs/traceroute.md) |
 | `smalltools/` | **tree / watch / realpath / hexdump 1.0** — four missing file utilities in one argv[0]-dispatched binary; tree glyphs with -a/-d/-L, watch periodic re-run, realpath via the SDK's realpath(3), hexdump 16-byte hex+ASCII; /usr/bin links |
 | `dns/` | **dig / nslookup / host 1.0** — the DNS clients the device ships zero of, one argv[0]-dispatched binary: self-contained stub resolver (UDP + TCP fallback on TC, compression-pointer RR parsing, A/AAAA/CNAME/MX/TXT/NS/PTR/SOA/ANY), resolver from /etc/resolv.conf |
 | `iperf3/` | **iperf3 3.22.1** — client/server bandwidth measurement for WiFi throughput tests; server runs as mobile; hand-linked objects (libtool GNU-ar archive is silently ignored by ld64); affinity/clock_nanosleep probes suppressed |
+| `patch/` | **GNU patch 2.7.1** — apply unified diffs on device (diff ships with the bootstrap, patch was missing); gnulib constant-true probes suppressed (futimens/utimensat/nanotime/canonicalize), MSVC modules dropped, hand-linked; md5-verified apply round-trip |
 | `pgrep/` | **pgrep + pkill 1.1** (OpenBSD pkill 1.44 lineage, one binary two names) — sysctl(KERN_PROC_ALL) process table + KERN_PROCARGS2 full argv; `-f` full-args matching works same-uid, comm fallback cross-uid (kernel permission model, see docs/pgrep.md §3) |
 | `sqlite/` | **sqlite3 3.54.1** (32-bit) — direct amalgamation build, no configure; WAL/FTS-capable, fully static |
 | `jq/` | **jq 1.7.1** statically linked with oniguruma 6.9.10 — `test()` regex verified, UTF-8 round-trips |
@@ -102,6 +104,8 @@ git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
 ./netstat/make-deb.sh
 (cd ifconfig && ./build.sh)     # network_cmds-457 ifconfig + route; -DPRIVATE + port-local xnu headers
 ./ifconfig/make-deb.sh
+(cd traceroute && ./build.sh)   # network_cmds-457 traceroute; setuid 4755 (SOCK_RAW)
+./traceroute/make-deb.sh
 ```
 
 `DEVICE` is an ssh host alias for the device; its ncurses headers and
@@ -216,6 +220,8 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | Nmap 7.95 | `--version`; `--iflist` enumerates interfaces (lo0/en0/en2/awdl0/utun0); `-sT -n -p 22,22226 127.0.0.1` reports `22/tcp open ssh` + `22226/tcp open` in 0.17 s (data files shipped; Wi-Fi declines promiscuous mode) |
 | netstat 1.0 | `-a/-t/-u/-r/-i` all pass; active TCP/ESTABLISHED/CLOSE_WAIT/LISTEN, UDP/raw, routes (`default` via en0, Expire in seconds), 13 interfaces with MAC/IPv4/IPv6/stats; cross-checked with `lsof` and `ipconfig` |
 | ifconfig + route (network_cmds-457) | `ifconfig -a` lists lo0/en0-2/awdl0/utun0 with addresses; `ifconfig en0` shows `media: autoselect`, `status: active`, `type: Wi-Fi`; `route -n get default` → en0/gateway; root round-trip: `lo0 10.173.0.1 alias` → `ping` 2/2 (0.33 ms) → `-alias`; `route add -host 10.173.0.2 127.0.0.1` → get shows lo0/HOST → `delete` |
+| traceroute 1.0 (network_cmds-457) | as `mobile` (setuid 4755): `traceroute -n <gateway>` → 1 hop, gateway, 1.5–2.8 ms; `traceroute -n -m 3 223.5.5.5` → hop 1 gateway, hop 2 `*` (carrier ICMP filter), hop 3 carrier node; no-arg → usage; `traceroute -m 1 www.qq.com` resolves and reverse-DNS hop 1 to the router's name |
+| GNU patch 2.7.1 | `patch --version` OK; device apply of a unified diff md5-matches the expected result (98fb0520a4fc); 116/116 symbols resolve |
 | iperf3 3.22.1 | device-as-server: host→device TCP 22.0 Mbits/sec (2 streams), device→host 27.6, UDP 30M 0% loss; --version identifies iPad4/Darwin 16.7.0; 138/138 symbols resolve |
 | dig + nslookup + host 1.0 | `dig +short github.com` → 20.6.7.17; `dig apple.com A` full QUESTION/ANSWER; `dig -t mx apple.com +short` → 6 MX; `nslookup -t ns qq.com` → 4 NS; `host -t aaaa github.com` empty matches host-side dig @192.168.31.1 (upstream returns no AAAA here); 36/36 symbols resolve |
 | arp + ndp (network_cmds-457) | `arp -a` lists 9 LAN neighbours (router/gogs-host/iPad permanent/multicast) with hostnames; `ndp -a` lists lo0/en0/awdl0 neighbours with Router flag; 51/51 + 54/54 symbols resolve |

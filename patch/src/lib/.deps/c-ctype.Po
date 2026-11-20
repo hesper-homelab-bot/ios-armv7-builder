@@ -1,0 +1,5 @@
+c-ctype.o: c-ctype.c ../config.h c-ctype.h \
+  /usr/lib/llvm-21/lib/clang/21/include/stdbool.h
+../config.h:
+c-ctype.h:
+/usr/lib/llvm-21/lib/clang/21/include/stdbool.h:
