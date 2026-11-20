@@ -3,15 +3,25 @@
 > 适用范围：所有为这台设备交叉编译的软件（node、quickjs、dropbear、openssh、
 > openssl、curl…）。软件专项细节见同目录各 md；本文只写**工具链层面可复用的规则**。
 > 维护：大肥鱼。正本在本 git 仓库 `docs/`；`~/.dsh/AGENTS.md` 是它的符号链接入口。
+>
+> **结构说明（2026-11-20 拆分）**：本文只保留跨 sysroot 时代仍适用的规则。
+> musl 时代手搓 sysroot（2026-11-06~11-15，现 `tmp/sysroot`）的头改写史、
+> 运行时 ABI 规则、O_NONBLOCK 案例与 Darwin ABI 陷阱总表已迁至
+> **`docs/musl-sysroot.md`**；SDK 模式自 2026-11-15 起为新移植默认（§16，
+> 公开裁剪头问题见 §23）。历史章节号保留不重排（外部文档引用 §8/§13/§22 等）。
 
 ## 1. 构建环境（每次都要 export）
 
 ```sh
-export IOS_SYSROOT=$HOME/ios-armv7-builder/tmp/sysroot
+# SDK sysroot 模式（2026-11-15 起新移植默认，§16/§23）：
+export IOS_SYSROOT=$HOME/ios-tool/iPhoneOS10.3.sdk
 export IOS_STUBDIR=$HOME/ios-tool
 export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib
 ```
+
+存量 24 包（musl sysroot 产物，build.sh 默认指 `tmp/sysroot`）的复现环境见
+`docs/musl-sysroot.md` §0——不要把那个 export 块用于新移植。
 
 - C 驱动：`~/ios-armv7-builder/tools/cc-wrapper.sh`
 - C++ 驱动：`~/ios-tool/cxx-wrapper.sh`（内部转调 cc-wrapper，附加
@@ -83,7 +93,7 @@ export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/li
 - 探针模板（构建+部署+跑）：
 
 ```sh
-export IOS_SYSROOT=$HOME/ios-armv7-builder/tmp/sysroot IOS_STUBDIR=$HOME/ios-tool
+export IOS_SYSROOT=$HOME/ios-tool/iPhoneOS10.3.sdk IOS_STUBDIR=$HOME/ios-tool
 export IOS_LD64=$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
 export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib
 ~/ios-armv7-builder/tools/cc-wrapper.sh -O1 -o /tmp/probe /tmp/probe.c [额外 .o/.a]
@@ -121,41 +131,24 @@ ssh mobile@<device> 'cd /var/mobile/scratch && rm -f probe && cp probe.new probe
 | SIGSEGV @ 小地址 | 空指针/未初始化表 |
 | SIGILL | thumb 位缺失或栈耗尽后的野跳 |
 
+## 8. dynamic_lookup 链接探针恒真（2026-11-13 固化；跨包通用）
 
-## sysroot 结构体的运行时 ABI（wall #14 教训，2026-11-11）
+工具链链接带 `-undefined dynamic_lookup`：**链接期任何缺失符号都不报错**。
+后果是 autoconf/自定义的"编译+链接"存在性探针**永远成功**——设备根本没有
+的函数（glibc-ism、Linux 专有 syscall、别的包留下的声明）全部被判 yes，
+错误推迟到设备运行期由 dyld 引爆（`Symbol not found` / lazy binding abort）。
 
-编译期能过 != 运行时 ABI 正确。sysroot 是手搓的：每个**与内核交互的
-结构体**（ioctl/kevent/socket option/……）都要用**多元素探针**在设备上
-验证，而不是只看编译+单元素调用。已有先例：
-
-- `sys/event.h` struct kevent 曾带 `uint64_t ext[4]`（52B 步长），
-  iOS 10.3.3 armv7 内核实际按 20B 无 ext 读——libuv/ares 的 changelist
-  在第 2+ 个 change 起全错（坏 fd、EINVAL abort、SIGBUS）。
-  已删 ext 并留注释（sizeof 必须 =20）。
-
-规则：新增/修改 sysroot 头里与 syscall 相关的结构体时，
-编译一个多元素探针（≥2 个元素走完整 syscall 路径）在设备上跑通
-才算数。单元素探针测不出 stride 错位（第 1 个永远对齐）。
-
-## 8. sysroot 头的"Linux 值穿马甲"雷区（nmap 移植 2026-11-12）
-
-musl 头里凡是**数值常量**（ioctl request、netdb 的 NI_/AI_/EAI_、协议号）
-都默认是 **Linux/glibc 值**，与 Darwin ABI 经常不同，且差异是静默的：
-
-- `bits/ioctl.h` 的 `_IOW` 系宏是 Linux 编码 → 所有"用宏构造"的 BSD ioctl
-  （BIOCSETIF、SIOCAIFADDR…）拿到垃圾 request code，值还随 include 顺序漂移
-  （先 include ioccom.h 就对，后 include 就错——两次编译结果不同的怪象之源）。
-  已改为直接 include `sys/ioccom.h`（BSD 语义）+ Darwin tty 值无条件覆盖。
-- `netdb.h` 的 `NI_NUMERICHOST` Linux=1 / Darwin=2：传 1 时设备返回的是
-  **主机名**（Darwin 的 1 是 NI_NOFQDN），不是错误，更阴险。EAI_* 符号也
-  全不同（Darwin EAI_NONAME=8，musl=-2）。已按 Apple Libinfo 正本重写。
-- 判据固化：**两次探针结果不同 → 先怀疑宏依赖 include 顺序**；打印宏的
-  数值（`printf("%lx", (unsigned long)BIOCSETIF)`）比猜测快十倍。
-
-另外：cc-wrapper 现在对 `-M/-MM/-MD/-MMD` 直接透传 clang。此前的行为
-（当作普通 flag 走编译+链接）会让 clang 把**依赖清单写进 .o**（ASCII
-毒化），nsock 的 makefile.dep 规则是第一个受害者。排查手段：`file *.o`
-看见 "ASCII text" 即中毒，删掉重编。
+- 修法两条腿：configure **后**逐个压制（`ac_cv_func_*` 缓存变量或直接
+  sed config.h，见 §15.1 与 §9）+ **`tools/check-undefined.sh` 链接后
+  审计门禁兜底**（§13 第 1 件工具，它就是为这坑生的）。
+- 探针若带"运行"环节（`AC_RUN_IFELSE` / `ngx_feature_run=yes`），交叉
+  编译下还有第二重假象：产物是 armv7 Mach-O，宿主跑不了 → 静默假阴
+  （nginx 墙 #1）。**别试图让探针诚实，configure 后直接补宏。**
+- 历史注：本节原为 musl 头"Linux 值穿马甲"雷区（nmap 移植），该内容
+  已迁 `docs/musl-sysroot.md` §2——SDK 模式下 musl 雷区消失，但
+  "Linux 专有函数被恒真探针放进 config.h"这一半跨时代依然成立，
+  且多份移植文档（tor/nginx/curl/tcpdump）以"§8"引用此语义，故收敛
+  为本节。
 
 ## 9. autoconf 交叉编译探测的三类骗局（nginx/mosh 2026-11-13）
 
@@ -341,6 +334,10 @@ configure 刚跑完时 **config.status 比 stamp-h1 新**，于是第一次 make
 - automake 的 `Makefile: config.status` 规则会在首次 make 时重新生成
   Makefile——**对 Makefile 的 sed 修正必须紧跟 touch**（同 §10
   config.h 的教训）。
+- cc-wrapper 对 `-M/-MM/-MD/-MMD` **直接透传 clang**（2026-11-13 固化）。
+  此前的行为（当作普通 flag 走编译+链接）会让 clang 把**依赖清单写进
+  .o**（ASCII 毒化），nsock 的 makefile.dep 规则是第一个受害者。排查
+  手段：`file *.o` 看见 "ASCII text" 即中毒，删掉重编。
 
 ## 14. netstat 移植：自备 ABI + 设备实测闭环（2026-11-13）
 
@@ -452,6 +449,9 @@ export IOS_STUBDIR=$HOME/ios-tool        # 注意：仍是手写 stub 目录！
   型，增量同步 245B/1618×）✓。两类型代表都干净，SDK 模式可用于新移植。
 - **默认已拍板**（2026-11-15）：新移植一律 SDK 模式（AGENTS.md 工作规则
   5）；已上线 24 包是 musl sysroot 产物，不重编，可复现性保留在 git。
+- **musl 时代的头改写史**（kevent 运行时 ABI、Linux 值穿马甲、O_NONBLOCK
+  案例与 Darwin ABI 陷阱总表）已整体迁至 `docs/musl-sysroot.md`——那是
+  当年 24 包的全部代价，也是本节拍板的原始证据。
 
 ## 17. 设备 UUID 复测：SDK 头 availability ≠ 设备现实（2026-11-15）
 
@@ -556,136 +556,6 @@ __atomic_load_n(&g_val, __ATOMIC_RELAXED)  ->  Bus error: 10
 `c8fixed.o` 强制 `is_lock_free` 只认 ≤4 字节）——**同一根因的第一次现身**。
 **凡在 armv7 Apple 上移植带锁/原子计数的软件，先检查这一条。**
 
-## 20. O_NONBLOCK:把所有问题都藏起来的那个 bug（README 迁入 2026-11-19）
-
-
-Worth reading even if you never build for iOS, because it produced weeks of
-blaming the wrong layer.
-
-The sysroot started from musl, whose `fcntl.h` is Linux's:
-
-```
-musl/Linux:  O_NONBLOCK = 0x800     (and O_CLOEXEC = 0x80000)
-Darwin:      O_NONBLOCK = 0x4       (and O_CLOEXEC = 0x1000000)
-```
-
-`fcntl(fd, F_SETFL, 0x800)` on Darwin sets an unrelated bit and *does not set
-non-blocking mode* — and fcntl never fails on an unknown flag, so every
-"make this socket non-blocking" in the entire program was a **silent no-op**.
-Every socket stayed blocking.
-
-Symptoms this one constant produced:
-
-* the client hung forever inside libevent's signal-pipe drain loop
-  (`evsig_cb` reads until EAGAIN; on a blocking fd with no data left it simply
-  blocks, and the client never called `poll()` again — proven with a watchdog
-  and a debug `poll()` wrapper);
-* a peer's data sat unread while both processes were alive and sleeping;
-* `MSG_EXIT` was queued but the peer never saw it;
-* behaviour changed randomly between runs and between the select/kqueue/poll
-  backends, because blocking fds make every event-loop race resolve
-  differently.
-
-`F_GETFL`/`F_SETFL` (3/4) match Darwin by pure luck, which is why fcntl calls
-never failed loudly. `O_CLOEXEC` being wrong also leaked fds into pane
-children.
-
-
-## 21. Darwin ABI 陷阱总表（README 迁入 2026-11-19；与 §8 互为索引）
-
-
-Each of these produced its own bug before being fixed; the fixes live in
-`sysroot-overlay/usr/include/`:
-
-| header | trap |
-|---|---|
-| `bits/errno.h` | `EAGAIN` 11 (Linux) vs 35 (Darwin): every `errno != EAGAIN` treats "try again" as fatal |
-| `sys/socket.h` | `SOL_SOCKET` 1 vs `0xffff`: `sendmsg`+`SCM_RIGHTS` fails with `EINVAL`, so a client cannot hand its tty to a server |
-| `fcntl.h` | `O_NONBLOCK`/`O_CLOEXEC` as above |
-| `pwd.h` | Darwin inserts `pw_change`/`pw_class`: musl's layout made `pw_shell` read `pw_gecos` — tmux tried to exec a shell named "Mobile User" |
-| `termios.h` | musl adds `c_line`; every offset after it differs |
-| `sys/utsname.h` | Darwin `char[256]x5` vs musl `char[65]x6`: `uname()` overflows the caller's stack by ~890 bytes and corrupts adjacent buffers (tmux parsed `list-windows` as `liPad3,4`) |
-| `bits/signal.h` | signal numbers, `SA_*`, `sigset_t` |
-| `sys/ioctl.h` | `TIOCGWINSZ` and friends are completely different ioctls |
-| `unistd.h` | `closefrom` does not exist on iOS 10; autoconf probes always succeed because the linker tolerates undefined symbols, so it must be disabled by hand and replaced by the project's bundled copy — it aborts in the forked child of every new pane, visible only in `/var/mobile/Library/Logs/CrashReporter/*.ips` |
-
-Later additions, found while porting OpenSSL 4 and curl 8:
-
-| header | trap |
-|---|---|
-| `pthread.h` | musl's `pthread_once_t` is a 4-byte `int`; Darwin's is a 12-byte `{long __sig; char __opaque[8]}` with `_PTHREAD_ONCE_SIG_init = 0x71B7236C`. Every `CRYPTO_ONCE`/`pthread_once` therefore corrupts memory and aborts inside `os_once` with `BUG IN CLIENT OF LIBPLATFORM: Unlock of an os_once_t not owned by current thread`. Also carries the 32-bit `pthread_mutex_t` (44), `cond` (28), `rwlock` (128) and `attr` (40) layouts, and Darwin's `PTHREAD_CREATE_DETACHED = 2` (Linux says 1). `bits/alltypes.h` must surrender its 14 `__NEED_pthread_*` typedef blocks, and `sys/types.h`/`signal.h`/`mqueue.h` their `__NEED_pthread_*` defines, or the two definitions collide |
-| `netinet/in.h`, `sys/socket.h` | **No `sa_len`/`sin_len`.** Darwin's `struct sockaddr` is `{u_char sa_len; sa_family_t sa_family; ...}` with the length first; musl omits it and its `sa_family_t` is 16-bit. Without the leading byte, `inet_ntop()` reads a 16-bit family from offset 0, gets `0x0210`, and fails with `EAFNOSUPPORT` — curl reports `connect to port 0 failed: Address family not supported by protocol family`. Sizes that must come out right: `sockaddr` 16, `sockaddr_in` 16, `sockaddr_in6` 28, `sockaddr_storage` 128 |
-| `sys/socket.h` | `SOCK_NONBLOCK`/`SOCK_CLOEXEC` **do not exist on iOS 10.** musl hands out `0x80000`; curling ORs `SOCK_NONBLOCK` into the socket type, the kernel answers `EINVAL`, and every connection dies in ~1 ms with "Failed initialization". Probing every candidate bit showed only the low two bits are even meaningful (`0x2`/`0x4` are `SOCK_DGRAM`/`SOCK_RAW`; `0x8`…`0x40` are rejected). The overlay `#undef`s both so callers fall back to `fcntl(F_SETFL, O_NONBLOCK)`, which works because `O_NONBLOCK` is already corrected |
-| `netdb.h` | `h_errno` is a Darwin global that musl does not declare |
-| `netinet/in6.h` | `struct in6_pktinfo` plus Darwin's option values: `IPV6_PKTINFO` 46 and `IPV6_RECVPKTINFO` 61, **not** the Linux 50/49. `netinet/in.h` must not also define the Linux `IPV6_*` block, or those values win by being included second |
-| `TargetConditionals.h`, `libkern/OSByteOrder.h` | Apple-only headers OpenSSL includes unconditionally; clean-room stubs |
-
-A third round, found while porting GNU wget 1.25.0.  One entry is not a new
-trap but a correction to the row above, and it is the most instructive of the
-lot:
-
-**The `sa_len` fix in the `sys/socket.h` row above was never actually made.**
-`netinet/in.h` got `sin_len`, but `sys/socket.h`'s `struct sockaddr` still
-starts at `sa_family`, so the README described a fix the tree did not contain
-(`git log -S'sa_len'` shows the symbol was never committed there until it was
-added for wget).  Nothing noticed because curl passes the `sockaddr` that
-`getaddrinfo()` returns straight back to `connect()` — the *system* fills the
-memory in, so a wrong header still byte-counts 16 and works.  wget's own
-socket layer inspects the struct, so it fails at once: `getaddrinfo()`
-resolves correctly and then every address fails `connect()` with
-`EAFNOSUPPORT`.  The lesson generalises: a header that is wrong in a way that
-only matters to code that *touches* the field will pass every test you already
-have, and the size is not a safety net because musl's and Darwin's
-`sockaddr` are both 16 bytes with different layouts.
-
-| header | trap |
-|---|---|
-| `sys/socket.h` | `sa_len` missing from `sockaddr`, and `ss_len` from `sockaddr_storage` (which also used musl's padding and came out 136 bytes instead of 128) — see the paragraph above |
-| `stdlib.h` | `MB_CUR_MAX` was `__ctype_get_mb_cur_max()`, a **glibc** internal.  Darwin exports a plain `int` variable, `__mb_cur_max`.  Measured on the device: the function form aborts with `dyld: lazy symbol binding failed: Symbol not found: ___ctype_get_mb_cur_max`; the data form returns 1 and survives `setlocale()`.  Calling the data symbol *as a function* bus-errors, which is how the two were told apart.  Any program using `MB_CUR_MAX` died at first use, not at link time |
-| `unistd.h` | six declared-but-absent functions are declared here after being confirmed on the device one at a time: `getpgrp`, `setpgrp`, `fdatasync`, `sbrk`, `ualarm`, `fpathconf` and `issetugid` (wget 1.25 needs `getpgrp`, gnulib needs `issetugid`) |
-| `sys/stat.h` | no `st_birthtim` alias for `st_birthtimespec`, so gnulib's `stat-time.h` fails with `no member named 'st_birthtim' in 'struct stat'` |
-| `netinet/in6.h` | musl omits `IN6_ARE_ADDR_EQUAL` outright.  Also fixed a typo in `IN6_IS_ADDR_LOOPBACK`: a stray second dereference meant the second word was never compared, so the macro accepted **every** IPv6 address as a loopback |
-| `unistd.h` (again) | Darwin's `pathconf` selectors are not Linux's — `_PC_NAME_MAX` is **4**, not 3.  Established by binary-search over `open()`: the filesystem rejects a 256-character path component with `ENAMETOOLONG`, and selector 4 is the one that returns 255.  A jailbroken device has no `/usr/include`, so this constant has to be measured, not copied from a header you do not have |
-| `xlocale.h` | Apple deleted it years ago (its contents moved into `<locale.h>`); gnulib's `localcharset.c` still includes it for `MB_CUR_MAX_L` whenever it defines `DARWIN7` |
-| `spawn.h` | Darwin represents `posix_spawnattr_t` and `posix_spawn_file_actions_t` as **4-byte opaque pointers**, not musl's 80- and 72-byte by-value structs.  Measured on the device: `posix_spawnattr_init()` writes 4 bytes into an `0xAA`-filled buffer and leaves the rest untouched |
-
-**`libSystem` is missing compiler-rt's generic atomics.** clang lowers OpenSSL's
-`CRYPTO_atomic_*` on armv7 to `__atomic_load`, `__atomic_store`,
-`__atomic_compare_exchange` and `__atomic_is_lock_free`, none of which iOS 10
-exports. clang also refuses to let C code define them (`cannot redeclare builtin
-function`, even with `-fno-builtin-<name>`), so `openssl/atomic_compat.c`
-implements them under internal names with a libgcc-style lock table and
-`openssl/atomic_alias.s` provides the public symbols as Mach-O long-branch
-stubs (`ldr pc, [pc, #-4]`).
-
-**Autoconf link tests always succeed here.** Because the kit links with
-`-undefined dynamic_lookup`, a `checking for eventfd... yes` is worthless: the
-symbol is simply left undefined and dyld aborts at first use
-(`dyld: lazy symbol binding failed: Symbol not found: _eventfd`). Every Linux-only
-function a project probes for — `eventfd`, `pipe2`, `accept4`, `recvmmsg`,
-`sendmmsg`, `getpass_r`, `gsasl_init` — has to be switched off by hand after
-`configure` runs.
-
-Debugging tips that actually worked, in order of usefulness:
-
-1. **Read the crash reports first.** A dyld abort produces no other output;
-   `Termination Description: DYLD, Symbol not found: _closefrom` ended days of
-   guessing.
-2. **Compare the failing program with a minimal one on the device.** A 60-line
-   program that performs the same registration pattern either reproduces the
-   fault (libevent/platform bug) or passes (program logic bug).
-3. **Instrument the platform libraries.** A debug `fprintf` around `poll()`
-   showing the fds, requested events and returned `revents` settles arguments
-   about "lost wakeups" immediately.
-4. **Bisect with a throwaway program against the same headers.** When curl
-   failed to connect in 1 ms but `ssh` from the same device worked, a 30-line
-   `socket()`/`connect()` program passed and a `getaddrinfo()` one passed too —
-   which proved the kernel and resolver were fine and pushed the search into
-   curl's own socket setup. Probe the *candidate constant* directly: looping
-   `socket(AF_INET, SOCK_STREAM | bit, 0)` over single bits found that iOS 10
-   accepts none of them.
-
-
 ## 22. Darwin 头获取流程：fetch-darwin-header.sh（README 迁入 2026-11-19）
 
 
@@ -775,3 +645,24 @@ git -C ~/scratch/sysctl-work/xnu cat-file -p xnu-3789.70.16:bsd/net/if.h
 适用:network_cmds 家族后续移植(arp/ndp/ip6fw……)与任何引用内核
 PRIVATE 段的工具。iproute2 本身无 Darwin 版(netlink 专属),BSD 侧
 对应物就是 ifconfig + route + netstat。
+
+## 24. 设备排障四招（musl 时代反复验证的通用方法）
+
+Debugging tips that actually worked, in order of usefulness:
+
+1. **Read the crash reports first.** A dyld abort produces no other output;
+   `Termination Description: DYLD, Symbol not found: _closefrom` ended days of
+   guessing.
+2. **Compare the failing program with a minimal one on the device.** A 60-line
+   program that performs the same registration pattern either reproduces the
+   fault (libevent/platform bug) or passes (program logic bug).
+3. **Instrument the platform libraries.** A debug `fprintf` around `poll()`
+   showing the fds, requested events and returned `revents` settles arguments
+   about "lost wakeups" immediately.
+4. **Bisect with a throwaway program against the same headers.** When curl
+   failed to connect in 1 ms but `ssh` from the same device worked, a 30-line
+   `socket()`/`connect()` program passed and a `getaddrinfo()` one passed too —
+   which proved the kernel and resolver were fine and pushed the search into
+   curl's own socket setup. Probe the *candidate constant* directly: looping
+   `socket(AF_INET, SOCK_STREAM | bit, 0)` over single bits found that iOS 10
+   accepts none of them.

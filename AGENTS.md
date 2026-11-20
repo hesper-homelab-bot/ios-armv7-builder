@@ -12,7 +12,8 @@
 
 | 文档 | 内容 |
 |---|---|
-| ★ `docs/toolchain.md` | **交叉编译总纲**：env、归档格式、thumb、原子雷区、部署验证、连接方式；19 个编号节 |
+| ★ `docs/toolchain.md` | **交叉编译总纲**：env（SDK 模式为默认）、归档格式、thumb、原子雷区、部署验证、连接方式、dynamic_lookup 探针恒真（§8）、SDK 公开裁剪头 + -DPRIVATE（§23）；编号节保留历史号不重排 |
+| ★ `docs/musl-sysroot.md` | **musl 时代 sysroot 遗产**（存量 24 包专用）：头改写史、运行时 ABI 规则、O_NONBLOCK 案例、Darwin ABI 陷阱总表；新移植禁入，读它理解 §16 拍板的证据 |
 | ★ `docs/doc-conventions.md` | **专项文档怎么写**（build.sh 注释 vs docs 的分工、脱敏、取材顺序） |
 | ★ `docs/porting-backlog.md` | **候选队列**：待表态 / 远期 / 判死 + 已上线包一览表 |
 | `docs/debugserver.md` | 活体调试（设备 debugserver + 主机 lldb-21） |

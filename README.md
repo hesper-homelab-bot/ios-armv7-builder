@@ -354,7 +354,7 @@ fixes), and `docs/toolchain.md` collects the toolchain-level rules that
 apply across packages.  The long-form porting narratives that used to live
 in this README have moved there:
 
-- the `O_NONBLOCK` bug and the Darwin ABI trap tables → `docs/toolchain.md` §20–§21
+- the `O_NONBLOCK` bug, the Darwin ABI trap tables and the musl-sysroot header-rewrite history → `docs/musl-sysroot.md`
 - the Darwin header fetching workflow (`tools/fetch-darwin-header.sh`) → `docs/toolchain.md` §22
 - OpenSSH 10.6p2 build/verification record → `docs/openssh.md`
 - lsof 4.99.7 record → `docs/lsof.md`
