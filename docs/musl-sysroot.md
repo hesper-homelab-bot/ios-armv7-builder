@@ -173,3 +173,19 @@ function a project probes for — `eventfd`, `pipe2`, `accept4`, `recvmmsg`,
 
 (跨 sysroot 时代仍成立的规则,固化在 toolchain §15.1 与 §13 的三件防雷工具;
 本节保留 musl 时代的原始记录。)
+
+## 7. 头补全与假阴性流水（2026-11-20 自 toolchain §14.6/§15.3 原文迁入）
+
+### 头补全流水（原 §14.6）
+
+netstat:仅 `sysroot-overlay/usr/include/net/if.h` 补 `struct ifa_msghdr`
+（7 字段,xnu-3789.70.16 逐字复制,`[device-verified 2026-11-13]` 注记）。
+无需 `in_pcb.h`/`tcp_var.h`/`socketvar.h` 等私有头。
+
+### 手写头的探针假阴性要手动复现（原 §15.3）
+
+手写 sysroot 的头是精简版：sys/time.h 只有 11 行、不提供 NULL →
+gettimeofday(&tv,NULL) 探针（只 include sys/time.h）假阴性；sys/xattr.h
+是 Linux 4 参签名（macOS 6 参代码编不过）；无 sys/attr.h（lsof 早就绕过）。
+信号：探针结论与平台常识矛盾 → 手动复现探针看真实报错，别信结论；
+能喂缓存变量的喂真相，系统性缺口记 backlog（sys/attr.h、xattr.h 达尔文化）。

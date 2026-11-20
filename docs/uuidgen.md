@@ -25,7 +25,7 @@ CLI /usr/bin/uuid
 
 **2026-11-15 三次复现**，确定不可修、不依赖，改由本包替代。
 
-（死因分析见 `docs/toolchain.md` §17 的
+（死因分析见本文 §7，原载 `docs/toolchain.md` §17，
 "**SDK 头 availability ≠ 设备现实**"结论。）
 
 ## 3. 为什么我们这份能跑
@@ -78,4 +78,27 @@ e2fsprogs-1.47.2.tar.xz
 |---|---|
 | `uuid/build.sh` | 构建（两个垫片 + 单文件编译） |
 | `uuid/make-deb.sh` | 打包 |
-| `docs/toolchain.md` §17 | 死因分析（availability ≠ 现实） |
+| 本文 §7 | 死因分析（availability ≠ 现实；2026-11-20 自 toolchain §17 迁入） |
+
+## 7. 死因分析全录（2026-11-20 自 toolchain §17 原文迁入）
+
+## 17. 设备 UUID 复测：SDK 头 availability ≠ 设备现实（2026-11-15）
+
+三路实测（探针源码 `~/scratch/uuid-probe/`，二进制部署三件套签名）：
+
+- **libSystem `uuid_*` API 全正常**：uuid_generate（连续 3 次互异 v4）、
+  generate_random、parse/unparse 往返 rc=0，root/mobile 双身份各过。
+- **内核 `gethostuuid()` 头标 `__IPHONE_NA`，设备符号却存在且可用**：
+  dlsym(RTLD_DEFAULT) 拿到、调用成功，返回稳定主机 UUID（两次一致）。
+  **结论：SDK 头的 availability 标注不是设备事实。** 以后遇到"头说
+  iOS 没有"的函数（`__IPHONE_NA` / `__OSX_AVAILABLE` 系），先 dlsym
+  复核符号在不在，再决定 shim/放弃，不要按头文件宣判。
+- **BigBoss `uuid` 1.6.0-2p 的 `/usr/bin/uuid` CLI 是死的**：dyld 解析
+  `libgcc_s.1.dylib` 经 libSystem.B 的 re-export 失败，Abort trap 6
+  （三次复现）。2008 年老包兼容性烂，与设备 UUID 体系无关。
+- **填补**：仓库第 25 包 `uuidgen`（e2fsprogs 1.47.2 misc/uuidgen.c，
+  SDK 模式首移植，`uuid/build.sh`）。默认/-r v4、-t v1 实弹验证通过；
+  `uuid_unparse` 大写输出是 e2fsprogs 上游行为。安装后注意：设备
+  登录 shell PATH 只有 `/usr/bin:/bin`，`/var/mobile/tools/bin` 下的
+  工具（含 uuidgen/node）日常要走绝对路径或自行 alias——既有环境
+  现状，非本包问题。

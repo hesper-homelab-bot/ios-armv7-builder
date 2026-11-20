@@ -27,7 +27,7 @@
 | `eaccess` | **glibc 的同义词**（= `faccessat`/`access`），**设备 libSystem 没有**。恒真探针会把它放进 gnulib 的 `findprog-in` → **压掉，走 `access` 回退** |
 | `memrchr` | 设备没有 |
 
-（`dynamic_lookup` 恒真探针陷阱见 `docs/toolchain.md` §15。）
+（`dynamic_lookup` 恒真探针陷阱见 `docs/toolchain.md` §8。）
 
 ## 3. ⚠️ 归档格式：那个自相矛盾的警告
 

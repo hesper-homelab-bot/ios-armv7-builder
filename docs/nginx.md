@@ -147,3 +147,25 @@ launchctl load /Library/LaunchDaemons/com.hesper.nginx.plist
 - **排障先看 ps 里 master 的二进制路径**：A/B 切换后极易测错对象（本次
   "浏览器正常"其实发生在旧二进制上）；curl 的 URL 别直接用
   `SSH_CONNECTION` 里的 `::ffff:` 前缀地址。
+
+## 8. setproctitle 假阳性全录（2026-11-20 自 toolchain §9.1 原文迁入）
+
+### 9.1 只编译不链接：声明存在 = 探针通过
+
+`auto/unix` 的 `ngx_feature_run=no` 让 setproctitle() 探针**只编译**测试程序。
+sysroot-overlay 的 `unistd.h` 里有一行 `void setproctitle(const char*, ...);`
+（为别的包准备的），于是 `NGX_HAVE_SETPROCTITLE=1` 被误置。
+ngx_setproctitle.h 随即把 `ngx_setproctitle()` 映射到 libc 符号——而
+**iOS libSystem 根本不导出它**（实测：`nm -g /usr/lib/libSystem.B.dylib |
+grep setproctitle` 为空）。链接居然成功（flat namespace 留下 undefined），
+错误推迟到运行期：
+
+```
+dyld: Symbol not found: _setproctitle
+  Referenced from: .../bin/nginx
+  Expected in: flat namespace
+```
+
+**信号**：master 进程活着、日志打了 "using the kqueue event method"，
+但 worker **立刻消失**、端口无监听、`nginx` 看起来 exit 0。
+**修法**：`unset_macro NGX_HAVE_SETPROCTITLE`（走 nginx 自带的 env 方案）。

@@ -47,7 +47,7 @@ make -C src protoc
 | # | 雷 | 修法 |
 |---|---|---|
 | 1 | `exit=22` / 源码树消失 | release URL 前缀错——是 **`mosh-`** 不是 `v-`，404 |
-| 2 | **configure 探测四连骗** | ① protoc（PATH 里的宿主版被误用）；② OpenSSL 走了宿主库（需 `PKG_CONFIG_LIBDIR`）；③ `AC_CHECK_LIB` 裸 `-lcrypto`（预置 `ac_cv_lib_crypto_*`）；④ wcwidth（XSI 宏需**成组**定义）。详见 `docs/toolchain.md` §9 |
+| 2 | **configure 探测四连骗** | ① protoc（PATH 里的宿主版被误用）；② OpenSSL 走了宿主库（需 `PKG_CONFIG_LIBDIR`）；③ `AC_CHECK_LIB` 裸 `-lcrypto`（预置 `ac_cv_lib_crypto_*`）；④ wcwidth（XSI 宏需**成组**定义）。细则见本文 §8（toolchain §9 留速查桩） |
 | 3 | `config.h` 被 make 反复重生成 | 修正必须做在 **`config.h.in` 模板** + 触摸 autotools 链（`aclocal/autoconf/autoheader` regen 链，§13） |
 | 4 | `HAVE_PLEDGE` | 必须**未定义**（不是 0）——`#ifdef` 陷阱 |
 | 5 | `-DNDEBUG` / link 细节 | `-DNDEBUG` 必须与 protobuf 库一致（`InternalMetadata` 析构）；zlib 用**显式 `.a`**（wrapper 丢 `-lz`）；`pledge`/`recvmmsg` 等 **6 个符号**进 `libios-compat.a` 优雅降级 |
@@ -129,7 +129,7 @@ session.  The wall list lives in `mosh/build.sh`; the ones that mattered:
 - **`config.h` regenerates on every make**; header corrections go into the
   `config.h.in` *template*, plus the autotools regen chain (aclocal /
   autoconf / autoheader) must be quashed by equalizing mtimes — otherwise
-  the first make discards every fix (toolchain.md §10/§13)
+  the first make discards every fix (config.h 陷阱细则本文 §8；防雷工具 toolchain.md §13)
 - **`HAVE_PLEDGE` must be undefined, not 0**: mosh tests it with `#ifdef`,
   so even a value of 0 compiles the OpenBSD-only `pledge()` call in
 - **`-DNDEBUG` must match the protobuf library** (built with NDEBUG by its
@@ -148,3 +148,71 @@ The post-link symbol audit (`tools/check-undefined.sh`) and the
 device-probe whitelist generator (`tools/probe-symbols.sh`) came out of
 this port; every build now runs the audit as a gate.
 
+## 8. configure/autoconf 陷阱实录（2026-11-20 自 toolchain §9.2–9.5/§10 原文迁入；小节号保留原编号）
+
+### 9.2 pkg-config 静默回退宿主库
+
+`PKG_CHECK_MODULES([OpenSSL],[openssl])` 在 `PKG_CONFIG_PATH` 未设时会拿到
+**宿主的 OpenSSL 3.5.5**，而不是交叉编译的 4.0.3。宿主库自然没有 armv7
+目标，后续 `AC_CHECK_LIB` 必失败，报的却是：
+`configure: error: found OpenSSL without AES support`。
+**判据**：`pkg-config --modversion openssl` 在设/不设 PATH 时给出不同版本。
+**修法**：设 `PKG_CONFIG_LIBDIR`（**不只是 PATH**——LIBDIR 是替换内置搜索
+路径，PATH 只是追加），且**把每个交叉依赖都列进去**（只列 openssl 时下一
+步就死在 `Package 'protobuf' not found`）。
+
+### 9.3 AC_CHECK_LIB 的裸 -lxxx 在交叉链接下必失败
+
+`AC_CHECK_LIB([crypto],[AES_encrypt])` 发的是裸 `-lcrypto`，交叉 ld64 的
+搜索路径里没有它 → 报 no。但符号**确实存在**于我们的静态归档：
+`llvm-nm-21 --defined-only .../libcrypto.a | grep _AES_encrypt` 有输出，
+且手工 `cc-wrapper.sh t.c $OSSL/libcrypto.a -lz` 链接干净。
+**修法**：预置 autoconf 缓存变量（`export ac_cv_lib_crypto_AES_encrypt=yes`），
+这是 autoconf 官方认可的"陈述探针无法确定的事实"的手段；mosh 随后经
+`CRYPTO_LIBS` 链真实归档。
+
+### 9.4 相关：AC_PATH_PROG 只认 $PATH
+
+`mosh/configure` 用 `AC_PATH_PROG([PROTOC],[protoc])` 找 protoc，**没有**
+`--with-protoc` 选项。我们的 protoc 在 protobuf-host 前缀里、不在 PATH，
+于是 `configure: error: cannot find protoc`。AC_PATH_PROG 尊重**同名环境
+变量**，故 `export PROTOC=/path/to/protoc` 即可。
+
+### 9.5 feature macro 要成组给
+
+`wchar.h` 把 `wcwidth()` 守卫在
+`#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)`
+之下（wcwidth 是 XSI 扩展，不是 POSIX）。只给 `_POSIX_C_SOURCE=200809L`
+时声明消失，mosh 编译死在 `terminal.cc: use of undeclared identifier
+'wcwidth'`。**修法**：`-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700`
+（700 = POSIX.1-2008 + XSI，与 200809L 同级），两者都要在 **configure 命令
+行**上（automake 把 CPPFLAGS 烘焙进 src/Makefile，`make CPPFLAGS=` 无效）。
+
+**信号**：反复 sed 修好的 `#define HAVE_PLEDGE 1`，在 `make` 之后**又变回 1**，
+无论改多少次。加打印可见 `pre-make PLEDGE=0` 而编译**仍**报
+`use of undeclared identifier 'pledge'`。
+
+**根因**：`src/include/Makefile`（automake 生成）带 autoconf 的 header 规则：
+
+```make
+config.h: stamp-h1
+	@test -f $@ || rm -f stamp-h1
+	@test -f $@ || $(MAKE) $(AM_MAKEFLAGS) stamp-h1
+stamp-h1: $(srcdir)/config.h.in $(top_builddir)/config.status
+	@rm -f stamp-h1
+	cd $(top_builddir) && $(SHELL) ./config.status src/include/config.h
+```
+
+configure 刚跑完时 **config.status 比 stamp-h1 新**，于是第一次 make 重跑
+`config.status`，**整体重写 config.h**，把事后 sed 全部推翻。
+
+**修法**：改**模板** `config.h.in`——config.status 只把 `#undef NAME` 替换
+成烘焙值，**其他内容原样拷贝**。所以：
+
+- `#undef HAVE_PLEDGE` → 改成注释（不匹配替换模式，永久保持未定义）
+- `HAVE_PTHREAD`（模板里**没有** `#undef` 行）→ 追加 `#define HAVE_PTHREAD 1`
+- `touch config.h.in` 使其比 configure.ac/aclocal.m4 新，避免 autoheader 重生成
+
+**配套铁律**：`#ifdef` 判断的宏**必须"未定义"，不能是 0**。
+`#define HAVE_PLEDGE 0` 仍让 `#ifdef HAVE_PLEDGE` 为真 → pledge() 照样编进去。
+（PLEDGE 是 OpenBSD 专有；iOS 没有。）

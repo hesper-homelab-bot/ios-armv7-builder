@@ -82,7 +82,7 @@ sysroot-overlay/usr/include/   ← "我们为 Darwin ABI 修正过的一切"获�
 ```
 
 **这正是"止住 iOS 10 上 libgcc_s re-export 失败"的手段**
-——即 `docs/toolchain.md` §17 里 BigBoss `uuid` 死于同一个问题，
+——即 `docs/uuidgen.md` §7 里 BigBoss `uuid` 死于同一个问题，
 而我们有解法的原因。
 
 > **`libSystem.tbd` 是手写桩**（`$IOS_STUBDIR/libSystem.tbd`）。

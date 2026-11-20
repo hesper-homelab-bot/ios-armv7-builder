@@ -4,11 +4,15 @@
 > openssl、curl…）。软件专项细节见同目录各 md；本文只写**工具链层面可复用的规则**。
 > 维护：大肥鱼。正本在本 git 仓库 `docs/`；`~/.dsh/AGENTS.md` 是它的符号链接入口。
 >
-> **结构说明（2026-11-20 拆分）**：本文只保留跨 sysroot 时代仍适用的规则。
-> musl 时代手搓 sysroot（2026-11-06~11-15，现 `tmp/sysroot`）的头改写史、
-> 运行时 ABI 规则、O_NONBLOCK 案例与 Darwin ABI 陷阱总表已迁至
-> **`docs/musl-sysroot.md`**；SDK 模式自 2026-11-15 起为新移植默认（§16，
-> 公开裁剪头问题见 §23）。历史章节号保留不重排（外部文档引用 §8/§13/§22 等）。
+> **结构说明（2026-11-20 拆分，两轮）**：本文只保留**跨包通用**的工具链规则。
+> ① musl 时代手搓 sysroot（2026-11-06~11-15，现 `tmp/sysroot`）的头改写史、
+> 运行时 ABI 规则、O_NONBLOCK 案例与 Darwin ABI 陷阱总表 →
+> **`docs/musl-sysroot.md`**；② 各移植软件的内部雷全录（autoconf 实录、
+> config.h 陷阱、netstat 自备 ABI、UUID 死因、FFmpeg 构建雷）→
+> **各自 `docs/<pkg>.md`**（§9/§10/§14/§15/§17/§18 留速查桩与指针）。
+> SDK 模式自 2026-11-15 起为默认（§16，公开裁剪头问题见 §23；2026-11-20
+> 修订：存量包新版本也走 SDK）。历史章节号保留不重排（外部文档引用
+> §8/§13/§14/§22 等）。
 
 ## 1. 构建环境（每次都要 export）
 
@@ -151,99 +155,18 @@ ssh mobile@<device> 'cd /var/mobile/scratch && rm -f probe && cp probe.new probe
   且多份移植文档（tor/nginx/curl/tcpdump）以"§8"引用此语义，故收敛
   为本节。
 
-## 9. autoconf 交叉编译探测的三类骗局（nginx/mosh 2026-11-13）
+## 9. configure/autoconf 探针骗局速查（2026-11-13 nginx/mosh 沉淀；细则迁各包文档）
 
-autoconf 的探针在交叉编译下**全都不可信**，且失败形态各不相同。三个实例，
-按"信号 → 根因 → 修法"记：
+- **只编译不链接的探针必假阳**：声明存在 = 通过——nginx 的 setproctitle 假阳性全录 → `docs/nginx.md` §8。
+- **pkg-config 不设 `PKG_CONFIG_LIBDIR` 会静默回退宿主库**：LIBDIR 是替换内置搜索路径、PATH 只是追加；交叉依赖要列全（漏一个就死在下一个 `Package not found`）→ `docs/mosh.md` §8。
+- **`AC_CHECK_LIB` 的裸 `-lxxx` 交叉链接必失败**：预置 `ac_cv_lib_<lib>_<fn>=yes` 缓存变量（autoconf 官方认可的"陈述探针无法确定的事实"），再以 `*_LIBS` 链真实归档 → `docs/mosh.md` §8。
+- **`AC_PATH_PROG` 只认 `$PATH`，但尊重同名环境变量**：`export PROTOC=...` 即可 → `docs/mosh.md` §8。
+- **feature macro 要成组给**：`wcwidth` 等 XSI 扩展需 `-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700`，且必须**在 configure 命令行上**（automake 把 CPPFLAGS 烘焙进 src/Makefile，`make CPPFLAGS=` 无效）→ `docs/mosh.md` §8。
+- **automake 首次 make 会经 config.status 整体重写 config.h**：修正做在模板 `config.h.in`；`#ifdef` 判断的宏必须"未定义"，不能是 0 → §10 与 `docs/mosh.md` §8。
 
-### 9.1 只编译不链接：声明存在 = 探针通过
+## 10. config.h 重生成陷阱（2026-11-13；根因与实录迁 `docs/mosh.md` §8）
 
-`auto/unix` 的 `ngx_feature_run=no` 让 setproctitle() 探针**只编译**测试程序。
-sysroot-overlay 的 `unistd.h` 里有一行 `void setproctitle(const char*, ...);`
-（为别的包准备的），于是 `NGX_HAVE_SETPROCTITLE=1` 被误置。
-ngx_setproctitle.h 随即把 `ngx_setproctitle()` 映射到 libc 符号——而
-**iOS libSystem 根本不导出它**（实测：`nm -g /usr/lib/libSystem.B.dylib |
-grep setproctitle` 为空）。链接居然成功（flat namespace 留下 undefined），
-错误推迟到运行期：
-
-```
-dyld: Symbol not found: _setproctitle
-  Referenced from: .../bin/nginx
-  Expected in: flat namespace
-```
-
-**信号**：master 进程活着、日志打了 "using the kqueue event method"，
-但 worker **立刻消失**、端口无监听、`nginx` 看起来 exit 0。
-**修法**：`unset_macro NGX_HAVE_SETPROCTITLE`（走 nginx 自带的 env 方案）。
-
-### 9.2 pkg-config 静默回退宿主库
-
-`PKG_CHECK_MODULES([OpenSSL],[openssl])` 在 `PKG_CONFIG_PATH` 未设时会拿到
-**宿主的 OpenSSL 3.5.5**，而不是交叉编译的 4.0.3。宿主库自然没有 armv7
-目标，后续 `AC_CHECK_LIB` 必失败，报的却是：
-`configure: error: found OpenSSL without AES support`。
-**判据**：`pkg-config --modversion openssl` 在设/不设 PATH 时给出不同版本。
-**修法**：设 `PKG_CONFIG_LIBDIR`（**不只是 PATH**——LIBDIR 是替换内置搜索
-路径，PATH 只是追加），且**把每个交叉依赖都列进去**（只列 openssl 时下一
-步就死在 `Package 'protobuf' not found`）。
-
-### 9.3 AC_CHECK_LIB 的裸 -lxxx 在交叉链接下必失败
-
-`AC_CHECK_LIB([crypto],[AES_encrypt])` 发的是裸 `-lcrypto`，交叉 ld64 的
-搜索路径里没有它 → 报 no。但符号**确实存在**于我们的静态归档：
-`llvm-nm-21 --defined-only .../libcrypto.a | grep _AES_encrypt` 有输出，
-且手工 `cc-wrapper.sh t.c $OSSL/libcrypto.a -lz` 链接干净。
-**修法**：预置 autoconf 缓存变量（`export ac_cv_lib_crypto_AES_encrypt=yes`），
-这是 autoconf 官方认可的"陈述探针无法确定的事实"的手段；mosh 随后经
-`CRYPTO_LIBS` 链真实归档。
-
-### 9.4 相关：AC_PATH_PROG 只认 $PATH
-
-`mosh/configure` 用 `AC_PATH_PROG([PROTOC],[protoc])` 找 protoc，**没有**
-`--with-protoc` 选项。我们的 protoc 在 protobuf-host 前缀里、不在 PATH，
-于是 `configure: error: cannot find protoc`。AC_PATH_PROG 尊重**同名环境
-变量**，故 `export PROTOC=/path/to/protoc` 即可。
-
-### 9.5 feature macro 要成组给
-
-`wchar.h` 把 `wcwidth()` 守卫在
-`#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)`
-之下（wcwidth 是 XSI 扩展，不是 POSIX）。只给 `_POSIX_C_SOURCE=200809L`
-时声明消失，mosh 编译死在 `terminal.cc: use of undeclared identifier
-'wcwidth'`。**修法**：`-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700`
-（700 = POSIX.1-2008 + XSI，与 200809L 同级），两者都要在 **configure 命令
-行**上（automake 把 CPPFLAGS 烘焙进 src/Makefile，`make CPPFLAGS=` 无效）。
-
-## 10. config.h 重生成陷阱：修正必须做在模板（2026-11-13）
-
-**信号**：反复 sed 修好的 `#define HAVE_PLEDGE 1`，在 `make` 之后**又变回 1**，
-无论改多少次。加打印可见 `pre-make PLEDGE=0` 而编译**仍**报
-`use of undeclared identifier 'pledge'`。
-
-**根因**：`src/include/Makefile`（automake 生成）带 autoconf 的 header 规则：
-
-```make
-config.h: stamp-h1
-	@test -f $@ || rm -f stamp-h1
-	@test -f $@ || $(MAKE) $(AM_MAKEFLAGS) stamp-h1
-stamp-h1: $(srcdir)/config.h.in $(top_builddir)/config.status
-	@rm -f stamp-h1
-	cd $(top_builddir) && $(SHELL) ./config.status src/include/config.h
-```
-
-configure 刚跑完时 **config.status 比 stamp-h1 新**，于是第一次 make 重跑
-`config.status`，**整体重写 config.h**，把事后 sed 全部推翻。
-
-**修法**：改**模板** `config.h.in`——config.status 只把 `#undef NAME` 替换
-成烘焙值，**其他内容原样拷贝**。所以：
-
-- `#undef HAVE_PLEDGE` → 改成注释（不匹配替换模式，永久保持未定义）
-- `HAVE_PTHREAD`（模板里**没有** `#undef` 行）→ 追加 `#define HAVE_PTHREAD 1`
-- `touch config.h.in` 使其比 configure.ac/aclocal.m4 新，避免 autoheader 重生成
-
-**配套铁律**：`#ifdef` 判断的宏**必须"未定义"，不能是 0**。
-`#define HAVE_PLEDGE 0` 仍让 `#ifdef HAVE_PLEDGE` 为真 → pledge() 照样编进去。
-（PLEDGE 是 OpenBSD 专有；iOS 没有。）
+automake 生成的 `config.h: stamp-h1` 规则会在 configure 刚跑完后的**首次 make 重跑 config.status、整体重写 config.h**——反复 sed 修好的宏又变回去就是这个。修法：改**模板** `config.h.in`（`#undef` 行改成注释保持未定义、模板缺的行追加 `#define`、`touch config.h.in` 防重生成）；**`#ifdef` 判断的宏必须"未定义"，不能是 0**（`#define HAVE_PLEDGE 0` 仍为真）。
 
 ## 11. iOS 10 缺失的常用工具（2026-11-13 实测）
 
@@ -340,84 +263,18 @@ configure 刚跑完时 **config.status 比 stamp-h1 新**，于是第一次 make
   .o**（ASCII 毒化），nsock 的 makefile.dep 规则是第一个受害者。排查
   手段：`file *.o` 看见 "ASCII text" 即中毒，删掉重编。
 
-## 14. netstat 移植：自备 ABI + 设备实测闭环（2026-11-13）
+## 14. netstat 移植（2026-11-13；自备 ABI 全录迁 `docs/netstat.md`）
 
-### 14.1 为什么不移植公开 netstat（Apple/FreeBSD）
-Apple network_cmds（network_cmds-481.20.1）和 FreeBSD netstat 都 include
-`sys/socketvar.h` / `netinet/tcp_var.h` 等内核私有头，这些头在 iOS 10.3.3
-sysroot 里**不存在**。移植它们的第一件事就是补全这些头，工作量等同于自备 ABI。
-我们的选择：直接抄内核导出结构（`xinpgen`/`xinpcb`/`xtcpcb`/`xsocket`/`otcpcb`），
-用探针在设备上实测锚定每个字段偏移，**静态断言钉死尺寸**，编译期即失败不产出垃圾。
+自备内核 ABI（xinpgen/xinpcb/xtcpcb 偏移设备实测）、四轮探针链、编译期静态断言、输出格式——全文见 `docs/netstat.md`。此处只留一条**打包铁律**（所有 make-deb.sh 适用）：
 
-### 14.2 四轮探针链（每轮落盘、与 lsof 交叉验证）
-| 探针 | 目的 | 关键发现 |
-|---|---|---|
-| `probe1` | MIB 可见性、链步长、首尾 xinpgen | TCP 524B、UDP/raw 320B、xinpgen 24B 算术闭合 |
-| `probe2` | 字段偏移（端口、地址、状态、proto/family、rcv/snd） | 端口/状态/协议全对，地址存 v4-compat 形式（::a.b.c.d）非 ::ffff |
-| `probe3` | v4-compat 地址修正（前 12 字节为零即视为 v4） | 地址修正后与 lsof 完美对齐 |
-| `probe4` | IFLIST2 消息链结构（RTM_IFINFO2 + RTM_NEWADDR） | IFP sockaddr_dl 在 IFINFO2 里带名字+MAC，NEWADDR 仅带 IFA/NETMASK |
+- **deb 成员必须 gzip**：宿主新版 dpkg-deb 默认压 `control.tar.zst`/`data.tar.zst`，设备 dpkg 1.18.10 报 `unknown compression for member 'control.tar.zst'` 拒装（二进制与签名都没问题，纯容器格式）。所有 make-deb.sh 钉 `dpkg-deb --root-owner-group -Zgzip --build`。信号 → 动作：设备 `dpkg -i` 报 unknown compression → `ar t 包.deb` 看成员后缀，非 .gz 即钉 -Zgzip 重建（p7zip、lsof 同款）。
 
-### 14.3 关键 ABI 静态断言（netstat.c 编译期钉死）
-```c
-typedef char _assert_xig[(sizeof(struct xig) == 24) - 1];
-typedef char _assert_xso[(sizeof(struct xso) == 100) - 1];
-typedef char _assert_inpcb[(sizeof(struct inpcb_compat) == 208) - 1];
-typedef char _assert_otcpcb[(sizeof(struct otcpcb) == 204) - 1];
-typedef char _assert_xinpcb[(sizeof(struct xinpcb_e) == 320) - 1];
-typedef char _assert_xtcpcb[(sizeof(struct xtcpcb_e) == 524) - 1];
-typedef char _assert_tstate[(offsetof(struct xtcpcb_e, tp.t_state) == 244) - 1];
-```
-内核若升级导致结构变化，**编译直接报错**，不会产出错误输出。
+## 15. configure 交叉移植四板斧（2026-11-14，rsync/less 沉淀；实例细则迁各包文档）
 
-### 14.4 输出格式（按 BSD/Darwin 习惯）
-- `-t`：仅活跃 TCP，带 `(state)` 列
-- `-a`：含 LISTEN + UDP/raw，`*.port` 通配、`tcp4/tcp6` 双栈标注
-- `-r`：`default` 标注、Netif 由 IFP sockaddr_dl 解出、`Expire`=剩余秒
-- `-i`：13 个接口全显示（名字、MTU、MAC、统计、IPv4/6 地址）
-
-### 14.5 审计门禁
-`tools/check-undefined.sh`：**23/23 undefined 符号全解自 device libSystem**（纯 tbd 桩）。
-无 libios-compat.a 依赖、无平台框架、无私钥路径。
-
-### 14.6 sysroot 补全
-仅 `sysroot-overlay/usr/include/net/if.h` 补 `struct ifa_msghdr`（7 字段，xnu-3789.70.16 逐字复制，
-`[device-verified 2026-11-13]` 注记）。无需 `in_pcb.h`/`tcp_var.h`/`socketvar.h` 等私有头。
-
-### 14.7 打包：deb 成员必须 gzip（2026-11-14 设备实测）
-首版 deb 被宿主机新版 dpkg-deb 默认压成 `control.tar.zst`/`data.tar.zst`，
-设备 dpkg 1.18.10 报 `unknown compression for member 'control.tar.zst'` 拒装
-（二进制本身和签名都没问题，纯粹是容器压缩格式）。`netstat/make-deb.sh`
-已钉 `dpkg-deb --root-owner-group -Zgzip --build`（与 lsof/make-deb.sh 同款）。
-信号 → 动作：设备 `dpkg -i` 报 unknown compression → `ar t 包.deb` 看成员
-后缀，非 .gz 即在 make-deb.sh 钉 `-Zgzip` 重建。另：GitHub Release
-`apps-20261113` 里的 netstat4 是 zst 版装不上，需换传 gz 版。
-
-## 15. configure 交叉移植四板斧（2026-11-14，rsync/less 沉淀）
-
-1. **`ac_cv_func_*` 恒真陷阱**：cc-wrapper 链接带 `-undefined dynamic_lookup`，
-   autoconf 的"自己声明 `char fn()` 再链接"存在性探针**永远成功**——设备
-   根本没有的 glibc-ism（mallinfo2）也会被判 yes，然后死于编译期
-   incomplete type 或运行期 dyld 缺符号。对策：显式压掉已知 glibc-ism
-   （rsync 压了 mallinfo/mallinfo2/setattrlist/getattrlist/attropen/
-   chflags/lchmod/mknod/linkat/acl_get_file/lseek64/open64），然后
-   **`tools/check-undefined.sh` 门禁兜底**（它就是为这坑生的）；真有但
-   tbd 白名单没收的符号走 `tools/probe-symbols.sh` 设备实测 →
-   追加 `tools/sysroot/device-exports/`。
-2. **注释禁入续行链**：`VAR=x \` 下一行以 `#` 开头 = `#` 连同行尾反斜杠
-   一起进注释，续行断裂，**整串 env 覆盖静默失联**（rsync 一天栽两次）。
-   规则：注释全部放赋值块上方；configure 之后**断言覆盖已生效**
-   （grep config.h 里关键 define 的存在/不存在，不符即 FATAL）。
-3. **手写 sysroot 的头是精简版，探针假阴性要手动复现**：sys/time.h 只有
-   11 行、不提供 NULL → gettimeofday(&tv,NULL) 探针（只 include
-   sys/time.h）假阴性；sys/xattr.h 是 Linux 4 参签名（macOS 6 参代码
-   编不过）；无 sys/attr.h（lsof 早就绕过）。信号：探针结论与平台常识
-   矛盾 → 手动复现探针看真实报错，别信结论；能喂缓存变量的喂真相，
-   系统性缺口记 backlog（sys/attr.h、xattr.h 达尔文化）。
-4. **git 树 ≠ 完整构建源**：rsync/less 的 git 树都缺生成物（rsync 的
-   configure 探针在 configure.sh；less 的 funcs.h/help.c/less.hlp 只在
-   release tarball 里）。信号：`No rule to make target` / 缺 .c →
-   换官方 release tarball 当构建源（less-668.tar.gz 一把全齐）。
-   tarball 下载后先 `tar -t` 验真（sourceforge/Debian 直链给过 HTML 壳）。
+1. **`ac_cv_func_*` 恒真陷阱**（§8 同源）：configure 后显式压掉已知 glibc-ism；rsync 的完整压制清单见 `docs/rsync.md`；`tools/check-undefined.sh` 门禁兜底（它就是为这坑生的）。
+2. **注释禁入续行链**：`VAR=x \` 下一行以 `#` 开头 = `#` 连同行尾反斜杠一起进注释，续行断裂，**整串 env 覆盖静默失联**（rsync 一天栽两次，tor/make 同款）。规则：注释全部放赋值块上方；configure 之后 grep config.h **断言覆盖已生效**，不符即 FATAL。
+3. ~~手写 sysroot 头精简版、探针假阴性~~ → musl 时代内容，迁 `docs/musl-sysroot.md` §7。
+4. **git 树 ≠ 完整构建源**：rsync/less 的 git 树都缺生成物（rsync 探针在 configure.sh；less 的 funcs.h/help.c/less.hlp 只在 tarball）。信号：`No rule to make target` / 缺 .c → 换官方 release tarball；下载后先 `tar -t` 验真（sourceforge/Debian 直链给过 HTML 壳）。
 
 ## 16. SDK sysroot 模式（2026-11-15 共存验证通过；同日拍板：新移植默认走此模式）
 
@@ -454,58 +311,13 @@ export IOS_STUBDIR=$HOME/ios-tool        # 注意：仍是手写 stub 目录！
   案例与 Darwin ABI 陷阱总表）已整体迁至 `docs/musl-sysroot.md`——那是
   当年 24 包的全部代价，也是本节拍板的原始证据。
 
-## 17. 设备 UUID 复测：SDK 头 availability ≠ 设备现实（2026-11-15）
+## 17. SDK 头 availability ≠ 设备现实（2026-11-15；UUID 实录迁 `docs/uuidgen.md`）
 
-三路实测（探针源码 `~/scratch/uuid-probe/`，二进制部署三件套签名）：
+**规则：SDK 头的 availability 标注不是设备事实。**遇到"头说 iOS 没有"的函数（`__IPHONE_NA` / `__OSX_AVAILABLE` 系），先 `dlsym(RTLD_DEFAULT)` 复核符号在不在，再决定 shim/放弃，**不要按头文件宣判**。实例（内核 `gethostuuid()` 头标 `__IPHONE_NA` 设备却可用、libSystem `uuid_*` 全正常、BigBoss `uuid` CLI 死于 re-export 解析）全录见 `docs/uuidgen.md`。
 
-- **libSystem `uuid_*` API 全正常**：uuid_generate（连续 3 次互异 v4）、
-  generate_random、parse/unparse 往返 rc=0，root/mobile 双身份各过。
-- **内核 `gethostuuid()` 头标 `__IPHONE_NA`，设备符号却存在且可用**：
-  dlsym(RTLD_DEFAULT) 拿到、调用成功，返回稳定主机 UUID（两次一致）。
-  **结论：SDK 头的 availability 标注不是设备事实。** 以后遇到"头说
-  iOS 没有"的函数（`__IPHONE_NA` / `__OSX_AVAILABLE` 系），先 dlsym
-  复核符号在不在，再决定 shim/放弃，不要按头文件宣判。
-- **BigBoss `uuid` 1.6.0-2p 的 `/usr/bin/uuid` CLI 是死的**：dyld 解析
-  `libgcc_s.1.dylib` 经 libSystem.B 的 re-export 失败，Abort trap 6
-  （三次复现）。2008 年老包兼容性烂，与设备 UUID 体系无关。
-- **填补**：仓库第 25 包 `uuidgen`（e2fsprogs 1.47.2 misc/uuidgen.c，
-  SDK 模式首移植，`uuid/build.sh`）。默认/-r v4、-t v1 实弹验证通过；
-  `uuid_unparse` 大写输出是 e2fsprogs 上游行为。安装后注意：设备
-  登录 shell PATH 只有 `/usr/bin:/bin`，`/var/mobile/tools/bin` 下的
-  工具（含 uuidgen/node）日常要走绝对路径或自行 alias——既有环境
-  现状，非本包问题。
+## 18. FFmpeg 9.0.2 移植（2026-11-15；全录迁 `docs/ffmpeg.md` §7）
 
-## 18. FFmpeg 9.0.2 移植（2026-11-15，26 号包，SDK 模式最大工程）
-
-全编解码器静态 CLI（ffmpeg+ffprobe 各 ~23MB，deb 19MB gzip）。
-configure 阶段即暴露一批工具链通用雷，全部修复并回写 cc-wrapper：
-
-- **`-Wl,a,b` 逗号语义**：GNU 链接器的 `-Wl,` 逗号串要拆成独立参数
-  （`-Wl,-dynamic,-search_paths_first` 整串直喂 ld64 = unknown option）。
-  wrapper 已改：逐逗号拆分转发。
-- **`-isysroot <path>` 分立形式**：flag 与路径是两个参数，路径不能漏进
-  CFLAGS（"linker input unused" 警告源头）。wrapper 已改。
-- **SYSTEM_FUNCS 恒真探针窝**：ffmpeg 探测几十个系统函数
-  （`check_func`），dynamic_lookup 下全部恒真——Windows/BSD/Linux
-  专属函数（closesocket/gethrtime/pthread_setaffinity_np/sched_getaffinity
-  等 20 项）误进 config.h，`closesocket` 宏失效直接编译报错。
-  `--disable-XXX` 不达 SYSTEM_FUNCS（只在 CONFIG/HAVE_LIST 作用域），
-  修法 = configure 后、make 前 sed config.h 压制 + grep 断言。
-  ffmpeg 的 config.h 仅 configure 时生成、make 不重写，修正不丢。
-- **darwin 分支无条件挂四框架**：CoreFoundation/CoreMedia/CoreVideo/
-  CoreAudio 的 `check_apple_framework`（configure 7119-7122）不看
-  videotoolbox 开关，探测过了就把 `-framework` 写进 EXTRALIBS——
-  必须给 ld64 框架搜索路径：`--extra-ldflags` 加
-  `-F$SDK/System/Library/Frameworks`（wrapper 的 -F 双投递）。
-- **gas-preprocessor.pl**：arm/aarch64 汇编通道是 configure 自动探测
-  （PATH 里有就采用）；本工程 NEON/VFP 汇编实编通过，未用
-  --disable-asm（降 arch=c、DSP SIMD 全灭，A6X 性能崩）。
-- **lavfi 缺失**：`-f lavfi` 输入属 libavdevice（本包 --disable-avdevice），
-  验收素材从宿主造（testsrc2 mp4 / sine wav）scp 上去。
-- **验收**（mobile 身份）：-version ✓；h264 解码→mpeg4 编码 ✓；
-  wav→aac 编码 ✓；aac 解码回路 ✓（字节数合理）；ffprobe 双产物
-  元数据全对 ✓；链接审计 ffmpeg 288/288、ffprobe 283/283 符号
-  全部 tbd 可解析 ✓。
+SDK 模式最大工程。两条 **wrapper 级修复**已是公共事实（固化在 cc-wrapper.sh，新移植免踩）：`-Wl,` 逗号串逐段拆分转发；`-isysroot <path>` 分立形式的路径不得漏进 CFLAGS。configure 恒真窝（SYSTEM_FUNCS 20 项）、darwin 分支四框架强制挂载、gas-preprocessor 汇编通道、lavfi 缺失等包内细节与验收全录见 `docs/ffmpeg.md` §7。
 
 ## 19. Apple armv7 的 8 字节原子是**对齐陷阱** → SIGBUS（2026-11-16 定论）
 

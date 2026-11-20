@@ -44,7 +44,7 @@ brotli 解码器。
 - 载荷：`/var/mobile/tools/p7zip/7za`（真身，root:wheel，host `ldid -S`
   签名 + `ldid -e` 断言）+ `/var/mobile/tools/bin/{7za,7z}` 符号链接
   （prerm 守卫式清理）。老包 dpkg 拥有的 `/usr/bin/{7z,7za}` **不动**。
-- 压缩成员 **gzip**（toolchain.md §14.7 铁律，`-Zgzip --root-owner-group`）。
+- 压缩成员 **gzip**（toolchain.md §14 打包铁律，`-Zgzip --root-owner-group`）。
 - deb sha256：`d410749941eb58c78c6d50bf3ffa6efdbc6f562ec9e72195beb4dacd42ced1a0`
   （1.6MB）；签名后二进制 sha256：
   `1a61289f93b622cfec9556585267c424f1a53397e97dd4891f173cde0105e7a5`（3.2MB）。
