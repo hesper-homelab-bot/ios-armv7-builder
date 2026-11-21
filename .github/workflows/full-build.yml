@@ -50,6 +50,11 @@ jobs:
       - name: audit gate
         run: echo "placeholder -- tools/audit-all.sh over out/"
       - name: regenerate, sign, publish
+        # DANGER if run today: out/ is empty on a CI runner (no debs are built
+        # yet), and make-repo.sh would happily publish an EMPTY repo over the
+        # real gh-pages.  Enable this step only together with the build-all
+        # step, in the same commit.
+        if: false
         run: |
           set -euo pipefail
           scripts/make-repo.sh
