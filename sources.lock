@@ -109,3 +109,5 @@ zstd	1.5.7	https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz	37d7
 quickjs	2026-06-04	https://bellard.org/quickjs/quickjs-2026-06-04.tar.xz	b376e839b322978313d929fd20663b11ba58b75df5a46c126dd19ea2fa70ad2a
 # GNU make (device-side rebuilds rely on it)
 make	4.4.1	https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz	dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3
+# xnu bsd/net/bpf.h for libpcap (SDK lacks it; header only, not a tarball)
+xnu-bpf.h	xnu-3789.70.16	https://raw.githubusercontent.com/apple-oss-distributions/xnu/xnu-3789.70.16/bsd/net/bpf.h	6bc60120f43720881bf80815abc04f9740b44090f5e6036f9477f1f3dd8357e9

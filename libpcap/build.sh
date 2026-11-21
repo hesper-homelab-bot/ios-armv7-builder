@@ -70,6 +70,9 @@ if [ ! -f "$SYSINC/net/bpf.h" ]; then
         "https://raw.githubusercontent.com/apple-oss-distributions/xnu/xnu-3789.70.16/bsd/net/bpf.h" \
         "$(awk -F'\t' '$1=="xnu-bpf.h"{print $4}' "$root/sources.lock")")"
     cp "$bpf_h" "$SYSINC/net/bpf.h"
+    for h in if_media.h if_types.h; do
+        cp -f "$root/sysroot-overlay/usr/include/net/$h" "$SYSINC/net/"
+    done
     printf '/* userland stub: Apple compatibility macro shim */\n#ifndef _SYS_APPEAR_APIOPTS_H\n#define _SYS_APPEAR_APIOPTS_H\n#endif\n' \
         > "$SYSINC/sys/appleapiopts.h"
     cat > "$SYSINC/sys/_types/_timeval32.h" <<'EOF'
@@ -96,7 +99,7 @@ EOF
 
 make distclean >/dev/null 2>&1 || true
 CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
-    CONFIG_SITE="$SRC/ios-config.site" CPPFLAGS="-I$SYSINC" \
+    CONFIG_SITE="$SRC/ios-config.site" INCLS="-I$SYSINC" \
     ./configure --host=armv7-apple-darwin --prefix=/var/mobile/tools \
         --disable-shared --disable-dbus --disable-rdma --without-libnl \
         >/dev/null
