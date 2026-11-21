@@ -74,8 +74,15 @@ while [ $# -gt 0 ]; do
     -L*) LDARGS+=("$1") ;;
     -F*) CFLAGS+=("$1"); LDARGS+=("$1") ;;     # 框架路径双投递：前端找头 + ld64 找 tbd（2026-11-14 class-dump 首次需要）
     -lSystem|-lc|-lm|-lpthread|-lutil|-lresolv|-ldl|-lrt|-lintl|\
--lpanel|-lform|-ltinfo|-lncurses|-lncursesw|-lz|-latomic|-lgcc_s|-lgcc)
+-lpanel|-lform|-ltinfo|-lncurses|-lncursesw|-latomic|-lgcc_s|-lgcc)
         ;;                                     # all inside libSystem on Darwin
+    # -lz used to be dropped here too ("inside libSystem" era, when every
+    # package built --without-zlib).  It is NOT: the device does ship
+    # libz.dylib, but a dropped -lz means neither the static libz.a nor an
+    # LC_LOAD_DYLIB ever reaches the link, and curl-8.16.0-3 shipped with
+    # undefined _zlibVersion because the tbd whitelist then masked the hole.
+    # zlib now forwards like any other -l (static libz.a via -L, or the
+    # device dylib if a build links without one).
     -levent|-levent_core|-levent_extra)
         # libevent static archive lives in the build prefix
         LDARGS+=("-L${IOS_PREFIX:-/nonexistent}/lib" "$1") ;;

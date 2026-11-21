@@ -44,8 +44,11 @@ PREFIX="${PREFIX:-/var/mobile/tools}"
 # Override with IOS_SYSROOT=$root/tmp/sysroot for the legacy musl build.
 export IOS_SYSROOT="${IOS_SYSROOT:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "missing $IOS_SYSROOT (see docs/toolchain.md §16)" >&2; exit 1; }
-export IOS_LD64="$LD64" IOS_STUBDIR="$HOME/ios-tool"
-export LD_LIBRARY_PATH="${LD64_LIBS:-}:${LD_LIBRARY_PATH:-}"
+# env defaults embedded (toolchain.md §1 landmine, 4th occurrence): a fresh
+# shell must never depend on the caller having exported the toolchain vars
+export IOS_LD64="${IOS_LD64:-${LD64:-$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld}}"
+export IOS_STUBDIR="$HOME/ios-tool"
+export LD_LIBRARY_PATH="${LD64_LIBS:-$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib}:${LD_LIBRARY_PATH:-}"
 export CROSS_TOP="$(dirname "$IOS_SYSROOT")" CROSS_SDK="$(basename "$IOS_SYSROOT")"
 
 # configure looks for <prefix>/lib/libssl.a; OpenSSL's build tree keeps the
@@ -68,10 +71,27 @@ C8OBJ="$root/tmp/curl-c8fixed.o"
 mkdir -p "$root/tmp"
 "$CC" -c "$root/tools/shims/c8fixed.S" -o "$C8OBJ"
 
+# zlib (gzip/deflate transfer encoding).  Reuses the zlib 1.3.1 that
+# git/build.sh already cross-builds (same pinned source, same darwin-ar
+# conversion, docs/toolchain.md §2) instead of building a second copy:
+# configure wants <prefix>/lib/libz.a + <prefix>/include/zlib.h, the git
+# build lays both at the source-tree root, so present that shape.
+ZLIB_SRC="${ZLIB:-$HOME/ios-tool/zlib-src/zlib-1.3.1}"
+if [ ! -f "$ZLIB_SRC/libz.a" ]; then
+    echo "missing cross zlib: $ZLIB_SRC/libz.a" >&2
+    echo "  build it first: (cd git && ./build.sh)   # or set ZLIB=" >&2
+    exit 1
+fi
+ZLIBABI="$root/tmp/curl-zlib-abi"
+mkdir -p "$ZLIBABI/lib" "$ZLIBABI/include"
+cp -f "$ZLIB_SRC/libz.a" "$ZLIBABI/lib/"
+cp -f "$ZLIB_SRC/zlib.h" "$ZLIB_SRC/zconf.h" "$ZLIBABI/include/"
+
 ./configure --host=armv7-apple-darwin --prefix="$PREFIX" \
     --disable-shared --enable-static \
     --with-openssl="$OSSL" \
-    --without-zlib --without-brotli --without-zstd \
+    --with-zlib="$ZLIBABI" \
+    --without-brotli --without-zstd \
     --without-libpsl --without-libidn2 --without-nghttp2 \
     --without-libgsasl \
     --disable-ldap --disable-ldaps --disable-manual \
