@@ -63,6 +63,43 @@
 
 **未能凑齐专项文档的**：wget（信息散落在 `docs/curl.md` §4 的签名教训里）。
 
+## 候选（2026-11-21 外部审稿建议，未排期）
+
+第二位审稿人的建议（原文见当日会话），大哥拍板"先记下来"：
+
+**能力尾巴（投入小、收益大，建议先做）**
+- **统一 CA 证书包（ca-certificates4）**：Mozilla bundle + 更新脚本 +
+  各运行时配置入口；curl/wget/git/python3/go/node 现在各管各的
+  `/etc/ssl/cert.pem` 引用（SSL_CERT_FILE / http.sslCAInfo / env.sh），
+  python 文档里还有关证书验证的测试妥协。做成包后一次收敛。
+- **curl 能力补齐**：现构建关闭 zlib/Brotli/Zstd/HTTP/2（curl.md 记录在案）；
+  node 的链接链（node/patches/link-node.sh）已构建过 nghttp2/brotli/zstd/zlib，
+  版本与配方可作起点。顺序：zlib 压缩 → brotli/zstd → nghttp2(HTTP/2)。
+  验收必须实测 `--compressed` 与 HTTP/2 响应，不止 `curl -V`。
+- **QuickJS 产品化**：Phase 1 已真机跑通（`qjs -e 'print(40+2)'` → 42，
+  `docs/quickjs.md`；源树 `~/scratch/node-research/quickjs-2026-06-04/`）。
+  背景：quickjs 是当初移植 node 时**用来做对照的**（验证工具链路线的
+  参照物），不是独立立项——所以产品化前先想清楚它要以什么身份发布
+  （独立轻量 JS 引擎 / 仅作工具链 C++ 路线的活体回归基准）。
+  待做：build.sh/make-deb.sh 固化、干净树可复现构建、check-undefined 门禁、
+  test262 基线与已知失败集、作为 Node 之外的轻量 JS 引擎发布。
+
+**工程改进（另一位审稿人 + 主线对照）**
+- ~~干净宿主金丝雀重建~~：**已在做**——full-build.yml 的 bootstrap job
+  即"干净 runner 从零到冒烟"，落地后按 whois/rsync/curl 三只金丝雀
+  逐包接入（whois=Makefile 型，rsync=configure+gnulib 型，curl=SDK+静态
+  依赖+符号审计型；SDK 模式当年正是这三只先过的墙）。
+- **包清单/状态自动生成**：从 APT Packages 索引生成
+  "包名/版本/build.sh/专项文档/验收状态"表，消除文档漂移
+  （backlog 的包数、README 开头"无 Apple SDK"的表述均已过时）。
+
+**新软件候选（大哥拍板：先记下，未排期；难度为预判，未编译验证）**
+- **dnscrypt-proxy**（中）：老 iPad 变加密 DNS 节点；需先评估端口 53、
+  休眠与常驻可靠性。
+- **proxychains-ng / torsocks**（中）：tor 0.4.8.14 已上线但没有客户端
+  接管工具——现在 tor 装了也只能手动配 SOCKS5。
+- **zsh / Lua**（低～中）：轻松小项目；BigBoss 有 Lua 5.3.3 历史先例。
+
 ## 进行中
 
 （暂无）

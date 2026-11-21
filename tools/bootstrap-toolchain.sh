@@ -64,7 +64,8 @@ stage0_deps() {
     fi
     sudo apt-get update -qq
     sudo apt-get install -y -qq \
-        clang llvm lld cmake ninja-build git xz-utils zstd patch \
+        clang llvm lld cmake ninja-build git xz-utils zstd patch unzip \
+        libplist-dev \
         autoconf automake libtool-bin pkg-config make perl python3 file
 }
 
@@ -137,20 +138,26 @@ stage2_ldid() {
 }
 
 stage3_sdk() {
-    log 3 "iPhoneOS10.3.sdk (public headers, xybp888/iOS-SDKs mirror)"
+    log 3 "iPhoneOS10.3.sdk (public headers, xybp888/iOS-SDKs master)"
     if [ -f "$PREFIX/iPhoneOS10.3.sdk/usr/include/stdio.h" ] && [ "$FORCE" = 0 ]; then
         skip; return
     fi
-    # TODO(sha256): the tarball is not in the bootstrap cache of the machine
-    # this toolchain was first assembled on (only the unpacked 80 MB tree
-    # survived); pin it on the first fresh download.
-    local url="https://github.com/xybp888/iOS-SDKs/releases/download/v10.3/iPhoneOS10.3.sdk.tar.xz"
-    echo "    downloading $url (~80 MB)"
-    curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 \
-        -o "$CACHE/iPhoneOS10.3.sdk.tar.xz" "$url"
-    tar -xJf "$CACHE/iPhoneOS10.3.sdk.tar.xz" -C "$PREFIX"
+    # The mirror organizes every SDK as a plain directory on master -- no
+    # per-SDK tags, no release assets -- so the cheap way to fetch one
+    # directory is a blob-filtered sparse clone.  A directory asset has no
+    # single sha256 to pin; the source commit is recorded instead, and the
+    # smoke stage validates that the headers actually compile.
+    if [ ! -d "$CACHE/iOS-SDKs/.git" ]; then
+        git clone --filter=blob:none --sparse --depth 1 \
+            https://github.com/xybp888/iOS-SDKs "$CACHE/iOS-SDKs"
+    fi
+    ( cd "$CACHE/iOS-SDKs" && git sparse-checkout set iPhoneOS10.3.sdk )
+    rm -rf "$PREFIX/iPhoneOS10.3.sdk"
+    cp -a "$CACHE/iOS-SDKs/iPhoneOS10.3.sdk" "$PREFIX/"
+    git -C "$CACHE/iOS-SDKs" rev-parse HEAD > "$PREFIX/.sdk-source-commit"
     [ -f "$PREFIX/iPhoneOS10.3.sdk/usr/include/stdio.h" ] \
         || { echo "SDK layout unexpected" >&2; exit 1; }
+    echo "    sdk at commit $(cat "$PREFIX/.sdk-source-commit")"
 }
 
 stage4_stubs() {
