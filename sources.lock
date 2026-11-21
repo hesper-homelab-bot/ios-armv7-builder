@@ -97,3 +97,6 @@ e2fsprogs	1.47.2	https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e
 #   need go.sum verification per build -- TODO if needed).
 # * go/build.sh also needs a prebuilt bootstrap toolchain ($HOME/go-sdk/...),
 #   a manual host install, not an upstream source of any package.
+# Mozilla CA bundle, snapshot 2026-11-21 (rolling upstream; pinned per build,
+# refreshed on-device by ca-certificates4's update-ca-certificates).
+ca-bundle	2026-11-21	https://curl.se/ca/cacert.pem	427c064216761a1e72a8b30f0d954d08cb6e4435a82091fb865afd20c8497285

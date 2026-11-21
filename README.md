@@ -35,6 +35,7 @@ What is inside:
 | `patch/` | **GNU patch 2.7.1** — apply unified diffs on device (diff ships with the bootstrap, patch was missing); gnulib constant-true probes suppressed (futimens/utimensat/nanotime/canonicalize), MSVC modules dropped, hand-linked; md5-verified apply round-trip |
 | `socat/` | **socat 1.8.0.3** — multipurpose relay (TCP/UDP/UNIX/EXEC); device-verified TCP relay into dropbear; getresuid probes suppressed, hand-linked objects |
 | `pgrep/` | **pgrep + pkill 1.1** (OpenBSD pkill 1.44 lineage, one binary two names) — sysctl(KERN_PROC_ALL) process table + KERN_PROCARGS2 full argv; `-f` full-args matching works same-uid, comm fallback cross-uid (kernel permission model, see docs/pgrep.md §3) |
+| `ca-certificates/` | **Mozilla CA bundle 20261121** — one managed trust store (`/var/mobile/tools/etc/ca-certificates/ca-bundle.crt`, 118 certs) + an atomic `update-ca-certificates`; the stock iOS 10.3 cert.pem is left alone; entry points for curl/wget/python3/node/go/git (docs/ca-certificates.md) |
 | `sqlite/` | **sqlite3 3.54.1** (32-bit) — direct amalgamation build, no configure; WAL/FTS-capable, fully static |
 | `jq/` | **jq 1.7.1** statically linked with oniguruma 6.9.10 — `test()` regex verified, UTF-8 round-trips |
 | `nmap/` | **Nmap 7.95** (nmap + ncat) — the most invasive port: five bundled libraries, libdnet backend surgery, OpenSSL 4 opaque-struct patches, and a cc-wrapper fix for `-MM` dependency scanning |
@@ -250,6 +251,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | tailcat 0.7.0 | `help`/`genkey`/`serve` verified on device; the Go `complex` conformance binary passes 10/10 groups — built by the on-device Go toolchain itself |
 | tailscale 1.104.7 | logged into a live tailnet (`ipad4-1`); `tailscale ping` pong 5 ms direct; SOCKS5 (127.0.0.1:1055) → WireGuard → remote sshd banner round-trip verified with a raw-socket client (device curl is a known-bad instrument, see `docs/tailscale.md` §4) |
 | dropbear 2026.94 | the device's production sshd on port 22 since 2026-11-10, with the v2.1 self-heal wrapper |
+| ca-certificates4 20261121 | the full verification matrix in docs/ca-certificates.md: curl/python3/node/git all TLS-verify through the managed bundle (200 with `ssl_verify_result=0`), a deliberately bogus bundle correctly FAILS the handshake, and `update-ca-certificates` refreshes 118→118 live on the device |
 
 TLS 1.3 is compiled in but every public test host refused it from this
 device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not

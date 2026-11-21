@@ -1,0 +1,49 @@
+#!/bin/sh
+# update-ca-certificates -- refresh the armv7 kit's Mozilla CA bundle.
+#
+# Installed by the ca-certificates4 deb.  Downloads the current bundle from
+# curl.se, sanity-checks it (certificate count + a real parse of the first
+# certificate through the kit's OpenSSL), then replaces the installed bundle
+# atomically (same-filesystem rename).
+#
+# Runtimes pick the bundle up through the documented entry points
+# (docs/ca-certificates.md): SSL_CERT_FILE for curl/wget/python3/node/go,
+# http.sslCAInfo for git.
+set -eu
+
+BUNDLE="/var/mobile/tools/etc/ca-certificates/ca-bundle.crt"
+URL="https://curl.se/ca/cacert.pem"
+CURL="/var/mobile/tools/curl"
+OPENSSL="/var/mobile/openssl4/openssl"
+
+tmp="${BUNDLE}.new.$$"
+trap 'rm -f "$tmp"' EXIT INT TERM
+
+[ -x "$CURL" ]    || CURL=curl
+[ -x "$OPENSSL" ] || OPENSSL=openssl
+
+# Chicken-and-egg guard: this build's curl has no compiled-in default trust
+# store, so the download itself needs an anchor.  Bootstrap from the bundle
+# we are refreshing (it covers curl.se), fall back to the stock system store.
+if ! SSL_CERT_FILE="$BUNDLE" "$CURL" -fsSL --retry 3 --retry-delay 2 \
+        --connect-timeout 20 -o "$tmp" "$URL"; then
+    SSL_CERT_FILE=/etc/ssl/cert.pem "$CURL" -fsSL --retry 3 --retry-delay 2 \
+        --connect-timeout 20 -o "$tmp" "$URL"
+fi
+
+# sanity 1: a real bundle has at least 100 certificates
+n=$(grep -c "BEGIN CERTIFICATE" "$tmp" || true)
+if [ "${n:-0}" -lt 100 ]; then
+    echo "update-ca-certificates: suspicious download ($n certificates), keeping the old bundle" >&2
+    exit 1
+fi
+
+# sanity 2: the first certificate must parse
+awk '/BEGIN CERTIFICATE/{p=1} p{print} /END CERTIFICATE/{exit}' "$tmp" \
+    | "$OPENSSL" x509 -noout -subject >/dev/null 2>&1 \
+    || { echo "update-ca-certificates: downloaded file does not parse as PEM, keeping the old bundle" >&2; exit 1; }
+
+old=$(grep -c "BEGIN CERTIFICATE" "$BUNDLE" 2>/dev/null || echo 0)
+mv "$tmp" "$BUNDLE"
+trap - EXIT INT TERM
+echo "update-ca-certificates: bundle updated ($old -> $n certificates)"
