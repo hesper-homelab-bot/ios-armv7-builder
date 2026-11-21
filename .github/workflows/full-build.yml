@@ -18,17 +18,13 @@ jobs:
       - name: bootstrap the cross toolchain
         # Installed by tools/bootstrap-toolchain.sh into /opt/ios-tool;
         # stage list and verification live in that script (docs/bootstrap.md).
-        run: tools/bootstrap-toolchain.sh
-      - name: smoke -- hello.c to armv7 Mach-O
-        run: |
-          set -euo pipefail
-          export IOS_SYSROOT=/opt/ios-tool/iPhoneOS10.3.sdk
-          cat > /tmp/hello.c <<'EOF'
-          #include <stdio.h>
-          int main(void) { puts("hello armv7"); return 0; }
-          EOF
-          PATH=/opt/ios-tool/bin:$PATH cc /tmp/hello.c -o /tmp/hello
-          file /tmp/hello | grep -q "Mach-O.*arm" && echo "smoke OK"
+        run: tools/bootstrap-toolchain.sh --prefix=/opt/ios-tool
+      - name: smoke -- hello.c to armv7 Mach-O, ad-hoc signed
+        # The script's own stage 5: ld64 shared-object check, compile via the
+        # repo's cc-wrapper, file(1) Mach-O assertion, ldid -S/-e round-trip.
+        # (An earlier hand-rolled smoke here called a bare `cc` that no stage
+        # ever installs -- CI run 44875204697.)
+        run: tools/bootstrap-toolchain.sh --stage=5 --prefix=/opt/ios-tool --force
 
   build-and-publish:
     needs: bootstrap
