@@ -374,3 +374,7 @@ ac_cv_func_getspnam=no
 # Darwin does not turn core dumps off with prctl, it just doesn't produce them
 # for the cases OpenSSH cares about here.
 ac_cv_func_prctl=no
+
+# close_range(2) is Linux 5.9+; iOS 10 has none (the openbsd-compat
+# closefrom fallback is the portable answer).
+ac_cv_func_close_range=no

@@ -674,3 +674,9 @@ _CC_MD4_Init
 _CC_MD4_Update
 ___atomic_load
 ___atomic_store
+_basename
+_bsearch
+_connectx
+_fnmatch
+_realpath$DARWIN_EXTSN
+___strcpy_chk
