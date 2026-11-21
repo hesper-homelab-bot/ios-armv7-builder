@@ -82,3 +82,17 @@ tools/fetch-src.sh --list                        # 列出缓存内容
   * go 的 bootstrap 工具链($HOME/go-sdk,宿主手工安装)。
 * 已知问题 URL:见 lock 内 TODO 注释与提交说明(zlib.net 404 已换 github
   归档;其余全部 200 且 sha256 已实测)。
+
+## Known TODO(2026-11-21 建立时记录)
+
+* **node(102 MB)/ openssl(52 MB)缓存预热未完成**:宿主出口被限到 ~20KB/s,
+  两个大件只传了一部分即按父 agent 指示中止(半档已删,不留 `.part`)。
+  lock 中这两行的 sha256 来自上游官方清单(nodejs.org 的
+  `SHASUMS256.txt`、github release 的 `.sha256` sidecar),权威有效;
+  真实构建/`--check` 首次触达这两个包时会自动下载并按 lock 校验入缓存。
+* **node 的 miss 路径干跑未做**:git/tcpdump/zlib/go(35M,本地镜像喂 +
+  lock digest)的 miss→校验→入缓存→二次命中已全部实测通过;node 只差
+  "清缓存后真下一次"这一步,等它的预热字节落地后补跑即可(harness 见
+  `tmp/src-cache/verify-fetch.sh` 的 node 段)。
+* go 行的 aliyun 镜像字节已用 dl.google.com 官方 digest 复核通过
+  (`--check go` OK, 35,134,614 bytes),镜像与官方一致有实证。
