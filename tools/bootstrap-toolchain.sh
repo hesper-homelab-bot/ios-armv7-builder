@@ -142,7 +142,9 @@ stage2_ldid() {
     ( cd "$PREFIX"/ldid-src/ldid-2.1.5-procursus7
       make -j"$(nproc)" ldid >/dev/null
       mkdir -p "$PREFIX/bin" && cp -a ./ldid "$PREFIX/bin/ldid" )
-    "$PREFIX/bin/ldid" -V >/dev/null && echo "    ldid $(ls "$PREFIX/bin/ldid") ok"
+    # ldid has no --version flag (it prints usage); running it bare is the
+    # executable check.  The real signing path is exercised in the smoke stage.
+    "$PREFIX/bin/ldid" 2>&1 | grep -q 'Usage:' && echo "    ldid installed"
 }
 
 stage3_sdk() {
@@ -205,7 +207,13 @@ EOF
     "$repo/tools/cc-wrapper.sh" "$CACHE/hello.c" -o "$out"
     file "$out" | grep -q "Mach-O.*arm" \
         || { echo "smoke output is not arm Mach-O:" >&2; file "$out" >&2; exit 1; }
-    echo "    $(file "$out" | cut -d: -f2- | sed 's/^ *//')"
+    # the deployment tripwire of this repo starts with a valid ad-hoc
+    # signature; exercise it here so "toolchain ready" means "ldid works too"
+    local LDID="$PREFIX/bin/ldid"
+    [ -x "$LDID" ] || LDID=ldid
+    "$LDID" -S "$out"
+    "$LDID" -e "$out" >/dev/null
+    echo "    $(file "$out" | cut -d: -f2- | sed 's/^ *//') + ad-hoc signed"
     echo
     echo "==> toolchain ready.  For build shells export (toolchain.md section 1):"
     cat <<EOF
