@@ -10,7 +10,7 @@ on every repo rebuild.
 |---|---|---|---|---|
 | ca-certificates4 | 20261121-2 | `ca-certificates/` | [docs/ca-certificates.md](docs/ca-certificates.md) | -- |
 | class-dump4 | 3.5.2-1 | `class-dump/` | [docs/class-dump.md](docs/class-dump.md) | -- |
-| curl4 | 8.16.0-4 | `curl/` | [docs/curl.md](docs/curl.md) | [tests/curl.sh](tests/curl.sh), 3 cases |
+| curl4 | 8.16.0-6 | `curl/` | [docs/curl.md](docs/curl.md) | [tests/curl.sh](tests/curl.sh), 3 cases |
 | dns4 | 1.0-1 | `dns/` | [docs/dns.md](docs/dns.md) | -- |
 | dropbear4 | 2026.94-2 | `dropbear/` | [docs/dropbear.md](docs/dropbear.md) | -- |
 | ffmpeg | 9.0.2-1 | `ffmpeg/` | [docs/ffmpeg.md](docs/ffmpeg.md) | -- |
@@ -29,7 +29,7 @@ on every repo rebuild.
 | nmap | 7.95-1 | `nmap/` | [docs/nmap.md](docs/nmap.md) | -- |
 | node4 | 22.23.4-1 | `node/` | [docs/node.md](docs/node.md) | -- |
 | openssh4 | 10.6p2-3 | `openssh/` | [docs/openssh.md](docs/openssh.md) | -- |
-| openssl4 | 4.0.3-4 | `openssl/` | [docs/openssl.md](docs/openssl.md) | [tests/openssl.sh](tests/openssl.sh), 3 cases |
+| openssl4 | 4.0.3-6 | `openssl/` | [docs/openssl.md](docs/openssl.md) | [tests/openssl.sh](tests/openssl.sh), 3 cases |
 | p7zip17 | 17.05-1 | -- | -- | -- |
 | patch4 | 2.7.1-1 | `patch/` | [docs/patch.md](docs/patch.md) | -- |
 | pgrep4 | 1.1-1 | `pgrep/` | [docs/pgrep.md](docs/pgrep.md) | [tests/pgrep.sh](tests/pgrep.sh), 3 cases |
