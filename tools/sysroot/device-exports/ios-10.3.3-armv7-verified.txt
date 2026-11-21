@@ -659,3 +659,13 @@ _setvbuf
 ___strncpy_chk
 _tcgetpgrp
 ___toupper
+_CCRandomGenerateBytes
+___atomic_fetch_add_8
+___atomic_fetch_and_8
+___atomic_fetch_or_8
+___atomic_fetch_sub_8
+___atomic_load_8
+___strcat_chk
+___strncat_chk
+_mlock
+_setpgid
