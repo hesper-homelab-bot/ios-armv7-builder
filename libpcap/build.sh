@@ -55,8 +55,12 @@ export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/l
     tar -C "$HOME/ios-tool/libpcap-src" -xzf "$pcap_tar"
 }
 
-# -------------------------------------------------- sysroot net/bpf.h ----
-SYSINC="$root/tmp/sysroot/usr/include"
+# -------------------------------------------------- net/bpf.h ABI dir ----
+# The SDK is the public cut: no net/bpf.h.  The overlay carries the xnu one,
+# but -I-ing the whole overlay shadows SDK headers (toolchain.md §23), so a
+# dedicated ABI include dir holds just this header family (and configure
+# receives it via CPPFLAGS below).
+SYSINC="$root/tmp/libpcap-abi-include"
 if [ ! -f "$SYSINC/net/bpf.h" ]; then
     mkdir -p "$SYSINC/net" "$SYSINC/sys/_types"
     # sources.lock: xnu-bpf.h xnu-3789.70.16 (raw.githubusercontent; the old
@@ -92,7 +96,7 @@ EOF
 
 make distclean >/dev/null 2>&1 || true
 CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
-    CONFIG_SITE="$SRC/ios-config.site" \
+    CONFIG_SITE="$SRC/ios-config.site" CPPFLAGS="-I$SYSINC" \
     ./configure --host=armv7-apple-darwin --prefix=/var/mobile/tools \
         --disable-shared --disable-dbus --disable-rdma --without-libnl \
         >/dev/null

@@ -5,3 +5,4 @@ _libSystem_atfork_prepare
 _mach_init_routine
 ___System_BVersionNumber
 ___System_BVersionString
+___tolower
