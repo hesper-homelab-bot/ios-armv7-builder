@@ -647,3 +647,15 @@ _writev
 _y0
 _y1
 _yn
+_access
+__DefaultRuneLocale
+_getc
+_localtime
+___maskrune
+___memcpy_chk
+___memmove_chk
+___memset_chk
+_setvbuf
+___strncpy_chk
+_tcgetpgrp
+___toupper
