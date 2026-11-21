@@ -35,6 +35,11 @@ export LD_LIBRARY_PATH=$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/li
 - **cxx-wrapper 按自身 cwd 解析相对输入路径 → 传给它的文件路径一律绝对路径**，
   否则 `ld: file not found`。
 - 常见手误：`LD64=IOS_LD64=...` 会把值设成字面量；变量名是 **`IOS_LD64`**。
+- **cc-wrapper 的 `-l` 丢弃列表是隐形第三层**（2026-11-21 curl 实录）：
+  列表里 `-lz` 曾被静默丢弃（`--without-zlib` 时代遗产），配合 tbd 白名单
+  把 `check-undefined` 双层蒙蔽，-3 版带 `_zlibVersion` 上设备 lazy binding
+  即死。修复与机理见 `docs/curl.md` §7；**新增 -l 依赖的包要确认 wrapper
+  没在丢弃列表里杀掉它**。
 
 ## 2. 归档规则（ld64 的坑）
 
