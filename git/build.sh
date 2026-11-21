@@ -104,6 +104,10 @@ CURLDIR = $CURL
 CURL_LDFLAGS = -L$CURL/lib/.libs -lcurl
 NO_INSTALL_HARDLINKS = YesPlease
 HAVE_ALLOCA_H = YesPlease
+# Darwin's struct stat spells the mtime timespec st_mtimespec (musl spells it
+# st_mtim, which the Linux default branch below would chase -- and the SDK has
+# no st_mtim at all)
+USE_ST_TIMESPEC = YesPlease
 # git's progress meter uses setitimer; it exists on iOS but probes mislead,
 # and the feature is cosmetic -- keep it off
 NO_SETITIMER = YesPlease

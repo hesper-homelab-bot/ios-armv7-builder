@@ -49,19 +49,20 @@ export CROSS_TOP="$root/tmp" CROSS_SDK=sdk
 cd "$SRC"
 sed -i 's/-arch armv7 //' Configurations/15-ios.conf
 
-# atomic runtime helpers: a dlsym probe on the live device
-# (tools/device-symprobe.sh, 2026-11-21) showed libSystem DOES export the full
-# set (__atomic_is_lock_free, __atomic_load/store/fetch_add_8 ...), so the
-# spinlock compat in atomic_compat.c is NOT needed -- the native helpers win.
-# atomic_compat.c/atomic_alias.s stay in the tree as the record of two walls:
-# the alias-stub ld64 text-relocation lesson and the -D rename that collided
-# with the clang builtin.
+# atomic runtime: the device exports __atomic_load/store/fetch_add_8 (dlsym
+# OK) but NOT __atomic_is_lock_free (dlsym MISS) -- so one narrow object from
+# atomic_compat.c (spinlock, asm label) fills exactly that hole, and the
+# native helpers keep winning for everything else.
 export CC="$here/../tools/cc-wrapper.sh"
 export AR="$here/../tools/darwin-ar"
 export RANLIB="$here/../tools/darwin-ranlib"
 
+CCOBJ="$root/tmp/openssl-atomic-compat.o"
+"$here/../tools/cc-wrapper.sh" -c "$here/atomic_compat.c" -o "$CCOBJ"
+
 ./Configure ios-cross no-asm no-shared no-tests no-docs \
     --prefix="$PREFIX" --openssldir="$PREFIX/etc/ssl" \
+    LDFLAGS="$CCOBJ" \
     > /dev/null
 make -j"$(nproc)" > /dev/null
 
