@@ -124,7 +124,7 @@ if [ ! -f "$NG2_SRC/lib/.libs/libnghttp2.a" ]; then
              --without-openssl --without-libxml2 --without-libev \
              --without-systemd >"$NG2_SRC/conf.out" 2>&1 \
       && make -j"$(nproc)" -C lib >"$NG2_SRC/make.out" 2>&1 \
-    ) || { echo "nghttp2 build failed; conf.out tail:" >&2; tail -25 "$NG2_SRC/conf.out" >&2; exit 1; }
+    ) || { echo "nghttp2 build failed; config.log compile errors:" >&2; grep -B2 -A8 "error" "$NG2_SRC/config.log" | tail -40 >&2; exit 1; }
 fi
 [ -f "$NG2_SRC/lib/.libs/libnghttp2.a" ] || { echo "nghttp2 build failed" >&2; exit 1; }
 NG2ABI="$root/tmp/curl-nghttp2-abi"
