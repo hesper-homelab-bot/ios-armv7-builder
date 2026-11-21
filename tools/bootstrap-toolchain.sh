@@ -58,15 +58,23 @@ skip() { printf '    already present, skipped (--force to redo)\n'; }
 # ---------------------------------------------------------------- stage 0 --
 stage0_deps() {
     log 0 "host dependencies (apt)"
-    if command -v clang >/dev/null && command -v llvm-ar-21 >/dev/null; then
-        echo "    clang $(clang --version | head -1)"
+    # Check per-package, not "is clang present": GitHub runners and many dev
+    # boxes preinstall clang/llvm, and an early return here silently skips
+    # the rest (libplist-dev was lost exactly this way -- CI run 44873894283).
+    local missing=""
+    for p in clang llvm lld cmake ninja-build git xz-utils zstd patch unzip \
+             libplist-dev autoconf automake libtool-bin pkg-config make \
+             perl python3 file curl ca-certificates; do
+        dpkg -s "$p" >/dev/null 2>&1 || missing="$missing $p"
+    done
+    if [ -z "$missing" ]; then
+        echo "    all present (clang $(clang --version | head -1))"
         return
     fi
+    echo "    installing:$missing"
     sudo apt-get update -qq
-    sudo apt-get install -y -qq \
-        clang llvm lld cmake ninja-build git xz-utils zstd patch unzip \
-        libplist-dev \
-        autoconf automake libtool-bin pkg-config make perl python3 file
+    # shellcheck disable=SC2086
+    sudo apt-get install -y -qq $missing
 }
 
 # ------------------------------------------------------------- conda pieces --

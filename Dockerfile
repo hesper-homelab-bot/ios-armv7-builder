@@ -11,6 +11,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         clang llvm lld cmake ninja-build git xz-utils zstd patch unzip \
+        libplist-dev \
         autoconf automake libtool-bin pkg-config make perl python3 file \
         curl ca-certificates sudo \
     && rm -rf /var/lib/apt/lists/*
