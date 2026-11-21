@@ -27,7 +27,7 @@
 | vim | ⏳ 未探 | ncurses 同 less |
 | git | ⏳ 未探 | 依赖 zlib(已 SDK 化)+ openssl + curl |
 | node | ⏳ 未探 | 最重(V8);musl 依赖面最大 |
-| openssh | ⏳ 未探 | |
+| openssh | ✅ 本机绿(六产物) | ppoll→poll 补丁(设备无 ppoll;生产版靠懒绑定侥幸)+ 源 fetch 化 + 自含 openssl;CI 待跑 |
 | mosh | ⏳ 未探 | protobuf host 侧 |
 | lsof | ⏳ 未探 | libproc 路线 |
 | class-dump | ⏳ 未探 | Foundation/CoreFoundation tbd |
