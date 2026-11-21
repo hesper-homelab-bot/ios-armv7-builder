@@ -22,7 +22,12 @@ SRC="${WGET_SRC:-$HOME/ios-tool/wget-src/wget-$WGET_VERSION}"
 OSSL="${OSSL:-$HOME/ios-tool/openssl-src/openssl-4.0.3}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
 
-[ -d "$SRC" ] || { echo "missing $SRC" >&2; exit 1; }
+[ -d "$SRC" ] || {
+    echo "missing $SRC" >&2
+    echo "  sources.lock row 'wget' -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock wget" >&2
+    exit 1
+}
 [ -f "$OSSL/libssl.a" ] || { echo "build OpenSSL first (openssl/build.sh)" >&2; exit 1; }
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }

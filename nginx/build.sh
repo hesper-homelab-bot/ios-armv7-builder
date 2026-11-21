@@ -100,9 +100,11 @@ export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/l
 # ------------------------------------------------------------ sources ----
 if [ ! -d "$SRC" ]; then
     mkdir -p "$HOME/ios-tool/nginx-src"
-    curl -fL --http1.1 "https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" \
-        -o "/tmp/nginx-$NGINX_VERSION.tar.gz"
-    tar -C "$HOME/ios-tool/nginx-src" -xzf "/tmp/nginx-$NGINX_VERSION.tar.gz"
+    # sources.lock: nginx 1.26.3
+    nginx_tar="$("$root/tools/fetch-src.sh" nginx \
+        "https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="nginx"{print $4}' "$root/sources.lock")")"
+    tar -C "$HOME/ios-tool/nginx-src" -xzf "$nginx_tar"
 fi
 
 # ------------------------------------------------------------- pcre2 -----

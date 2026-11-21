@@ -81,16 +81,15 @@ preflight() {
 fetch_sources() {
     say "fetching Vim $VIM_VERSION"
     mkdir -p "$SRCDIR"
-    # Vim has no "releases" tarball for patchlevels; the git tag archives on
-    # GitHub are the canonical source for v9.1.0000 (the FTP site only carries
-    # the unpatched v9.1.0000 for the 9.1 line and per-patch deltas after that).
-    local tar="$SRCDIR/vim-$VIM_VERSION.tar.gz"
-    if [ ! -s "$tar" ]; then
-        curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 -o "$tar.part" \
-            "https://github.com/vim/vim/archive/refs/tags/v$VIM_VERSION.tar.gz" \
-            || die "could not download Vim $VIM_VERSION"
-        mv "$tar.part" "$tar"
-    fi
+    # sources.lock: vim 9.1.0000.  Vim has no "releases" tarball for
+    # patchlevels; the git tag archives on GitHub are the canonical source for
+    # v9.1.0000 (the FTP site only carries the unpatched v9.1.0000 for the 9.1
+    # line and per-patch deltas after that).
+    local tar
+    tar="$("$root/tools/fetch-src.sh" vim \
+        "https://github.com/vim/vim/archive/refs/tags/v$VIM_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="vim"{print $4}' "$root/sources.lock")")" \
+        || die "could not fetch Vim $VIM_VERSION (see sources.lock)"
     [ -d "$SRC" ] || tar xzf "$tar" -C "$SRCDIR"
     [ -d "$SRC" ] || die "source dir not found: $SRC"
     echo "    $SRC"

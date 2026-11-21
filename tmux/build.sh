@@ -68,22 +68,9 @@ pick_tool() {
     return 1
 }
 
-# fetch URL DEST — retries, because the release hosts occasionally drop TLS
-fetch() {
-    local url="$1" dest="$2" i
-    [ -s "$dest" ] && return 0
-    for i in 1 2 3 4 5; do
-        if curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 20 \
-                -o "$dest.part" "$url"; then
-            mv "$dest.part" "$dest"
-            return 0
-        fi
-        warn "download failed (attempt $i): $url"
-        rm -f "$dest.part"
-        sleep 3
-    done
-    die "could not download $url"
-}
+# Source downloads go through tools/fetch-src.sh (shared cache + sha256
+# verification against sources.lock); the old local fetch() helper was removed
+# with the 2026-11-21 sources.lock migration.
 
 say()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*" >&2; }
@@ -127,15 +114,26 @@ fetch_tmux_version() {
 
 fetch_sources() {
     mkdir -p "$WORK/src" && cd "$WORK/src"
+    # sources.lock: tmux 3.8 (the version resolved above from GitHub's
+    # latest-release API -- pinning a different TMUX_VERSION also means
+    # updating its lock row, otherwise the sha256 check fails by design),
+    # libevent 2.1.12-stable, musl 1.2.5.
     local tmux_tar="tmux-$TMUX_VERSION.tar.gz"
-    [ -f "$tmux_tar" ] || curl -fL -o "$tmux_tar" \
-        "https://github.com/tmux/tmux/releases/download/$TMUX_VERSION/tmux-$TMUX_VERSION.tar.gz"
+    "$root/tools/fetch-src.sh" tmux \
+        "https://github.com/tmux/tmux/releases/download/$TMUX_VERSION/$tmux_tar" \
+        "$(awk -F'\t' '$1=="tmux"{print $4}' "$root/sources.lock")" \
+        "$WORK/src/$tmux_tar" >/dev/null
     local le_tar="libevent-$LIBEVENT_VERSION.tar.gz"
-    [ -f "$le_tar" ] || curl -fL -o "$le_tar" \
-        "https://github.com/libevent/libevent/releases/download/release-$LIBEVENT_VERSION/libevent-$LIBEVENT_VERSION.tar.gz"
+    "$root/tools/fetch-src.sh" libevent \
+        "https://github.com/libevent/libevent/releases/download/release-$LIBEVENT_VERSION/$le_tar" \
+        "$(awk -F'\t' '$1=="libevent"{print $4}' "$root/sources.lock")" \
+        "$WORK/src/$le_tar" >/dev/null
     local musl_tar="musl-$MUSL_VERSION.tar.gz"
-    [ -f "$musl_tar" ] || curl -fL -o "$musl_tar" \
-        "https://musl.libc.org/releases/musl-$MUSL_VERSION.tar.gz"
+    # MUSL_URL stays overridable (mirror); the lock sha256 pins the bytes, so
+    # a mirror must serve the identical tarball.
+    "$root/tools/fetch-src.sh" musl "$MUSL_URL" \
+        "$(awk -F'\t' '$1=="musl"{print $4}' "$root/sources.lock")" \
+        "$WORK/src/$musl_tar" >/dev/null
     local f
     for f in "$tmux_tar" "$le_tar" "$musl_tar"; do
         local dir="${f%.tar.gz}"

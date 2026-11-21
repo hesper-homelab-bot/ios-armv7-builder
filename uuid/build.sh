@@ -28,6 +28,8 @@ SDK="${IOS_SDK:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
 	echo "missing $E2SRC/misc/uuidgen.c -- fetch e2fsprogs-1.47.2.tar.xz from" >&2
 	echo "  https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.47.2/" >&2
 	echo "  then: mkdir -p src && tar -xf e2fsprogs-1.47.2.tar.xz -C src --strip-components=1" >&2
+	echo "  sources.lock row 'e2fsprogs' -- verify/fetch with:" >&2
+	echo "    $root/tools/fetch-src.sh --lock e2fsprogs" >&2
 	exit 1
 }
 [ -f "$SDK/usr/include/uuid/uuid.h" ] || { echo "missing SDK uuid/uuid.h under $SDK" >&2; exit 1; }

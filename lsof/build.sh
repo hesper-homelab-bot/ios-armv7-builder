@@ -38,10 +38,12 @@ SRC="${LSOF_SRC:-$HOME/ios-tool/lsof-src/lsof-$LSOF_VERSION}"
 if [ ! -d "$SRC" ]; then
     echo "==> fetching lsof $LSOF_VERSION"
     mkdir -p "$(dirname "$SRC")"
-    curl -L --fail -o /tmp/lsof.tar.gz \
-        "https://github.com/lsof-org/lsof/archive/refs/tags/$LSOF_VERSION.tar.gz"
-    tar xzf /tmp/lsof.tar.gz -C "$(dirname "$SRC")"
-    rm -f /tmp/lsof.tar.gz
+    # sources.lock: lsof 4.99.7 (codeload tarball; raw.githubusercontent is
+    # unreliable from this host -- same note as node/build.sh)
+    lsof_tar="$("$root/tools/fetch-src.sh" lsof \
+        "https://github.com/lsof-org/lsof/archive/refs/tags/$LSOF_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="lsof"{print $4}' "$root/sources.lock")")"
+    tar xzf "$lsof_tar" -C "$(dirname "$SRC")"
 fi
 [ -d "$SRC" ] || { echo "missing $SRC" >&2; exit 1; }
 cd "$SRC"

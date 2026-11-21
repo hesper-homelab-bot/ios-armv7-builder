@@ -36,7 +36,13 @@ root="$(cd "$here/.." && pwd)"
 P7ZIP_VERSION="${P7ZIP_VERSION:-17.05}"
 SRC="${P7ZIP_SRC:-$HOME/scratch/p7zip/p7zip-src}"
 
-[ -d "$SRC/CPP" ] || { echo "missing $SRC -- git clone --depth 1 --branch v$P7ZIP_VERSION https://github.com/p7zip-project/p7zip" >&2; exit 1; }
+[ -d "$SRC/CPP" ] || {
+    echo "missing $SRC -- git clone --depth 1 --branch v$P7ZIP_VERSION https://github.com/p7zip-project/p7zip" >&2
+    echo "  sources.lock row 'p7zip' pins the equivalent tag tarball" >&2
+    echo "  (github .../archive/refs/tags/v$P7ZIP_VERSION.tar.gz) -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock p7zip" >&2
+    exit 1
+}
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }

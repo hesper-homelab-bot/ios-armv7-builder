@@ -28,7 +28,12 @@ SRC="${TOR_SRC:-$HOME/scratch/tor/tor-$TOR_VERSION}"
 LE_PREFIX="${LE_PREFIX:-$HOME/ios-tool/build-ios/install}"
 OSSL_PREFIX="${OSSL_PREFIX:-$HOME/ios-tool/openssl-src/openssl-4.0.3}"
 
-[ -f "$SRC/configure" ] || { echo "missing $SRC -- download tor_${TOR_VERSION}.orig.tar.gz from Debian pool and extract" >&2; exit 1; }
+[ -f "$SRC/configure" ] || {
+    echo "missing $SRC -- download tor_${TOR_VERSION}.orig.tar.gz from Debian pool and extract" >&2
+    echo "  sources.lock row 'tor' -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock tor" >&2
+    exit 1
+}
 [ -f "$LE_PREFIX/lib/libevent.a" ] || { echo "missing libevent.a under $LE_PREFIX -- see tmux/build.sh build_libevent" >&2; exit 1; }
 [ -f "$OSSL_PREFIX/lib/libssl.a" ] || { echo "missing libssl.a under $OSSL_PREFIX" >&2; exit 1; }
 

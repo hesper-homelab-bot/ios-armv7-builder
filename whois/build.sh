@@ -21,7 +21,13 @@ here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 SRC="${WHOIS_SRC:-$HOME/scratch/whois/whois-src}"
 
-[ -f "$SRC/Makefile" ] || { echo "missing $SRC -- git clone --depth 1 https://github.com/rfc1036/whois.git" >&2; exit 1; }
+[ -f "$SRC/Makefile" ] || {
+    echo "missing $SRC -- git clone --depth 1 https://github.com/rfc1036/whois.git" >&2
+    echo "  sources.lock row 'whois' pins a master commit tarball instead" >&2
+    echo "  (upstream has no releases) -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock whois" >&2
+    exit 1
+}
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }

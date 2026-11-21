@@ -61,9 +61,11 @@ export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/l
 # ------------------------------------------------------------- source ----
 [ -d "$SRC" ] || {
     mkdir -p "$HOME/ios-tool/tcpdump-src"
-    curl -fL https://www.tcpdump.org/release/tcpdump-$TD_VERSION.tar.gz \
-        -o /tmp/tcpdump.tar.gz
-    tar -C "$HOME/ios-tool/tcpdump-src" -xzf /tmp/tcpdump.tar.gz
+    # sources.lock: tcpdump 4.99.5
+    td_tar="$("$root/tools/fetch-src.sh" tcpdump \
+        "https://www.tcpdump.org/release/tcpdump-$TD_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="tcpdump"{print $4}' "$root/sources.lock")")"
+    tar -C "$HOME/ios-tool/tcpdump-src" -xzf "$td_tar"
 }
 
 # tcpdump discovers its libpcap as ../libpcap-X.Y.Z (no --with-pcap option

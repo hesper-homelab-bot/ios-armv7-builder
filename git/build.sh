@@ -43,8 +43,12 @@ export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/l
 if [ ! -f "$ZLIB/libz.a" ]; then
     [ -d "$ZLIB" ] || {
         mkdir -p "$HOME/ios-tool/zlib-src"
-        curl -fL https://zlib.net/zlib-1.3.1.tar.gz -o /tmp/zlib.tar.gz
-        tar -C "$HOME/ios-tool/zlib-src" -xzf /tmp/zlib.tar.gz
+        # sources.lock: zlib 1.3.1 -- github tag archive, because zlib.net
+        # stopped serving 1.3.1 (404 there since the 1.4 release).
+        zlib_tar="$("$root/tools/fetch-src.sh" zlib \
+            "https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz" \
+            "$(awk -F'\t' '$1=="zlib"{print $4}' "$root/sources.lock")")"
+        tar -C "$HOME/ios-tool/zlib-src" -xzf "$zlib_tar"
     }
     ( cd "$ZLIB" \
       && CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
@@ -60,8 +64,11 @@ fi
 # ----------------------------------------------------------------- git ----
 if [ ! -d "$SRC" ]; then
     mkdir -p "$HOME/ios-tool/git-src"
-    curl -fL "https://github.com/git/git/archive/refs/tags/v$GIT_VERSION.tar.gz" -o /tmp/git.tar.gz
-    tar -C "$HOME/ios-tool/git-src" -xzf /tmp/git.tar.gz
+    # sources.lock: git 2.51.2
+    git_tar="$("$root/tools/fetch-src.sh" git \
+        "https://github.com/git/git/archive/refs/tags/v$GIT_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="git"{print $4}' "$root/sources.lock")")"
+    tar -C "$HOME/ios-tool/git-src" -xzf "$git_tar"
 fi
 [ -f "$CURL/lib/.libs/libcurl.a" ] || { echo "build curl first (curl/build.sh)" >&2; exit 1; }
 [ -f "$OSSL/libssl.a" ]           || { echo "build openssl first (openssl/build.sh)" >&2; exit 1; }

@@ -30,7 +30,13 @@ CD_SRC="${CLASS_DUMP_SRC:-$HOME/scratch/class-dump/class-dump-src}"
 SDK="${IOS_SDK:-$HOME/scratch/iPhoneOS10.3.sdk}"
 SDK_FW="$SDK/System/Library/Frameworks"
 
-[ -f "$CD_SRC/class-dump.m" ] || { echo "missing $CD_SRC -- git clone --depth 1 https://github.com/nygard/class-dump.git" >&2; exit 1; }
+[ -f "$CD_SRC/class-dump.m" ] || {
+    echo "missing $CD_SRC -- git clone --depth 1 https://github.com/nygard/class-dump.git" >&2
+    echo "  sources.lock row 'class-dump' pins a master commit tarball instead" >&2
+    echo "  (upstream has no releases) -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock class-dump" >&2
+    exit 1
+}
 [ -f "$SDK_FW/Foundation.framework/Headers/Foundation.h" ] || { echo "missing SDK Foundation headers under $SDK -- download iPhoneOS10.3.sdk.zip (xybp888/iOS-SDKs iOS-SDKs release)" >&2; exit 1; }
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"

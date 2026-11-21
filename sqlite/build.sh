@@ -48,12 +48,13 @@ export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/l
 if [ ! -f "$SRC/sqlite3.c" ]; then
     mkdir -p "$(dirname "$SRC")"
     echo "==> fetching sqlite-autoconf-$SQLITE_VERSION"
-    # sqlite.org is the canonical source and is reachable from this host;
-    # GitHub (which several mirrors live on) is not reachable from the
-    # *device* network and is not needed here.
-    curl -fL --max-time 300 "https://sqlite.org/2026/sqlite-autoconf-$SQLITE_VERSION.tar.gz" \
-        -o /tmp/sqlite-autoconf.tar.gz
-    tar -C "$(dirname "$SRC")" -xzf /tmp/sqlite-autoconf.tar.gz
+    # sources.lock: sqlite 3540100.  sqlite.org is the canonical source and is
+    # reachable from this host; GitHub (which several mirrors live on) is not
+    # reachable from the *device* network and is not needed here.
+    sqlite_tar="$("$root/tools/fetch-src.sh" sqlite \
+        "https://sqlite.org/2026/sqlite-autoconf-$SQLITE_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="sqlite"{print $4}' "$root/sources.lock")")"
+    tar -C "$(dirname "$SRC")" -xzf "$sqlite_tar"
 fi
 [ -f "$SRC/sqlite3.c" ] || { echo "missing amalgamation in $SRC" >&2; exit 1; }
 

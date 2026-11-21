@@ -34,7 +34,12 @@ SRC="${OSSH_SRC:-$HOME/ios-tool/openssh-src/openssh-$OSSH_VERSION}"
 OSSL="${OSSL:-$HOME/ios-tool/openssl-src/openssl-4.0.3}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
 
-[ -d "$SRC" ] || { echo "missing $SRC" >&2; exit 1; }
+[ -d "$SRC" ] || {
+    echo "missing $SRC" >&2
+    echo "  sources.lock row 'openssh' -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock openssh" >&2
+    exit 1
+}
 [ -f "$OSSL/libssl.a" ] || {
     echo "missing $OSSL/libssl.a -- build OpenSSL first (openssl/build.sh)" >&2
     exit 1

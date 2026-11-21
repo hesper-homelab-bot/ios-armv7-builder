@@ -54,6 +54,8 @@ GASPP="$HOME/ios-tool/gas-preprocessor"
 [ -f "$FFSRC/configure" ] || {
 	echo "missing $FFSRC/configure -- download ffmpeg-9.0.2.tar.xz from" >&2
 	echo "  https://www.ffmpeg.org/releases/ and extract to src9/" >&2
+	echo "  sources.lock row 'ffmpeg' -- verify/fetch with:" >&2
+	echo "    $root/tools/fetch-src.sh --lock ffmpeg" >&2
 	exit 1
 }
 [ -f "$SDK/usr/include/uuid/uuid.h" ] || { echo "missing SDK under $SDK" >&2; exit 1; }
@@ -63,6 +65,8 @@ GASPP="$HOME/ios-tool/gas-preprocessor"
 [ -f "$GASPP/gas-preprocessor.pl" ] || {
 	echo "missing gas-preprocessor.pl -- git clone --depth 1" >&2
 	echo "  https://github.com/FFmpeg/gas-preprocessor $GASPP" >&2
+	echo "  sources.lock row 'gas-preprocessor' -- verify/fetch with:" >&2
+	echo "    $root/tools/fetch-src.sh --lock gas-preprocessor" >&2
 	exit 1
 }
 command -v llvm-nm-21 >/dev/null || { echo "missing llvm-nm-21" >&2; exit 1; }

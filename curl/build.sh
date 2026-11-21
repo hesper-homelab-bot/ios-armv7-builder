@@ -28,7 +28,12 @@ SRC="$root/tmp/src/curl-$CURL_VERSION"
 OSSL="${OSSL:-$root/tmp/src/openssl-4.0.3}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
 
-[ -d "$SRC" ] || { echo "missing $SRC" >&2; exit 1; }
+[ -d "$SRC" ] || {
+    echo "missing $SRC" >&2
+    echo "  sources.lock row 'curl' -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock curl    (then extract to $root/tmp/src/)" >&2
+    exit 1
+}
 [ -f "$OSSL/libssl.a" ] || { echo "build OpenSSL first (openssl/build.sh)" >&2; exit 1; }
 # sysroot: the 2026-11-15 ruling makes the REAL Apple SDK the default for
 # ports.  curl 8.16.0 predated it and shipped with the musl-derived sysroot,

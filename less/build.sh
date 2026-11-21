@@ -27,7 +27,12 @@ LESS_VERSION="${LESS_VERSION:-668}"
 SRC="${LESS_SRC:-$HOME/scratch/less/less-$LESS_VERSION}"
 NCDYLIB="${NCDYLIB:-$HOME/ios-tool/device-libs/libncursesw.5.dylib}"
 
-[ -x "$SRC/configure" ] || [ -f "$SRC/configure.ac" ] || { echo "missing $SRC -- download https://www.greenwoodsoftware.com/less/less-$LESS_VERSION.tar.gz (or git clone --branch v$LESS_VERSION https://github.com/gwsw/less.git)" >&2; exit 1; }
+[ -x "$SRC/configure" ] || [ -f "$SRC/configure.ac" ] || {
+    echo "missing $SRC -- download https://www.greenwoodsoftware.com/less/less-$LESS_VERSION.tar.gz (or git clone --branch v$LESS_VERSION https://github.com/gwsw/less.git)" >&2
+    echo "  sources.lock row 'less' -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock less" >&2
+    exit 1
+}
 [ -s "$NCDYLIB" ] || { echo "missing $NCDYLIB -- cache the device dylib (see vim/build.sh ensure_ncurses_dylib)" >&2; exit 1; }
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"

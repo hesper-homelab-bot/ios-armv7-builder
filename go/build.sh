@@ -26,11 +26,14 @@ GO_VERSION="${GO_VERSION:-1.27.2}"
 GO_TAR="${GO_TAR:-$HOME/go-sdk/go$GO_VERSION.src.tar.gz}"
 BOOTSTRAP="${GOROOT_BOOTSTRAP:-$HOME/go-sdk/go1.27.2}"
 
-[ -f "$GO_TAR" ] || {
-    echo "downloading official go$GO_VERSION sources (aliyun mirror)"
-    curl -sL --max-time 300 -o "$GO_TAR" \
-        "https://mirrors.aliyun.com/golang/go$GO_VERSION.src.tar.gz"
-}
+# sources.lock: go 1.27.2 (aliyun mirror of the official golang.org source
+# tarball -- both serve the identical bytes; the mirror is what this host
+# reaches fastest).  $GO_TAR keeps its legacy path (hardlinked from the cache)
+# because other scripts reference it.
+"$root/tools/fetch-src.sh" go \
+    "https://mirrors.aliyun.com/golang/go$GO_VERSION.src.tar.gz" \
+    "$(awk -F'\t' '$1=="go"{print $4}' "$root/sources.lock")" \
+    "$GO_TAR" >/dev/null
 [ -x "$BOOTSTRAP/bin/go" ] || {
     echo "bootstrap toolchain not found at $BOOTSTRAP/bin/go" >&2
     exit 1

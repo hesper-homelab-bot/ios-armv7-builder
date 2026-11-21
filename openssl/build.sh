@@ -26,6 +26,8 @@ PREFIX="${PREFIX:-/var/mobile/openssl4}"    # isolated on purpose: never
                                             # overwrite the device's files
 [ -f "$SRC/Configure" ] || {
     echo "missing $SRC (extract openssl-$OSSL_VERSION.tar.gz there)" >&2
+    echo "  sources.lock row 'openssl' -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock openssl" >&2
     exit 1
 }
 

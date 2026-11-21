@@ -28,7 +28,12 @@ DB_VERSION="${DB_VERSION:-2026.94}"
 SRC="${DB_SRC:-$HOME/ios-tool/dropbear-src/dropbear-$DB_VERSION}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
 
-[ -d "$SRC" ] || { echo "missing $SRC" >&2; exit 1; }
+[ -d "$SRC" ] || {
+    echo "missing $SRC" >&2
+    echo "  sources.lock row 'dropbear' -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock dropbear" >&2
+    exit 1
+}
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }
 

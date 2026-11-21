@@ -42,6 +42,8 @@ PYTHON_PREFIX="${PYTHON_PREFIX:-/var/mobile/tools/python3}"
 [ -f "$PYSRC/configure" ] || {
 	echo "missing $PYSRC/configure -- fetch Python-3.14.10.tar.xz from" >&2
 	echo "  python.org/ftp/python/3.14.10/ and extract to src/" >&2
+	echo "  sources.lock row 'python3' -- verify/fetch with:" >&2
+	echo "    $root/tools/fetch-src.sh --lock python3" >&2
 	exit 1
 }
 [ -x "$BUILDPY" ] || { echo "missing host $BUILDPY (need 3.14 for build-python)" >&2; exit 1; }

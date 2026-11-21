@@ -45,12 +45,18 @@ JQROOT="$HOME/ios-tool/jq-src"
 # ------------------------------------------------------------- source ----
 [ -d "$JQROOT/onig-$ONIG_VERSION" ] || {
     mkdir -p "$JQROOT"
-    curl -fL "https://github.com/kkos/oniguruma/releases/download/v$ONIG_VERSION/onig-$ONIG_VERSION.tar.gz" -o /tmp/onig.tar.gz
-    tar -C "$JQROOT" -xzf /tmp/onig.tar.gz
+    # sources.lock: oniguruma 6.9.10
+    onig_tar="$("$root/tools/fetch-src.sh" oniguruma \
+        "https://github.com/kkos/oniguruma/releases/download/v$ONIG_VERSION/onig-$ONIG_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="oniguruma"{print $4}' "$root/sources.lock")")"
+    tar -C "$JQROOT" -xzf "$onig_tar"
 }
 [ -d "$JQROOT/jq-$JQ_VERSION" ] || {
-    curl -fL "https://github.com/jqlang/jq/releases/download/jq-$JQ_VERSION/jq-$JQ_VERSION.tar.gz" -o /tmp/jq.tar.gz
-    tar -C "$JQROOT" -xzf /tmp/jq.tar.gz
+    # sources.lock: jq 1.7.1
+    jq_tar="$("$root/tools/fetch-src.sh" jq \
+        "https://github.com/jqlang/jq/releases/download/jq-$JQ_VERSION/jq-$JQ_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="jq"{print $4}' "$root/sources.lock")")"
+    tar -C "$JQROOT" -xzf "$jq_tar"
 }
 
 # -------------------------------------------------------- oniguruma ----

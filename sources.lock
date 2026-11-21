@@ -1,0 +1,99 @@
+# sources.lock -- every upstream source this repo builds from, pinned by sha256.
+#
+# FORMAT (CI-enforced): pkg <TAB> version <TAB> url <TAB> sha256
+#   * one row per (package, version).  Packages consumed through another
+#     package's build keep their own row (zlib, openssl, curl ...) so the
+#     indirect sources are recorded too.
+#   * sha256 is the digest of the downloaded bytes, verified on every use by
+#     tools/fetch-src.sh: a cache hit with a matching digest never touches the
+#     network; a mismatch aborts the build instead of trusting the file.
+#   * Cached files live in SRC_CACHE (default tmp/src-cache, gitignored --
+#     never in /tmp, which is a small tmpfs on the build hosts):
+#         $SRC_CACHE/<pkg>/<basename-of-url>
+#   * Rolling branches with no releases (whois, class-dump, gas-preprocessor)
+#     are pinned to an exact commit archive URL + digest, never "latest".
+#     Every other row is version-pinned.
+#   * Lines starting with # are comments; consumers/notes live there.
+#
+# Updating: see docs/sources-lock.md (bump version -> recompute sha256 ->
+#   tools/fetch-src.sh --check).
+# static libz for git and nmap; git/build.sh builds it.  Original URL https://zlib.net/zlib-1.3.1.tar.gz is DEAD (404; zlib.net stopped serving 1.3.1 when 1.4 came out) -- github tag archive used instead.  Digest computed from the downloaded bytes 2026-11-21 and cross-checked by tools/fetch-src.sh --check; the cache entry is pending warm-up.
+zlib	1.3.1	https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz	17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c
+# git/build.sh (digest computed from the downloaded bytes 2026-11-21; re-verified by --check after warm-up)
+git	2.51.2	https://github.com/git/git/archive/refs/tags/v2.51.2.tar.gz	024e03605148682cf36fc7eade98405f4448e44532e1e65bd653c2ad2a59e0f7
+# pre-extracted tree at $root/tmp/src/curl-8.16.0 (curl/build.sh guard); upstream tarball pinned here for reproducibility
+curl	8.16.0	https://curl.se/download/curl-8.16.0.tar.gz	a21e20476e39eca5a4fc5cfb00acf84bbc1f5d8443ec3853ad14c26b3c85b970
+# static libssl/libcrypto for curl, wget, openssh, nmap, git, node, python3, tor; openssl/build.sh pre-extracts it.  sha256 from the official sidecar (github release .sha256 == www.openssl.org/source .sha256); tarball warm-up re-verifies it via --check when it lands.
+openssl	4.0.3	https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz	325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9
+# pre-extracted tree at $HOME/ios-tool/wget-src/wget-1.25.0 (wget/build.sh guard); also supplies ios-config.site used by several other builds
+wget	1.25.0	https://ftp.gnu.org/gnu/wget/wget-1.25.0.tar.gz	766e48423e79359ea31e41db9e5c289675947a7fcf2efdcedb726ac9d0da3784
+# pre-extracted tree at $HOME/ios-tool/openssh-src/openssh-10.6p2 (openssh/build.sh guard)
+openssh	10.6p2	https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-10.6p2.tar.gz	9ae44872090cf2f06b3cf9ff147e7f16f309671340763ed2f99248398ae29d5b
+# pre-extracted tree at $HOME/ios-tool/dropbear-src/dropbear-2026.94 (dropbear/build.sh guard)
+dropbear	2026.94	https://matt.ucc.asn.au/dropbear/releases/dropbear-2026.94.tar.bz2	e098034a843699200c8c977a991fff73159735bf795d5f72ef672c41a6b1ae81
+# tcpdump/build.sh
+tcpdump	4.99.5	https://www.tcpdump.org/release/tcpdump-4.99.5.tar.gz	8c75856e00addeeadf70dad67c9ff3dd368536b2b8563abf6854d7c764cd3adb
+# libpcap/build.sh (tcpdump's dependency)
+libpcap	1.10.5	https://www.tcpdump.org/release/libpcap-1.10.5.tar.gz	37ced90a19a302a7f32e458224a00c365c117905c2cd35ac544b6880a81488f0
+# lsof/build.sh
+lsof	4.99.7	https://github.com/lsof-org/lsof/archive/refs/tags/4.99.7.tar.gz	bac1b0acbc50aede42fc97dffaa0b0475e97973e36a6351de5f349c6155afc68
+# node/build.sh -- ~102 MB, the largest payload.  sha256 from nodejs.org's official SHASUMS256.txt (authoritative for this URL; the tarball warm-up is slow on this host's ~20 KB/s exit and is re-verified by tools/fetch-src.sh --check once it lands).
+node	22.23.4	https://nodejs.org/dist/v22.23.4/node-v22.23.4.tar.gz	4dd79de8cdc85d65cb32f48a75aee1067bf00bf94b96ecc8e4c2f82f6f0272c2
+# sqlite/build.sh
+sqlite	3540100	https://sqlite.org/2026/sqlite-autoconf-3540100.tar.gz	926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e
+# nginx/build.sh
+nginx	1.26.3	https://nginx.org/download/nginx-1.26.3.tar.gz	69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa
+# nmap/build.sh; the tarball is ALSO hardlinked to $HOME/ios-tool/nmap-src/nmap.tar.bz2 because nginx/build.sh seeds its private pcre2 tree from that legacy path
+nmap	7.95	https://nmap.org/dist/nmap-7.95.tar.bz2	e14ab530e47b5afd88f1c8a2bac7f89cd8fe6b478e22d255c5b9bddb7a1c5778
+# tmux/build.sh resolves "latest" through the GitHub releases API at build time; this row pins the 3.8 tarball it resolved to on 2026-11-21.  Overriding TMUX_VERSION without updating this row fails the sha256 check by design.
+tmux	3.8	https://github.com/tmux/tmux/releases/download/3.8/tmux-3.8.tar.gz	e79c699c7e949dccd0a4a125e17b8d1261e311b16979dbc8eb34542f3966d82e
+# tmux/build.sh (and tor/build.sh reuses the resulting libevent.a)
+libevent	2.1.12-stable	https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz	92e6de1be9ec176428fd2367677e61ceffc2ee1cb119035037a27d346b0403bb
+# tmux/build.sh sysroot headers; MUSL_URL override allowed -- a mirror must serve identical bytes
+musl	1.2.5	https://musl.libc.org/releases/musl-1.2.5.tar.gz	a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4
+# vim/build.sh (git tag archive: no release tarball exists for patchlevels)
+vim	9.1.0000	https://github.com/vim/vim/archive/refs/tags/v9.1.0000.tar.gz	8d2a74e358be9cf260174e15e2e29dba4773f2670718b5bf728db6f54b90e25d
+# mosh/build.sh
+mosh	1.4.0	https://github.com/mobile-shell/mosh/releases/download/mosh-1.4.0/mosh-1.4.0.tar.gz	872e4b134e5df29c8933dff12350785054d2fd2839b5ae6b5587b14db1465ddd
+# mosh/build.sh
+protobuf	3.20.3	https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protobuf-cpp-3.20.3.tar.gz	e51cc8fc496f893e2a48beb417730ab6cbcb251142ad8b2cd1951faa5c76fe3d
+# jq/build.sh
+jq	1.7.1	https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-1.7.1.tar.gz	478c9ca129fd2e3443fe27314b455e211e0d8c60bc8ff7df703873deeee580c2
+# jq/build.sh dependency
+oniguruma	6.9.10	https://github.com/kkos/oniguruma/releases/download/v6.9.10/onig-6.9.10.tar.gz	2a5cfc5ae259e4e97f86b68dfffc152cdaffe94e2060b770cb827238d769fc05
+# go/build.sh (aliyun mirror; canonical golang.org serves identical bytes -- sha256 taken from dl.google.com/go/go1.27.2.src.tar.gz.sha256 and re-verified against the mirrored bytes by --check when the warm-up finishes).  A prebuilt bootstrap toolchain ($HOME/go-sdk) is a separate manual host install.
+go	1.27.2	https://mirrors.aliyun.com/golang/go1.27.2.src.tar.gz	03495da2ba64894d40f5c4992e49454fa78b50690604ff92b6afff5081b76e62
+# pre-extracted tree at $HOME/scratch/less/less-668 (less/build.sh guard)
+less	668	https://www.greenwoodsoftware.com/less/less-668.tar.gz	2819f55564d86d542abbecafd82ff61e819a3eec967faa36cd3e68f1596a44b8
+# pre-extracted tree at $HOME/scratch/make/make-4.4.1 (make/build.sh guard)
+make	4.4.1	https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz	dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3
+# rsync/build.sh clones the git repo; this row pins the equivalent v3.3.0 tag tarball
+rsync	3.3.0	https://github.com/WayneD/rsync/archive/refs/tags/v3.3.0.tar.gz	bbc07ef74ac9e9b1506f7029c3a3630dd24cf270ee5256e96553bbd1cfd21610
+# p7zip/build.sh clones the git repo; this row pins the equivalent v17.05 tag tarball
+p7zip	17.05	https://github.com/p7zip-project/p7zip/archive/refs/tags/v17.05.tar.gz	d2788f892571058c08d27095c22154579dfefb807ebe357d145ab2ddddefb1a6
+# whois/build.sh clones master (no releases); row pins the master commit of 2026-11-21
+whois	master@1024386	https://github.com/rfc1036/whois/archive/1024386831c8ee4e0ae24026fa932771bf369fe9.tar.gz	ce99168883659a2b3f5e96105678e2142ff9170378f669f6b193c7475f71a890
+# class-dump/build.sh clones master (no releases); row pins the master commit of 2026-11-21
+class-dump	master@2c82b4f	https://github.com/nygard/class-dump/archive/2c82b4ff12b2ea5d1ac23e49281d496997370841.tar.gz	1a5ce4d9de3065422b1158ce27b3fdff91ac86d7d62522a9098f8867e82cce00
+# ffmpeg/build.sh clones it (git clone --depth 1); row pins the master commit of 2026-11-21
+gas-preprocessor	master@ac18363	https://github.com/FFmpeg/gas-preprocessor/archive/ac1836309c2e77023c228b7184485597286289d3.tar.gz	28d8277b7b77eed93927243939be10c21cbf135bc41bc4813f34816508ba85be
+# pre-extracted tree at $HOME/scratch/ffmpeg/src9 (ffmpeg/build.sh guard)
+ffmpeg	9.0.2	https://www.ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz	8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
+# pre-extracted tree at $HOME/scratch/python3/src (python3/build.sh guard)
+python3	3.14.10	https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz	de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032
+# pre-extracted tree at $HOME/scratch/tor/tor-0.4.8.14; Debian pool orig tarball (upstream dist.torproject.org was tried first -- see tor/build.sh notes)
+tor	0.4.8.14	https://deb.debian.org/debian/pool/main/t/tor/tor_0.4.8.14.orig.tar.gz	5047e1ded12d9aac4eb858f7634a627714dd58ce99053d517691a4b304a66d10
+# uuid/build.sh dependency (libuuid pieces)
+e2fsprogs	1.47.2	https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.47.2/e2fsprogs-1.47.2.tar.xz	08242e64ca0e8194d9c1caad49762b19209a06318199b63ce74ae4ef2d74e63c
+
+# ------------------------------------------------------------------ out of scope
+# * Vendored in-repo trees (git-tracked, no download): iperf3/src, socat/src,
+#   ncdu/src, patch/src, traceroute/*.c, ping/*.c, tweak/*.
+# * The iOS SDK itself (iPhoneOS10.3.sdk.zip, xybp888/iOS-SDKs release) is a
+#   ~GB-scale manual download referenced by class-dump/build.sh; too large to
+#   mirror in the cache.  Download once, keep it outside the repo.
+# * tailscale/ and tailcat/ pull Go modules through GOPROXY=goproxy.cn at
+#   build time; module zips are not pinnable through this lock (that would
+#   need go.sum verification per build -- TODO if needed).
+# * go/build.sh also needs a prebuilt bootstrap toolchain ($HOME/go-sdk/...),
+#   a manual host install, not an upstream source of any package.

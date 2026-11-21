@@ -96,19 +96,23 @@ MOSHSRC="${MOSH_SRC:-$HOME/ios-tool/mosh-src/mosh-$MOSH_VERSION}"
 # ------------------------------------------------------------- source ----
 [ -d "$PBROOT" ] || {
     mkdir -p "$HOME/ios-tool/protobuf-src"
-    curl -fsL "https://github.com/protocolbuffers/protobuf/releases/download/v$PB_VERSION/protobuf-cpp-$PB_VERSION.tar.gz" -o /tmp/pb.tar.gz
-    tar -C "$HOME/ios-tool/protobuf-src" -xzf /tmp/pb.tar.gz
+    # sources.lock: protobuf 3.20.3
+    pb_tar="$("$root/tools/fetch-src.sh" protobuf \
+        "https://github.com/protocolbuffers/protobuf/releases/download/v$PB_VERSION/protobuf-cpp-$PB_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="protobuf"{print $4}' "$root/sources.lock")")"
+    tar -C "$HOME/ios-tool/protobuf-src" -xzf "$pb_tar"
     mv "$HOME/ios-tool/protobuf-src/protobuf-$PB_VERSION" "$PBROOT" 2>/dev/null || true
 }
 [ -d "$MOSHSRC" ] || {
     mkdir -p "$HOME/ios-tool/mosh-src"
-    # The release tag carries a "mosh-" prefix, NOT "v": the correct URL is
-    #   .../releases/download/mosh-1.4.0/mosh-1.4.0.tar.gz
-    # Using .../v1.4.0/... returns HTTP 404, which curl -f turns into exit 22
-    # (the "exit=22" seen on a re-run after the source tree was removed).
-    curl -fsL --retry 3 --retry-delay 2 --connect-timeout 20 \
-        "https://github.com/mobile-shell/mosh/releases/download/mosh-$MOSH_VERSION/mosh-$MOSH_VERSION.tar.gz" -o /tmp/mosh.tar.gz
-    tar -C "$HOME/ios-tool/mosh-src" -xzf /tmp/mosh.tar.gz
+    # sources.lock: mosh 1.4.0.  The release tag carries a "mosh-" prefix, NOT
+    # "v": the correct URL is .../releases/download/mosh-1.4.0/mosh-1.4.0.tar.gz
+    # (using .../v1.4.0/... returns HTTP 404, which curl -f turns into exit 22
+    # -- the "exit=22" seen on a re-run after the source tree was removed).
+    mosh_tar="$("$root/tools/fetch-src.sh" mosh \
+        "https://github.com/mobile-shell/mosh/releases/download/mosh-$MOSH_VERSION/mosh-$MOSH_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="mosh"{print $4}' "$root/sources.lock")")"
+    tar -C "$HOME/ios-tool/mosh-src" -xzf "$mosh_tar"
 }
 
 # --------------------------------------------------- host protoc ---------

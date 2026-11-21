@@ -158,10 +158,11 @@ CC_WRAPPER="$root/tools/cc-wrapper.sh"
 if [ ! -d "$SRC" ]; then
     echo "==> fetching node v$NODE_VERSION"
     mkdir -p "$(dirname "$SRC")"
-    curl -L --fail -o /tmp/node.tar.gz \
-        "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION.tar.gz"
-    tar xzf /tmp/node.tar.gz -C "$(dirname "$SRC")"
-    rm -f /tmp/node.tar.gz
+    # sources.lock: node 22.23.4 (~110 MB -- cached in SRC_CACHE, never /tmp)
+    node_tar="$("$root/tools/fetch-src.sh" node \
+        "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="node"{print $4}' "$root/sources.lock")")"
+    tar xzf "$node_tar" -C "$(dirname "$SRC")"
 fi
 [ -f "$SRC/configure.py" ] || { echo "unexpected source layout in $SRC" >&2; exit 1; }
 cd "$SRC"

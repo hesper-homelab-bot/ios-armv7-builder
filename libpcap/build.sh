@@ -48,17 +48,24 @@ export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/l
 # ------------------------------------------------------------- source ----
 [ -d "$SRC" ] || {
     mkdir -p "$HOME/ios-tool/libpcap-src"
-    curl -fL https://www.tcpdump.org/release/libpcap-$PCAP_VERSION.tar.gz \
-        -o /tmp/libpcap.tar.gz
-    tar -C "$HOME/ios-tool/libpcap-src" -xzf /tmp/libpcap.tar.gz
+    # sources.lock: libpcap 1.10.5
+    pcap_tar="$("$root/tools/fetch-src.sh" libpcap \
+        "https://www.tcpdump.org/release/libpcap-$PCAP_VERSION.tar.gz" \
+        "$(awk -F'\t' '$1=="libpcap"{print $4}' "$root/sources.lock")")"
+    tar -C "$HOME/ios-tool/libpcap-src" -xzf "$pcap_tar"
 }
 
 # -------------------------------------------------- sysroot net/bpf.h ----
 SYSINC="$root/tmp/sysroot/usr/include"
 if [ ! -f "$SYSINC/net/bpf.h" ]; then
     mkdir -p "$SYSINC/net" "$SYSINC/sys/_types"
-    gh api repos/apple-oss-distributions/xnu/contents/bsd/net/bpf.h?ref=xnu-3789.70.16 \
-        --jq .content | base64 -d > "$SYSINC/net/bpf.h"
+    # sources.lock: xnu-bpf.h xnu-3789.70.16 (raw.githubusercontent; the old
+    # `gh api ... --jq .content | base64 -d` fetched the identical blob --
+    # both spellings verified sha256-equal on 2026-11-21)
+    bpf_h="$("$root/tools/fetch-src.sh" xnu-bpf.h \
+        "https://raw.githubusercontent.com/apple-oss-distributions/xnu/xnu-3789.70.16/bsd/net/bpf.h" \
+        "$(awk -F'\t' '$1=="xnu-bpf.h"{print $4}' "$root/sources.lock")")"
+    cp "$bpf_h" "$SYSINC/net/bpf.h"
     printf '/* userland stub: Apple compatibility macro shim */\n#ifndef _SYS_APPEAR_APIOPTS_H\n#define _SYS_APPEAR_APIOPTS_H\n#endif\n' \
         > "$SYSINC/sys/appleapiopts.h"
     cat > "$SYSINC/sys/_types/_timeval32.h" <<'EOF'

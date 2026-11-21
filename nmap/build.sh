@@ -96,8 +96,15 @@ export LD_LIBRARY_PATH="$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/l
 # ------------------------------------------------------------- source ----
 [ -d "$SRC" ] || {
     mkdir -p "$HOME/ios-tool/nmap-src"
-    curl -fsSL --http1.1 https://nmap.org/dist/nmap-$NMAP_VERSION.tar.bz2 -o /tmp/nmap.tar.bz2
-    tar -C "$HOME/ios-tool/nmap-src" -xjf /tmp/nmap.tar.bz2
+    # sources.lock: nmap 7.95.  The tarball is ALSO materialised at the legacy
+    # path $HOME/ios-tool/nmap-src/nmap.tar.bz2 (4th argument = dest, hardlinked
+    # from the cache) because nginx/build.sh seeds its private pcre2 tree from
+    # exactly that path.
+    nmap_tar="$("$root/tools/fetch-src.sh" nmap \
+        "https://nmap.org/dist/nmap-$NMAP_VERSION.tar.bz2" \
+        "$(awk -F'\t' '$1=="nmap"{print $4}' "$root/sources.lock")" \
+        "$HOME/ios-tool/nmap-src/nmap.tar.bz2")"
+    tar -C "$HOME/ios-tool/nmap-src" -xjf "$nmap_tar"
 }
 cd "$SRC"
 

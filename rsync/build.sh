@@ -21,7 +21,13 @@ root="$(cd "$here/.." && pwd)"
 RSYNC_VERSION="${RSYNC_VERSION:-3.3.0}"
 SRC="${RSYNC_SRC:-$HOME/scratch/rsync/rsync-src}"
 
-[ -x "$SRC/configure" ] || { echo "missing $SRC -- git clone --depth 1 --branch v$RSYNC_VERSION https://github.com/WayneD/rsync.git" >&2; exit 1; }
+[ -x "$SRC/configure" ] || {
+    echo "missing $SRC -- git clone --depth 1 --branch v$RSYNC_VERSION https://github.com/WayneD/rsync.git" >&2
+    echo "  sources.lock row 'rsync' pins the equivalent tag tarball" >&2
+    echo "  (github .../archive/refs/tags/v$RSYNC_VERSION.tar.gz) -- verify/fetch with:" >&2
+    echo "    $root/tools/fetch-src.sh --lock rsync" >&2
+    exit 1
+}
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }
