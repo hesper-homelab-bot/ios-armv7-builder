@@ -19,15 +19,18 @@ set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
-SRC="${WHOIS_SRC:-$HOME/scratch/whois/whois-src}"
-
+# Pinned upstream master-commit tarball (whois has no releases; the lock row
+# carries the 2026-11-21 commit and its real sha256 -- "no release" does not
+# mean "unpinnable").  Fetched through the standard verified path instead of
+# the old manual git clone into ~/scratch.
+SRC="${WHOIS_SRC:-$root/tmp/src/whois-1024386831c8ee4e0ae24026fa932771bf369fe9}"
 [ -f "$SRC/Makefile" ] || {
-    echo "missing $SRC -- git clone --depth 1 https://github.com/rfc1036/whois.git" >&2
-    echo "  sources.lock row 'whois' pins a master commit tarball instead" >&2
-    echo "  (upstream has no releases) -- verify/fetch with:" >&2
-    echo "    $root/tools/fetch-src.sh --lock whois" >&2
-    exit 1
+    read -r U SHA _ <<<"$("$root/tools/fetch-src.sh" --lock whois)"
+    tarball="$("$root/tools/fetch-src.sh" whois "$U" "$SHA")"
+    rm -rf "$SRC"
+    tar -C "$root/tmp/src" -xzf "$tarball"
 }
+[ -f "$SRC/Makefile" ] || { echo "whois source layout unexpected" >&2; exit 1; }
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }
