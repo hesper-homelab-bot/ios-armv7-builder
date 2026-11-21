@@ -51,7 +51,7 @@ sed -i 's/-arch armv7 //' Configurations/15-ios.conf
 
 CC="$here/../tools/cc-wrapper.sh" \
 AR="$here/../tools/darwin-ar" RANLIB="$here/../tools/darwin-ranlib" \
-./Configure ios-cross no-shared no-tests no-docs \
+./Configure ios-cross no-asm no-shared no-tests no-docs \
     --prefix="$PREFIX" --openssldir="$PREFIX/etc/ssl" \
     > /dev/null
 make -j"$(nproc)" > /dev/null
