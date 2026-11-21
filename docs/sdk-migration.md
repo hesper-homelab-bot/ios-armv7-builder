@@ -32,6 +32,19 @@
 | lsof | ⏳ 未探 | libproc 路线 |
 | class-dump | ⏳ 未探 | Foundation/CoreFoundation tbd |
 
+## curl 依赖链的 CI 专项(2026-11-21 深夜)
+
+- **nghttp2 autotools → cmake**:本机过、CI 的 conftest 探测必死且
+  config.log 拒绝展示原因(三轮 dump 无果)→ 换 brotli 同款 cmake 交叉
+  (要点:`BUILD_STATIC_LIBS=ON` 必须显式——其 ALIAS 假设 static 目标
+  存在,只给 BUILD_SHARED_LIBS=OFF 会让 ALIAS 悬空报错)。
+- **openssl 的 atomic_compat 撤销**:dlsym 实测设备 libSystem **有**全套
+  __atomic_* runtime helper(当年"设备缺"的结论错了);compat 的
+  alias 桩(.word 长跳)也被现代 ld64 的 PIE text-relocation 拒绝。
+  compat 文件保留作墙记录,链接不再引用。
+- **教训强化**:本机"过"≠CI"过"——本机留存树的旧对象会让增量构建
+  跳过重编(假绿);每包过墙必须以 CI 干净 runner 的真全量为准。
+
 ## CI 侧(full-build.yml)
 
 - 单 job(bootstrap→canaries→audit);env 含 SDK 契约
