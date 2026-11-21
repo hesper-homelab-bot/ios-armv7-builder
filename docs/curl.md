@@ -111,3 +111,39 @@ postinst 重签,天然免疫——实测对照)。本次 3 次 Killed:9 假信�
 **根因自查方法论**:分段计时(curl -w)→ tcpdump lo0 看内核视角哪个包
 迟到 → 服务端加时间戳分清 send/recv 侧 → 选项空间探针(python3 逐号
 setsockopt)→ 开关实验(--no-keepalive 一发命中)。
+
+## 7. 8.16.0-6:HTTP/2 + 压缩三件套(2026-11-21,第二位审稿人建议)
+
+原构建 `--without-zlib --without-brotli --without-zstd --without-nghttp2`
+(README 也写明"HTTP/2 is not enabled")。本次四个依赖全部交叉构建并接入:
+
+| 库 | 版本 | 构建方式 | lock 行 |
+|---|---|---|---|
+| zlib | 1.3.1 | 复用 git/build.sh 的交叉产物(同钉同源,零新增源) | `zlib` |
+| nghttp2 | 1.71.0 | autotools `--enable-lib-only`(纯 C),cc-wrapper + darwin-ar | `nghttp2` |
+| brotli | 1.2.1 | cmake 交叉(`-DCMAKE_SYSTEM_NAME=Darwin`) | `brotli` |
+| zstd | 1.5.7 | 纯 make(`lib/Makefile` 识 CC/AR),GNU 归档需 §2 重打包 | `zstd` |
+
+**踩到的坑**(两个都值得记):
+
+1. **cc-wrapper 丢弃 `-lz`**:丢弃列表是 `--without-zlib` 时代的防误传设计,
+   但 curl 真用 zlib 后,`-lz` 被丢 = 静态库与动态依赖都不进链接行。
+   更险的是 check-undefined **没拦住**:tbd 白名单里的 `sdk-libz*.tbd`
+   (设备确实有 libz.dylib)把 `_zlibVersion` 判为"可解析"——但二进制
+   既没静态链也没 LC_LOAD_DYLIB,dyld flat namespace 找不到,设备上
+   lazy binding 即死。**-3 就是这么上到设备的**(验二进制 dyld 错误 +
+   llvm-nm -u 直接见 _zlibVersion)。修复 = 丢弃列表移除 `-lz`
+   (zlib 按普通 -l 走 -L 静态解析);门禁教训:**tbd 白名单证明的是
+   "符号设备可给",不证明 "二进制链接了给它的库"**——后者要靠链接行
+   本身正确,wrapper 丢弃列表是隐形第三层。
+2. **cmake/新 shell 的 env 断层**:cmake 的 try-compile 起独立进程,
+   IOS_SYSROOT/IOS_LD64/IOS_STUBDIR 必须显式 export(cc-wrapper fail-fast
+   是故意的,但调用方 forgetting 的形态又多了一种)。
+
+**设备验收**(全部真验证):
+- `curl -V`:libcurl/8.16.0 OpenSSL/4.0.3 zlib/1.3.1 + HTTP2 + brotli + zstd features
+- apple.com `--http2` → **HTTP/2 200**(TLS ALPN h2)
+- cloudflare `--http2` → HTTP/2 103(Early Hints)+ 200
+- `Accept-Encoding: br, zstd, gzip` → **content-encoding: br** 且
+  `--compressed` 解出完整 HTML
+- check-undefined 207/207;llvm-nm -u 无 zlib/nghttp2/brotli/zstd 残留

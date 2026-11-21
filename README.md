@@ -216,7 +216,7 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 |---|---|
 | tmux 3.8 | sessions, panes, detach/reattach, `list-windows` |
 | OpenSSL 4.0.3 | `version`, `rand -hex`, `dgst -sha256`, AES-256-CBC round-trip, `speed` ≈36 MB/s AES / ≈37 MB/s SHA-256 (pure C, no asm) |
-| curl 8.16.0 | `https://` to github.com / curl.se / cloudflare.com / apple.com / baidu.com — all HTTP 200, TLS 1.2 handshake ≈6 s, redirects and POST verified |
+| curl 8.16.0-6 | HTTPS everywhere (200s), redirects and POST verified; **8.16.0-6 adds HTTP/2** (`HTTP/2 200` from apple.com, early-hints 103 from cloudflare) **and the gzip/br/zstd transfer encodings** (`content-encoding: br` decoded live, `--compressed` roundtrip); `curl -V` reports libcurl/8.16.0 OpenSSL/4.0.3 zlib/1.3.1 nghttp2/1.71.0 + brotli + zstd features |
 | OpenSSH 10.6p2 | runs as a LaunchDaemon with publickey auth, `scp` up **and** down, and `sftp` `get`/`put`/`ls` all working. Banner `SSH-2.0-OpenSSH_10.6` vs the system's `6.7` |
 | lsof 4.99.7 | `lsof -p $$`, full enumeration (every PID, correct paths/users/pipes), `lsof -nP -i` with TCP states, `-i :port`; other users' processes with `sudo`. Replaces the 4.78 that fails with "Cannot allocate memory" on every PID |
 | Node.js 22.23.4 | `node --version` → v22.23.4; `-e` JS execution; HTTP roundtrip server; curl ↔ node interop; outbound HTTP/HTTPS/DNS; ESM imports; SHA-256 known-answer vectors; `pbkdf2` on the threadpool; `os.cpus()` = P101AP × 2. JIT is impossible on this device (W^X), so the wrapper forces `--jitless` |
@@ -256,8 +256,12 @@ Which links actually exist on the author's iPad, and how to undo them, is in
 | ca-certificates4 20261121 | the full verification matrix in docs/ca-certificates.md: curl/python3/node/git all TLS-verify through the managed bundle (200 with `ssl_verify_result=0`), a deliberately bogus bundle correctly FAILS the handshake, and `update-ca-certificates` refreshes 118→118 live on the device |
 
 TLS 1.3 is compiled in but every public test host refused it from this
-device; the OpenSSL build reports the whole 1.3 suite. HTTP/2 is not
-enabled (no nghttp2). `--disable-threaded-resolver` is used because
+device; the OpenSSL build reports the whole 1.3 suite. Since 8.16.0-6 the
+build enables HTTP/2 (nghttp2 1.71.0) and the gzip/br/zstd transfer
+encodings (zlib 1.3.1, brotli 1.2.1, zstd 1.5.7) — all cross-built from
+sources.lock-pinned sources; device-verified with a live `HTTP/2 200` and
+`content-encoding: br` response (docs/curl.md §7).
+`--disable-threaded-resolver` is used because
 `pthread_cleanup_push`/`pop` are macro machinery on Darwin.
 
 OpenSSH's `sftp` directory listings were broken by a wrong `struct dirent`
