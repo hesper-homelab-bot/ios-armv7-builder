@@ -37,7 +37,13 @@ PREFIX="${PREFIX:-/var/mobile/tools}"
     rm -rf "$SRC"
     tar -C "$root/tmp/src" -xzf "$tarball"
 }
-[ -f "$OSSL/libssl.a" ] || { echo "build OpenSSL first (openssl/build.sh)" >&2; exit 1; }
+# Self-contained dependency: the matrix builds packages on independent
+# runners in no particular order, so curl brings its own OpenSSL.
+[ -f "$OSSL/libssl.a" ] || {
+    echo "==> building OpenSSL first (curl's static dependency)"
+    (cd "$root/openssl" && ./build.sh)
+}
+[ -f "$OSSL/libssl.a" ] || { echo "OpenSSL build did not produce $OSSL/libssl.a" >&2; exit 1; }
 # sysroot: the 2026-11-15 ruling makes the REAL Apple SDK the default for
 # ports.  curl 8.16.0 predated it and shipped with the musl-derived sysroot,
 # whose Linux TCP option numbers made the default keepalive setup set

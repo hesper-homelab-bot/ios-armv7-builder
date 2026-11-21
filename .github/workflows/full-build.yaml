@@ -1,0 +1,84 @@
+name: full-build (manual)
+# Full pipeline, matrix-shaped: bootstrap once, then every package builds on
+# its own runner via the reusable build.yaml (failure isolation, parallelism,
+# and per-package retriage).  After the matrix, one collector job downloads
+# every artifact, runs the audit gate, and (once the package list is
+# complete) republishes the signed APT repo to gh-pages.
+#
+# Adding a package to CI = adding its name to the matrix below, once its
+# build.sh is self-contained (fetches its own pinned sources, builds its own
+# cross deps -- see docs/sdk-migration.md for the per-package walls).
+#
+# Requires repository secrets:
+#   GPG_PRIVATE_KEY  -- armored secret key of the repo signing key
+#                       (fingerprint 2A324C4577AB01949BEA46BC8A6DFC60F7F9E596)
+#   GPG_PASSPHRASE   -- empty string (the key is unattended)
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      IOS_SYSROOT: /opt/ios-tool/iPhoneOS10.3.sdk
+      IOS_LD64: /opt/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
+      IOS_STUBDIR: /opt/ios-tool
+      LD_LIBRARY_PATH: /opt/ios-tool/x-libdispatch/lib:/opt/ios-tool/x-tapi/lib
+      PATH: /opt/ios-tool/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - name: bootstrap the cross toolchain
+        run: tools/bootstrap-toolchain.sh --prefix=/opt/ios-tool
+      - name: smoke -- hello.c to armv7 Mach-O, ad-hoc signed
+        run: tools/bootstrap-toolchain.sh --stage=5 --prefix=/opt/ios-tool --force
+
+  packages:
+    needs: smoke
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [whois, rsync, make, jq, sqlite, p7zip, openssl, curl]
+    uses: ./.github/workflows/build.yaml
+    with:
+      package: ${{ matrix.package }}
+    secrets: inherit
+
+  audit-and-publish:
+    needs: packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: collect every package's products
+        uses: actions/download-artifact@v4
+        with:
+          path: collected
+          merge-multiple: true
+      - name: gather into out/
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          find collected -type f \( -name '*.deb' -o -name '*-armv7' \) -exec cp {} out/ \; 2>/dev/null || true
+          ls out/ | head -20
+      - name: import the repo signing key
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      - name: audit gate over the collected products
+        run: |
+          set -euo pipefail
+          for b in out/*-armv7; do
+            [ -f "$b" ] || continue
+            tools/check-undefined.sh "$b"
+          done
+      - name: regenerate, sign, publish
+        # DANGER while the matrix list is shorter than the real package set:
+        # make-repo would publish a partial repo over the live gh-pages.
+        # Enable in the same commit that completes the matrix.
+        if: false
+        run: |
+          set -euo pipefail
+          scripts/make-repo.sh
+          scripts/publish-gh-pages.sh

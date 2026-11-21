@@ -1,0 +1,76 @@
+name: build (reusable)
+# Reusable per-package build workflow.  Callers:
+#   * full-build.yaml      -- strategy: matrix over the package list
+#   * single-build.yaml    -- workflow_dispatch with a package name
+#
+# Self-contained: every job bootstraps the toolchain into /opt/ios-tool
+# (idempotent, ~6 min on a fresh runner).  A shared-toolchain artifact would
+# save that but couples the workflows; simple-correct first.
+#
+# The build recipe is the repo's own convention:
+#   <pkg>/build.sh     -> out/<artifact>-armv7       (must pass check-undefined)
+#   <pkg>/make-deb.sh  -> out/<pkg>_<ver>_iphoneos-arm.deb  (when present)
+#
+# Inputs:
+#   package  -- the repo directory name (whois, rsync, curl, ...)
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: Package (repo directory) to build
+        required: true
+        type: string
+
+jobs:
+  build-one:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      IOS_SYSROOT: /opt/ios-tool/iPhoneOS10.3.sdk
+      IOS_LD64: /opt/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
+      IOS_STUBDIR: /opt/ios-tool
+      LD_LIBRARY_PATH: /opt/ios-tool/x-libdispatch/lib:/opt/ios-tool/x-tapi/lib
+      PATH: /opt/ios-tool/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - name: bootstrap the cross toolchain
+        run: tools/bootstrap-toolchain.sh --prefix=/opt/ios-tool
+      - name: smoke -- hello.c to armv7 Mach-O, ad-hoc signed
+        run: tools/bootstrap-toolchain.sh --stage=5 --prefix=/opt/ios-tool --force
+
+      - name: build ${{ inputs.package }}
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/src   # git checkout carries no tmp/ (gitignored)
+          if [ ! -f "${{ inputs.package }}/build.sh" ]; then
+            echo "unknown package: ${{ inputs.package }} (no build.sh)" >&2
+            exit 2
+          fi
+          (cd "${{ inputs.package }}" && ./build.sh)
+
+      - name: gate -- check-undefined
+        run: |
+          set -euo pipefail
+          bin=$(ls -t out/*-armv7 2>/dev/null | grep -i "^out/${{ inputs.package }}" | head -1 || true)
+          # fall back to a looser match for packages whose artifact carries the
+          # upstream name (openssl-4.0.3-armv7 etc.)
+          [ -n "$bin" ] || bin=$(ls -t out/*-armv7 2>/dev/null | head -1)
+          [ -n "$bin" ] && tools/check-undefined.sh "$bin"
+
+      - name: package -- make-deb.sh (when the package ships one)
+        run: |
+          set -euo pipefail
+          if [ -f "${{ inputs.package }}/make-deb.sh" ]; then
+            (cd "${{ inputs.package }}" && ./make-deb.sh)
+          else
+            echo "${{ inputs.package }} has no make-deb.sh (data package or build-tree artifact)"
+          fi
+
+      - name: upload build products
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package }}-out
+          path: |
+            out/*.deb
+            out/*-armv7
+          if-no-files-found: warn

@@ -1,0 +1,20 @@
+name: single-build (manual)
+# Build one package on a fresh runner -- the "retriage this package" button.
+# Same recipe as the full-build matrix jobs: it just calls the reusable
+# build.yaml with the package you name.
+#
+#   Actions -> single-build -> Run workflow -> package: curl
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package (repo directory) to build
+        required: true
+        type: string
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+    with:
+      package: ${{ inputs.package }}
+    secrets: inherit
