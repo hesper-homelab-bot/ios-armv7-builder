@@ -62,7 +62,6 @@ export RANLIB="$here/../tools/darwin-ranlib"
 
 ./Configure ios-cross no-asm no-shared no-tests no-docs \
     --prefix="$PREFIX" --openssldir="$PREFIX/etc/ssl" \
-    LDFLAGS="$CCOBJ" \
     > /dev/null
 make -j"$(nproc)" > /dev/null
 
