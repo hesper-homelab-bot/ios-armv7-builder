@@ -35,7 +35,7 @@
 set -euo pipefail
 
 PREFIX="${HOME}/ios-tool"
-FROM_STAGE=1
+FROM_STAGE=0
 CHECK_ONLY=0
 FORCE=0
 for a in "$@"; do
