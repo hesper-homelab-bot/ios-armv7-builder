@@ -70,8 +70,8 @@ export LD64_LIBS=/path/to/x-libdispatch/lib:/path/to/x-tapi/lib
 
 (cd tmux && TMUX_VERSION=3.8 ./build.sh DEVICE=<device>)   # build tmux
 ./scripts/make-deb.sh                                  # sign + package
-./scripts/make-repo.sh                                 # regenerate the APT repo
-git add -A && git commit -m "tmux x.y" && git push     # publish (GitHub Pages)
+./scripts/make-repo.sh                                 # regenerate + sign the APT repo
+./scripts/publish-gh-pages.sh                          # push to the gh-pages branch
 
 (cd openssl && ./build.sh)      # OpenSSL 4.0.3 -> out/openssl-4.0.3-armv7
 (cd curl    && ./build.sh)      # curl 8.16.0    -> out/curl-8.16.0-armv7
@@ -122,15 +122,19 @@ gracefully rather than silently.
 ## Install on the device
 
 BigBoss stopped accepting new packages, so builds publish their own APT
-repository (GitHub Pages, from `repo/` in this very repo):
+repository (GitHub Pages, pushed by `scripts/publish-gh-pages.sh`):
 
 ```
 https://hesper-homelab-bot.github.io/ios-armv7-builder/repo
 ```
 
-Add it in Cydia/Sileo, or on the command line as root:
+The repository is **signed** (`InRelease` / `Release.gpg`, key
+`2A324C4577AB01949BEA46BC8A6DFC60F7F9E596`).  Add it in Cydia/Sileo (you get
+the trust prompt), or on the command line as root:
 
 ```sh
+wget -qO- https://hesper-homelab-bot.github.io/ios-armv7-builder/repo/hesper-homelab-bot.asc \
+    | apt-key add -
 echo "deb https://hesper-homelab-bot.github.io/ios-armv7-builder/repo stable main" \
     > /etc/apt/sources.list.d/ios-tools.list
 apt-get update
