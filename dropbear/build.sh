@@ -98,6 +98,14 @@ make distclean >/dev/null 2>&1 || true
 # at the path this kit actually installs avoids putting anything in /usr.
 EXTRA_CFLAGS="-DHAVE_SETRESGID=1 -DHAVE_SETRESUID=1 -DDROPBEAR_RSA_SHA1=1"
 
+# SDK mode: the bundled libcrux mlkem768 headers use the musl <endian.h>
+# function family (htole64/le64toh/le32toh/htole32) that Darwin does not
+# declare; libkern/OSByteOrder.h spells them OSSwap*.  The -D mapping is
+# function-for-function (byte order semantics identical).
+EXTRA_CFLAGS="$EXTRA_CFLAGS \
+ -Dhtole64=OSSwapHostToLittleInt64 -Dle64toh=OSSwapLittleToHostInt64 \
+ -Dhtole32=OSSwapHostToLittleInt32 -Dle32toh=OSSwapLittleToHostInt32"
+
 # The bundled scp client execs dbclient from a hardcoded path in
 # default_options.h:
 #     #define DROPBEAR_PATH_SSH_PROGRAM "/usr/bin/dbclient"

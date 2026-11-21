@@ -74,21 +74,32 @@ C8OBJ="$root/tmp/curl-c8fixed.o"
 mkdir -p "$root/tmp"
 "$CC" -c "$root/tools/shims/c8fixed.S" -o "$C8OBJ"
 
-# zlib (gzip/deflate transfer encoding).  Reuses the zlib 1.3.1 that
-# git/build.sh already cross-builds (same pinned source, same darwin-ar
-# conversion, docs/toolchain.md §2) instead of building a second copy:
-# configure wants <prefix>/lib/libz.a + <prefix>/include/zlib.h, the git
-# build lays both at the source-tree root, so present that shape.
-ZLIB_SRC="${ZLIB:-$HOME/ios-tool/zlib-src/zlib-1.3.1}"
-if [ ! -f "$ZLIB_SRC/libz.a" ]; then
-    echo "missing cross zlib: $ZLIB_SRC/libz.a" >&2
-    echo "  build it first: (cd git && ./build.sh)   # or set ZLIB=" >&2
-    exit 1
-fi
+# zlib (gzip/deflate transfer encoding).  Self-contained cross build of the
+# pinned 1.3.1 (git/build.sh's recipe: configure --static, then the §2
+# darwin-ar conversion with a member-count check), cached in the ABI dir so
+# a rebuild is a cache hit.  configure wants <prefix>/lib/libz.a +
+# <prefix>/include/zlib.h.
 ZLIBABI="$root/tmp/curl-zlib-abi"
 mkdir -p "$ZLIBABI/lib" "$ZLIBABI/include"
-cp -f "$ZLIB_SRC/libz.a" "$ZLIBABI/lib/"
-cp -f "$ZLIB_SRC/zlib.h" "$ZLIB_SRC/zconf.h" "$ZLIBABI/include/"
+if [ ! -f "$ZLIBABI/lib/libz.a" ]; then
+    ZLIB_SRC="${ZLIB:-$root/tmp/src/zlib-1.3.1}"
+    if [ ! -f "$ZLIB_SRC/libz.a" ]; then
+        read -r ZU ZSHA _ <<<"$("$root/tools/fetch-src.sh" --lock zlib)"
+        ztar="$("$root/tools/fetch-src.sh" zlib "$ZU" "$ZSHA")"
+        rm -rf "$ZLIB_SRC"
+        tar -C "$root/tmp/src" -xzf "$ztar"
+        ( cd "$ZLIB_SRC" \
+          && CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
+             CHOST=armv7-apple-darwin ./configure --static >/dev/null \
+          && make -j"$(nproc)" libz.a >/dev/null )
+        llvm-ar-21 --format=darwin rcs "$ZLIB_SRC/libz.a.new" "$ZLIB_SRC"/*.o
+        [ "$(llvm-ar-21 t "$ZLIB_SRC/libz.a.new" | wc -l)" -gt 0 ] \
+            || { echo "libz.a conversion produced 0 members" >&2; exit 1; }
+        mv "$ZLIB_SRC/libz.a.new" "$ZLIB_SRC/libz.a"
+    fi
+    cp -f "$ZLIB_SRC/libz.a" "$ZLIBABI/lib/"
+    cp -f "$ZLIB_SRC/zlib.h" "$ZLIB_SRC/zconf.h" "$ZLIBABI/include/"
+fi
 
 # nghttp2 (HTTP/2).  Cross-built here from the sources.lock-pinned release:
 # lib-only (pure C), static, darwin-ar archives.  curl's configure wants the
