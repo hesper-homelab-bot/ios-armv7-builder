@@ -28,7 +28,7 @@ set -euo pipefail
 
 BIN="${1:?usage: check-undefined.sh <macho-binary>}"
 here="$(cd "$(dirname "$0")" && pwd)"
-NM="${NM:-llvm-nm-21}"
+NM="${NM:-$here/llvm-nm}"
 
 wl="$(mktemp)"; undef="$(mktemp)"; trap 'rm -f "$wl" "$undef"' EXIT
 

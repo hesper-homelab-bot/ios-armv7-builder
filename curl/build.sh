@@ -25,6 +25,8 @@ here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 CURL_VERSION="${CURL_VERSION:-8.16.0}"
 NGHTTP2_VERSION="${NGHTTP2_VERSION:-1.71.0}"
+BROTLI_VERSION="${BROTLI_VERSION:-1.2.1}"
+ZSTD_VERSION="${ZSTD_VERSION:-1.5.7}"
 SRC="$root/tmp/src/curl-$CURL_VERSION"
 OSSL="${OSSL:-$root/tmp/src/openssl-4.0.3}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
@@ -111,12 +113,60 @@ cp -f "$NG2_SRC/lib/.libs/libnghttp2.a" "$NG2ABI/lib/"
 cp -f "$NG2_SRC/lib/includes/nghttp2/nghttp2.h" \
       "$NG2_SRC/lib/includes/nghttp2/nghttp2ver.h" "$NG2ABI/include/nghttp2/"
 
+# brotli (br transfer encoding).  cmake-driven cross build (brotli has no
+# autotools); CMAKE_SYSTEM_NAME=Darwin + the repo's cc-wrapper/darwin-ar.
+# The three static archives land at the build tree root.
+BROTLI_SRC="$root/tmp/src/brotli-$BROTLI_VERSION"
+if [ ! -f "$BROTLI_SRC/build-armv7/libbrotlienc.a" ]; then
+    read -r BRURL BRSHA _ <<<"$("$root/tools/fetch-src.sh" --lock brotli)"
+    brtar="$("$root/tools/fetch-src.sh" brotli "$BRURL" "$BRSHA")"
+    [ -d "$BROTLI_SRC" ] || tar -C "$root/tmp/src" -xzf "$brtar"
+    ( cd "$BROTLI_SRC" && rm -rf build-armv7 && mkdir -p build-armv7 && cd build-armv7 \
+      && cmake .. -DCMAKE_SYSTEM_NAME=Darwin -DCMAKE_SYSTEM_PROCESSOR=armv7 \
+             -DCMAKE_C_COMPILER="$CC" -DCMAKE_AR="$root/tools/darwin-ar" \
+             -DCMAKE_RANLIB="$root/tools/darwin-ranlib" \
+             -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release >/dev/null \
+      && cmake --build . --target brotlicommon brotlienc brotlidec -j"$(nproc)" >/dev/null )
+fi
+[ -f "$BROTLI_SRC/build-armv7/libbrotlienc.a" ] || { echo "brotli build failed" >&2; exit 1; }
+BRABI="$root/tmp/curl-brotli-abi"
+mkdir -p "$BRABI/lib" "$BRABI/include/brotli"
+cp -f "$BROTLI_SRC/build-armv7/"libbrotli*.a "$BRABI/lib/"
+cp -f "$BROTLI_SRC/c/include/brotli/"*.h "$BRABI/include/brotli/"
+
+# zstd (zstd transfer encoding).  Plain-make cross build (zstd's lib/Makefile
+# honours CC/AR); its GNU-ar output must be re-archived darwin-style (§2).
+ZSTD_SRC="$root/tmp/src/zstd-$ZSTD_VERSION"
+if [ ! -f "$ZSTD_SRC/lib/libzstd.a" ]; then
+    read -r ZU ZSHA _ <<<"$("$root/tools/fetch-src.sh" --lock zstd)"
+    ztar="$("$root/tools/fetch-src.sh" zstd "$ZU" "$ZSHA")"
+    [ -d "$ZSTD_SRC" ] || tar -C "$root/tmp/src" -xzf "$ztar"
+    ( cd "$ZSTD_SRC/lib" \
+      && CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
+         make -j"$(nproc)" libzstd.a >/dev/null )
+    # verify/re-pack: automake-free make may still emit a GNU thin archive
+    if [ "$("$root/tools/darwin-ar" t "$ZSTD_SRC/lib/libzstd.a" 2>/dev/null | wc -l)" -eq 0 ]; then
+        "$root/tools/darwin-ar" rcs "$ZSTD_SRC/lib/libzstd.a.new" "$ZSTD_SRC/lib"/*.o
+        [ "$("$root/tools/darwin-ar" t "$ZSTD_SRC/lib/libzstd.a.new" | wc -l)" -gt 0 ] \
+            || { echo "libzstd.a repack produced 0 members" >&2; exit 1; }
+        mv "$ZSTD_SRC/lib/libzstd.a.new" "$ZSTD_SRC/lib/libzstd.a"
+    fi
+fi
+[ -f "$ZSTD_SRC/lib/libzstd.a" ] || { echo "zstd build failed" >&2; exit 1; }
+ZABI="$root/tmp/curl-zstd-abi"
+mkdir -p "$ZABI/lib" "$ZABI/include"
+cp -f "$ZSTD_SRC/lib/libzstd.a" "$ZABI/lib/"
+cp -f "$ZSTD_SRC/lib/zstd.h" "$ZSTD_SRC/lib/zstd_errors.h" \
+      "$ZSTD_SRC/lib/zdict.h" "$ZABI/include/" 2>/dev/null || \
+cp -f "$ZSTD_SRC/lib/zstd.h" "$ZABI/include/"
+
 ./configure --host=armv7-apple-darwin --prefix="$PREFIX" \
     --disable-shared --enable-static \
     --with-openssl="$OSSL" \
     --with-zlib="$ZLIBABI" \
     --with-nghttp2="$NG2ABI" \
-    --without-brotli --without-zstd \
+    --with-brotli="$BRABI" \
+    --with-zstd="$ZABI" \
     --without-libpsl --without-libidn2 \
     --without-libgsasl \
     --disable-ldap --disable-ldaps --disable-manual \
