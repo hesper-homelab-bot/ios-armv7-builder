@@ -115,21 +115,21 @@ if [ ! -f "$NG2_SRC/lib/.libs/libnghttp2.a" ]; then
     read -r N2URL N2SHA _ <<<"$("$root/tools/fetch-src.sh" --lock nghttp2)"
     n2tar="$("$root/tools/fetch-src.sh" nghttp2 "$N2URL" "$N2SHA")"
     [ -d "$NG2_SRC" ] || tar -C "$root/tmp/src" -xzf "$n2tar"
-    # configure lives at the tree root, not in lib/ (a fresh CI tree has no
-    # lib/ artifacts, so the cd-into-lib mistake only surfaces there)
-    ( cd "$NG2_SRC" \
-      && CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
-         PKG_CONFIG=: ./configure --host=armv7-apple-darwin \
-             --enable-lib-only --disable-shared --enable-static \
-             --without-openssl --without-libxml2 --without-libev \
-             --without-systemd >"$NG2_SRC/conf.out" 2>&1 \
-      && make -j"$(nproc)" -C lib >"$NG2_SRC/make.out" 2>&1 \
-    ) || { echo "nghttp2 build failed; config.log compile errors:" >&2; grep -B2 -A8 "error" "$NG2_SRC/config.log" | tail -40 >&2; exit 1; }
+    # cmake build (brotli's proven cross pattern): the autotools path passes
+    # locally but its conftest probing dies on the CI runner for reasons
+    # config.log refuses to show -- cmake has no probes to lie.
+    ( cd "$NG2_SRC" && rm -rf build-armv7 && mkdir -p build-armv7 && cd build-armv7 \
+      && cmake .. -DCMAKE_SYSTEM_NAME=Darwin -DCMAKE_SYSTEM_PROCESSOR=armv7 \
+             -DCMAKE_C_COMPILER="$CC" -DCMAKE_AR="$root/tools/darwin-ar" \
+             -DCMAKE_RANLIB="$root/tools/darwin-ranlib" \
+             -DENABLE_LIB_ONLY=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
+             >/dev/null \
+      && cmake --build . -j"$(nproc)" >/dev/null )
 fi
-[ -f "$NG2_SRC/lib/.libs/libnghttp2.a" ] || { echo "nghttp2 build failed" >&2; exit 1; }
+[ -f "$NG2_SRC/build-armv7/lib/libnghttp2.a" ] || { echo "nghttp2 build failed (no build-armv7/lib/libnghttp2.a)" >&2; exit 1; }
 NG2ABI="$root/tmp/curl-nghttp2-abi"
 mkdir -p "$NG2ABI/lib" "$NG2ABI/include/nghttp2"
-cp -f "$NG2_SRC/lib/.libs/libnghttp2.a" "$NG2ABI/lib/"
+cp -f "$NG2_SRC/build-armv7/lib/libnghttp2.a" "$NG2ABI/lib/"
 cp -f "$NG2_SRC/lib/includes/nghttp2/nghttp2.h" \
       "$NG2_SRC/lib/includes/nghttp2/nghttp2ver.h" "$NG2ABI/include/nghttp2/"
 
