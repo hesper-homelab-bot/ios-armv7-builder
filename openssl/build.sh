@@ -49,10 +49,25 @@ export CROSS_TOP="$root/tmp" CROSS_SDK=sdk
 cd "$SRC"
 sed -i 's/-arch armv7 //' Configurations/15-ios.conf
 
-CC="$here/../tools/cc-wrapper.sh" \
-AR="$here/../tools/darwin-ar" RANLIB="$here/../tools/darwin-ranlib" \
+# atomic runtime compat: iOS 10 libSystem lacks __atomic_is_lock_free and the
+# generic __atomic_load/store/cas helpers.  atomic_alias.s (ARM long-branch
+# stubs) forwards the triple-underscore names to the spinlock implementation
+# in atomic_compat.c; both compile with the wrapper and join the link line.
+# (Each export is self-contained on purpose: a backslash-continued assignment
+# followed by this comment silently cut the chain once already -- the same
+# rsync/tor class of accident, see AGENTS.md.)
+export CC="$here/../tools/cc-wrapper.sh"
+export AR="$here/../tools/darwin-ar"
+export RANLIB="$here/../tools/darwin-ranlib"
+
+ACOBJ="$root/tmp/openssl-atomic-alias.o"
+CCOBJ="$root/tmp/openssl-atomic-compat.o"
+"$here/../tools/cc-wrapper.sh" -c "$here/atomic_alias.s" -o "$ACOBJ"
+"$here/../tools/cc-wrapper.sh" -c "$here/atomic_compat.c" -o "$CCOBJ"
+
 ./Configure ios-cross no-asm no-shared no-tests no-docs \
     --prefix="$PREFIX" --openssldir="$PREFIX/etc/ssl" \
+    LDFLAGS="$ACOBJ $CCOBJ" \
     > /dev/null
 make -j"$(nproc)" > /dev/null
 
