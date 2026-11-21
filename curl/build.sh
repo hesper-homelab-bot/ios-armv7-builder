@@ -56,7 +56,7 @@ export IOS_SYSROOT="${IOS_SYSROOT:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
 # env defaults embedded (toolchain.md §1 landmine, 4th occurrence): a fresh
 # shell must never depend on the caller having exported the toolchain vars
 export IOS_LD64="${IOS_LD64:-${LD64:-$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld}}"
-export IOS_STUBDIR="$HOME/ios-tool"
+export IOS_STUBDIR="${IOS_STUBDIR:-$HOME/ios-tool}"
 export LD_LIBRARY_PATH="${LD64_LIBS:-$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib}:${LD_LIBRARY_PATH:-}"
 export CROSS_TOP="$(dirname "$IOS_SYSROOT")" CROSS_SDK="$(basename "$IOS_SYSROOT")"
 

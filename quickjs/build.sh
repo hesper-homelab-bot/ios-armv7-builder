@@ -22,7 +22,7 @@ CC="$root/tools/cc-wrapper.sh"
 export IOS_SYSROOT="${IOS_SYSROOT:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "missing $IOS_SYSROOT (docs/toolchain.md §16)" >&2; exit 1; }
 export IOS_LD64="${IOS_LD64:-${LD64:-$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld}}"
-export IOS_STUBDIR="$HOME/ios-tool"
+export IOS_STUBDIR="${IOS_STUBDIR:-$HOME/ios-tool}"
 export LD_LIBRARY_PATH="${LD64_LIBS:-$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib}:${LD_LIBRARY_PATH:-}"
 
 [ -d "$SRC" ] || {
