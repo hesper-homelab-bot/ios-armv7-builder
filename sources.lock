@@ -102,3 +102,8 @@ e2fsprogs	1.47.2	https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e
 ca-bundle	2026-11-21	https://curl.se/ca/cacert.pem	427c064216761a1e72a8b30f0d954d08cb6e4435a82091fb865afd20c8497285
 # HTTP/2 library for curl (nghttp2 upstream release)
 nghttp2	1.71.0	https://github.com/nghttp2/nghttp2/releases/download/v1.71.0/nghttp2-1.71.0.tar.gz	0cdd35ecec77919b4b7b245f87fe8d2216e3d62da854eb0838c594ff058042fc
+# transfer-encoding deps for curl 8.16.0 (gzip via git-zlib, br/zstd upstream releases)
+brotli	1.2.1	https://github.com/google/brotli/archive/refs/tags/v1.2.1.tar.gz	98d35d11a78dc453aebb7d10c3748f3f73ff78c8267c0dc697b8631f67bf7e8f
+zstd	1.5.7	https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz	37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3
+# QuickJS engine (Fabrice Bellard upstream release; originally the node-port comparison engine)
+quickjs	2026-06-04	https://bellard.org/quickjs/quickjs-2026-06-04.tar.xz	b376e839b322978313d929fd20663b11ba58b75df5a46c126dd19ea2fa70ad2a
