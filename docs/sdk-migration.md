@@ -34,6 +34,17 @@
 
 ## curl 依赖链的 CI 专项(2026-11-21 深夜)
 
+- **CI 单跑架构已落地**(大哥方案):build.yaml(reusable,inputs.package)+
+  full-build.yaml(strategy.matrix)+ single-build.yaml(单包手触);
+  curl/build.sh 自含 openssl 依赖(matrix 无序)。
+- 首轮 matrix:whois ✅ rsync ✅ openssl 构建 ✅(门禁差 10 符号,已
+  dlsym 实测入册);curl 差最后一墙:**CI 上 curl 的 vtls/openssl.c 编译
+  报 asn1_string_st 不完整(opaque/头配置差异),本机同源同命令过**——
+  怀疑点:CI 新 Configure 生成的 configuration 头 vs 本机留存树旧头、
+  或系统 /usr/include/openssl 污染;待取证(make 命令行 dump)。
+- openssl 的 atomic_compat 已撤销(dlsym 证明设备 libSystem 有全套
+  __atomic_* helper——当年"设备缺"的结论被实测推翻)。
+
 - **nghttp2 autotools → cmake**:本机过、CI 的 conftest 探测必死且
   config.log 拒绝展示原因(三轮 dump 无果)→ 换 brotli 同款 cmake 交叉
   (要点:`BUILD_STATIC_LIBS=ON` 必须显式——其 ALIAS 假设 static 目标
