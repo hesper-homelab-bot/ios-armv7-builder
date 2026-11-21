@@ -19,15 +19,17 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 RSYNC_VERSION="${RSYNC_VERSION:-3.3.0}"
-SRC="${RSYNC_SRC:-$HOME/scratch/rsync/rsync-src}"
+SRC="${RSYNC_SRC:-$root/tmp/src/rsync-$RSYNC_VERSION}"
 
 [ -x "$SRC/configure" ] || {
-    echo "missing $SRC -- git clone --depth 1 --branch v$RSYNC_VERSION https://github.com/WayneD/rsync.git" >&2
-    echo "  sources.lock row 'rsync' pins the equivalent tag tarball" >&2
-    echo "  (github .../archive/refs/tags/v$RSYNC_VERSION.tar.gz) -- verify/fetch with:" >&2
-    echo "    $root/tools/fetch-src.sh --lock rsync" >&2
-    exit 1
+    # the lock row pins the v3.3.0 tag tarball equivalent to the old manual
+    # git clone in ~/scratch
+    read -r U SHA _ <<<"$("$root/tools/fetch-src.sh" --lock rsync)"
+    tarball="$("$root/tools/fetch-src.sh" rsync "$U" "$SHA")"
+    rm -rf "$SRC"
+    tar -C "$root/tmp/src" -xzf "$tarball"
 }
+[ -x "$SRC/configure" ] || { echo "rsync source layout unexpected" >&2; exit 1; }
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }
