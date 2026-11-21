@@ -24,6 +24,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 CURL_VERSION="${CURL_VERSION:-8.16.0}"
+NGHTTP2_VERSION="${NGHTTP2_VERSION:-1.71.0}"
 SRC="$root/tmp/src/curl-$CURL_VERSION"
 OSSL="${OSSL:-$root/tmp/src/openssl-4.0.3}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
@@ -87,12 +88,36 @@ mkdir -p "$ZLIBABI/lib" "$ZLIBABI/include"
 cp -f "$ZLIB_SRC/libz.a" "$ZLIBABI/lib/"
 cp -f "$ZLIB_SRC/zlib.h" "$ZLIB_SRC/zconf.h" "$ZLIBABI/include/"
 
+# nghttp2 (HTTP/2).  Cross-built here from the sources.lock-pinned release:
+# lib-only (pure C), static, darwin-ar archives.  curl's configure wants the
+# standard prefix shape: <dir>/include/nghttp2/nghttp2.h + <dir>/lib/libnghttp2.a.
+NG2_SRC="$root/tmp/src/nghttp2-$NGHTTP2_VERSION"
+if [ ! -f "$NG2_SRC/lib/.libs/libnghttp2.a" ]; then
+    read -r N2URL N2SHA _ <<<"$("$root/tools/fetch-src.sh" --lock nghttp2)"
+    n2tar="$("$root/tools/fetch-src.sh" nghttp2 "$N2URL" "$N2SHA")"
+    [ -d "$NG2_SRC" ] || tar -C "$root/tmp/src" -xzf "$n2tar"
+    ( cd "$NG2_SRC/lib" \
+      && CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
+         PKG_CONFIG=: ./configure --host=armv7-apple-darwin \
+             --enable-lib-only --disable-shared --enable-static \
+             --without-openssl --without-libxml2 --without-libev \
+             --without-systemd >/dev/null \
+      && make -j"$(nproc)" >/dev/null )
+fi
+[ -f "$NG2_SRC/lib/.libs/libnghttp2.a" ] || { echo "nghttp2 build failed" >&2; exit 1; }
+NG2ABI="$root/tmp/curl-nghttp2-abi"
+mkdir -p "$NG2ABI/lib" "$NG2ABI/include/nghttp2"
+cp -f "$NG2_SRC/lib/.libs/libnghttp2.a" "$NG2ABI/lib/"
+cp -f "$NG2_SRC/lib/includes/nghttp2/nghttp2.h" \
+      "$NG2_SRC/lib/includes/nghttp2/nghttp2ver.h" "$NG2ABI/include/nghttp2/"
+
 ./configure --host=armv7-apple-darwin --prefix="$PREFIX" \
     --disable-shared --enable-static \
     --with-openssl="$OSSL" \
     --with-zlib="$ZLIBABI" \
+    --with-nghttp2="$NG2ABI" \
     --without-brotli --without-zstd \
-    --without-libpsl --without-libidn2 --without-nghttp2 \
+    --without-libpsl --without-libidn2 \
     --without-libgsasl \
     --disable-ldap --disable-ldaps --disable-manual \
     --disable-threaded-resolver \

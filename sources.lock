@@ -100,3 +100,5 @@ e2fsprogs	1.47.2	https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e
 # Mozilla CA bundle, snapshot 2026-11-21 (rolling upstream; pinned per build,
 # refreshed on-device by ca-certificates4's update-ca-certificates).
 ca-bundle	2026-11-21	https://curl.se/ca/cacert.pem	427c064216761a1e72a8b30f0d954d08cb6e4435a82091fb865afd20c8497285
+# HTTP/2 library for curl (nghttp2 upstream release)
+nghttp2	1.71.0	https://github.com/nghttp2/nghttp2/releases/download/v1.71.0/nghttp2-1.71.0.tar.gz	0cdd35ecec77919b4b7b245f87fe8d2216e3d62da854eb0838c594ff058042fc
