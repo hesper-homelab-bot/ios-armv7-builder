@@ -25,6 +25,7 @@ fi
 if [ -f sources.lock ]; then
     echo "== sources.lock =="
     awk -F'\t' 'NR>1 && $0 !~ /^#/ {
+        if (NF == 0) next   # blank separator lines are legal
         if ($4 !~ /^[0-9a-f]{64}$/) { print "bad sha256 on line " NR ": " $0; fail=1 }
         if ($3 !~ /^https:\/\//)    { print "non-https URL on line " NR; fail=1 }
         n++
