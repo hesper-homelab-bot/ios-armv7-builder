@@ -32,6 +32,13 @@ SRC="${WHOIS_SRC:-$root/tmp/src/whois-1024386831c8ee4e0ae24026fa932771bf369fe9}"
 }
 [ -f "$SRC/Makefile" ] || { echo "whois source layout unexpected" >&2; exit 1; }
 
+# Upstream utils.c #defines _XOPEN_SOURCE 500 to reach strdup, but strdup was
+# standardized in POSIX 2008: on Darwin headers that macro *hides* it
+# ("implicit declaration of strdup" -- Linux glibc exposes it via
+# _DEFAULT_SOURCE, which is why upstream never sees this).  Bump to 700
+# (SUSv4); everything utils.c uses is still declared.
+sed -i 's/#define _XOPEN_SOURCE 500/#define _XOPEN_SOURCE 700/' "$SRC/utils.c"
+
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }
 export IOS_LD64="${IOS_LD64:-${LD64:-}}" IOS_STUBDIR="${IOS_STUBDIR:-$HOME/ios-tool}"
