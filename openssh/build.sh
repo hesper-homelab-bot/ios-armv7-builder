@@ -67,6 +67,18 @@ export LD_LIBRARY_PATH="${LD64_LIBS:-}:${LD_LIBRARY_PATH:-}"
 # hand-edited cache values survive exactly one configure.
 export CONFIG_SITE="$here/ios-config.site"
 
+# SDK header gaps that are device facts, not configure answers: utimensat(2)
+# EXISTS on iOS 10 (proven by openssh's own misc-agent work, which calls it
+# with flags=0 and measured success) but the public SDK header does not
+# declare it.  A force-included declaration keeps sftp-server's timestamps
+# working without lying about anything else.
+mkdir -p "$root/tmp/openssh-os-compat"
+cat > "$root/tmp/openssh-os-compat.h" <<'EOF'
+/* force-included; see the note in openssh/build.sh */
+#include <sys/stat.h>
+int utimensat(int dirfd, const char *pathname, const struct timespec times[2], int flags);
+EOF
+
 # Build a pristine copy so the tarball stays re-extractable and the source
 # patches below are unambiguously "done by build.sh".
 BUILD="${BUILD:-$root/tmp/openssh-build}"
@@ -250,7 +262,8 @@ fi
 # device (drwxr-xr-x root:sys), so --with-privsep-path is not needed.
 CC="$root/tools/cc-wrapper.sh" AR="$root/tools/darwin-ar" \
 RANLIB="$root/tools/darwin-ranlib" \
-CFLAGS="-DDISABLE_SHADOW -DOPENSSL_API_COMPAT=0x10100000L" \
+CFLAGS="-DDISABLE_SHADOW -DOPENSSL_API_COMPAT=0x10100000L \
+ -include $root/tmp/openssh-os-compat.h" \
 ./configure --host=armv7-apple-darwin --build=x86_64-pc-linux-gnu \
     --prefix="$PREFIX" \
     --with-privsep-user=_sshd \
@@ -272,6 +285,15 @@ CFLAGS="-DDISABLE_SHADOW -DOPENSSL_API_COMPAT=0x10100000L" \
 sed -i 's|^LIBS=\(.*\)$|LIBS=\1 openbsd-compat/blowfish.o|' Makefile
 grep -q "openbsd-compat/blowfish.o" Makefile || {
     echo "LIBS blowfish.o sed did not apply" >&2; exit 1
+}
+# sshd's code paths make the compiler emit ___atomic_is_lock_free, the ONE
+# atomic helper the device libSystem lacks (dlsym MISS).  Reuse openssl's
+# spinlock compat (asm label pins the symbol exactly).
+ACOBJ="$root/tmp/openssh-atomic-compat.o"
+"$root/tools/cc-wrapper.sh" -c "$root/openssl/atomic_compat.c" -o "$ACOBJ"
+sed -i "s|^LIBS=\(.*\)$|LIBS=\1 $ACOBJ|" Makefile
+grep -q "atomic-compat.o" Makefile || {
+    echo "LIBS atomic-compat sed did not apply" >&2; exit 1
 }
 
 make -j"$(nproc)" >/dev/null
