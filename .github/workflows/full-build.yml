@@ -1,8 +1,11 @@
 name: full-build (manual)
-# Manual full pipeline: bootstrap the cross toolchain, smoke-compile, then
-# (as the per-package build recipes are wired in) build every package, run
-# the audit gate, regenerate and sign the APT repo, and publish it to
-# gh-pages.  Requires repository secrets:
+# Manual full pipeline, one job on one runner: bootstrap the cross toolchain,
+# smoke-compile, then build the canary packages (and, as recipes land, every
+# package), run the audit gate, regenerate and sign the APT repo, and publish
+# it to gh-pages.  One job because /opt/ios-tool is the product of the first
+# stage and a second runner would not see it.
+#
+# Requires repository secrets:
 #   GPG_PRIVATE_KEY  -- armored secret key of the repo signing key
 #                       (fingerprint 2A324C4577AB01949BEA46BC8A6DFC60F7F9E596)
 #   GPG_PASSPHRASE   -- empty string (the key is unattended)
@@ -10,39 +13,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  bootstrap:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v4
-      - name: bootstrap the cross toolchain
-        # Installed by tools/bootstrap-toolchain.sh into /opt/ios-tool;
-        # stage list and verification live in that script (docs/bootstrap.md).
-        run: tools/bootstrap-toolchain.sh --prefix=/opt/ios-tool
-      - name: smoke -- hello.c to armv7 Mach-O, ad-hoc signed
-        # The script's own stage 5: ld64 shared-object check, compile via the
-        # repo's cc-wrapper, file(1) Mach-O assertion, ldid -S/-e round-trip.
-        # (An earlier hand-rolled smoke here called a bare `cc` that no stage
-        # ever installs -- CI run 44875204697.)
-        run: tools/bootstrap-toolchain.sh --stage=5 --prefix=/opt/ios-tool --force
-
-  build-and-publish:
-    needs: bootstrap
+  bootstrap-build-publish:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     env:
       # the SDK-mode contract every build.sh expects (toolchain.md section 1),
       # pointed at the bootstrap prefix; build.sh defaults to the musl sysroot
-      # otherwise, and the canaries are the SDK-mode reproduction
+      # otherwise, and everything in CI is the SDK-mode reproduction
       IOS_SYSROOT: /opt/ios-tool/iPhoneOS10.3.sdk
       IOS_LD64: /opt/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
       IOS_STUBDIR: /opt/ios-tool
       LD_LIBRARY_PATH: /opt/ios-tool/x-libdispatch/lib:/opt/ios-tool/x-tapi/lib
       PATH: /opt/ios-tool/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    # Enable each stage as its dependency lands in the repo:
-    #   build-all  -- per-package build.sh invoked in topological order
-    #   gate       -- tools/audit-all.sh + tools/check-undefined.sh over out/
-    #   publish    -- scripts/make-repo.sh + scripts/publish-gh-pages.sh
     steps:
       - uses: actions/checkout@v4
       - name: import the repo signing key
@@ -50,6 +32,11 @@ jobs:
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      - name: bootstrap the cross toolchain
+        run: tools/bootstrap-toolchain.sh --prefix=/opt/ios-tool
+      - name: smoke -- hello.c to armv7 Mach-O, ad-hoc signed
+        run: tools/bootstrap-toolchain.sh --stage=5 --prefix=/opt/ios-tool --force
+
       - name: build canary 1 -- whois (Makefile type, zero patches)
         run: |
           set -euo pipefail
@@ -74,11 +61,11 @@ jobs:
         run: |
           set -euo pipefail
           tools/audit-all.sh 2>&1 | tail -5
+
       - name: regenerate, sign, publish
-        # DANGER if run today: out/ is empty on a CI runner (no debs are built
-        # yet), and make-repo.sh would happily publish an EMPTY repo over the
-        # real gh-pages.  Enable this step only together with the build-all
-        # step, in the same commit.
+        # DANGER if run while out/ holds only canary debs: make-repo.sh would
+        # publish a partial repo over the real gh-pages.  Enable this step only
+        # together with the full build-all coverage, in the same commit.
         if: false
         run: |
           set -euo pipefail
