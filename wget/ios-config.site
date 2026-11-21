@@ -224,3 +224,17 @@ gl_cv_func_lseek_pipe=yes
 # replacements above.
 gl_cv_type_off_t_64=yes
 gl_cv_var_stdin_large_offset=yes
+
+# dropbear SDK mode: the device has no setresuid/setresgid at all
+# (dlsym MISS, device-symprobe 2026-11-21); musl declared them, which is how
+# the -DHAVE_SETRESUID=1 build ever linked.
+ac_cv_func_setresuid=no
+ac_cv_func_setresgid=no
+
+# dropbear SDK mode: getrandom(2) is a Linux syscall, iOS 10 has none;
+# the /dev/urandom fallback is the correct path here.
+ac_cv_func_getrandom=no
+ac_cv_header_sys_random_h=no
+# clearenv is glibc/musl-only; dropbear's environ[0]=NULL fallback is the right path
+cv_func_clearenv=no
+ac_cv_func_clearenv=no

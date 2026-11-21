@@ -96,13 +96,19 @@ make distclean >/dev/null 2>&1 || true
 # so out of the box db-scp dies with "/usr/bin/dbclient: No such file or
 # directory" -- which is how it failed on the device first time.  Pointing it
 # at the path this kit actually installs avoids putting anything in /usr.
-EXTRA_CFLAGS="-DHAVE_SETRESGID=1 -DHAVE_SETRESUID=1 -DDROPBEAR_RSA_SHA1=1"
+# The production musl-era binary carries ZERO setres*/getrandom undefined
+# symbols (llvm-nm, /var/mobile/tools/db-dropbear, 130 undefs): its
+# DROPBEAR_SVR_DROP_PRIVS block never compiled in, and the device has none of
+# those symbols (dlsym MISS, device-symprobe 2026-11-21).  Match that shape:
+# the extra-privs guard is dropped, the standard setuid/setgid downgrade path
+# stays.
+EXTRA_CFLAGS="-DDROPBEAR_RSA_SHA1=1 -DDROPBEAR_SVR_DROP_PRIVS=0 -DDROPBEAR_SVR_MULTIUSER=0"
 
 # SDK mode: the bundled libcrux mlkem768 headers use the musl <endian.h>
 # function family (htole64/le64toh/le32toh/htole32) that Darwin does not
 # declare; libkern/OSByteOrder.h spells them OSSwap*.  The -D mapping is
 # function-for-function (byte order semantics identical).
-EXTRA_CFLAGS="$EXTRA_CFLAGS \
+EXTRA_CFLAGS="$EXTRA_CFLAGS -include libkern/OSByteOrder.h \
  -Dhtole64=OSSwapHostToLittleInt64 -Dle64toh=OSSwapLittleToHostInt64 \
  -Dhtole32=OSSwapHostToLittleInt32 -Dle32toh=OSSwapLittleToHostInt32"
 
@@ -129,6 +135,7 @@ SCP_PATH_WANTED='"/var/mobile/tools/db-dbclient"'
 CC="$root/tools/cc-wrapper.sh" AR="$root/tools/darwin-ar" \
 RANLIB="$root/tools/darwin-ranlib" \
 CFLAGS="$EXTRA_CFLAGS" \
+CONFIG_SITE="$root/wget/ios-config.site" \
 ./configure --host=armv7-apple-darwin --prefix="$PREFIX" \
     --disable-zlib \
     --disable-lastlog --disable-shadow \
