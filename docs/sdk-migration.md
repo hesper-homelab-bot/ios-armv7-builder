@@ -25,9 +25,9 @@
 | dropbear | ✅ 本机绿(107/131/69/76) | endian -D→OSSwap*+预包含;SVR_DROP_PRIVS=0+MULTIUSER=0(复刻生产形态:0 setres/getrandom 引用);getrandom/clearenv config.site fallback;**部署待大哥拍板** |
 | tor | ⏳ ~/scratch 旧树 make Error 2 | 同 nmap:干净树化(源在 lock,build.sh fetch 化) |
 | vim | ⏳ 未探 | ncurses 同 less |
-| git | ⏳ 未探 | 依赖 zlib(已 SDK 化)+ openssl + curl |
+| git | ✅ 本机绿 | USE_ST_TIMESPEC(Darwin stat 字段)+ 源依赖自含;CI 验证中 |
 | node | ⏳ 未探 | 最重(V8);musl 依赖面最大 |
-| openssh | 🔄 WIP | ppoll/setres 全量 python 补丁(设备实测无 ppoll/setres*);sftp-server 的 utimensat 声明墙收尾中(设备有函数、SDK 头不声明);build.sh 曾被 PYEOF 粘连事故截断,已从 d7f1ed1 重建 |
+| openssh | ✅ 本机绿(六产物)+ CI 待确认 | ppoll/setres 全量 python 补丁;utimensat 声明 compat;-include 头;is_lock_free compat 链入 sshd;PYEOF 粘连截断事故已重建 |
 | mosh | ⏳ 未探 | protobuf host 侧 |
 | lsof | ⏳ 未探 | libproc 路线 |
 | class-dump | ⏳ 未探 | Foundation/CoreFoundation tbd |
