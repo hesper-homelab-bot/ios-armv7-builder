@@ -25,11 +25,12 @@ SRC="$root/tmp/src/openssl-$OSSL_VERSION"
 PREFIX="${PREFIX:-/var/mobile/openssl4}"    # isolated on purpose: never
                                             # overwrite the device's files
 [ -f "$SRC/Configure" ] || {
-    echo "missing $SRC (extract openssl-$OSSL_VERSION.tar.gz there)" >&2
-    echo "  sources.lock row 'openssl' -- verify/fetch with:" >&2
-    echo "    $root/tools/fetch-src.sh --lock openssl" >&2
-    exit 1
+    read -r U SHA _ <<<"$("$root/tools/fetch-src.sh" --lock openssl)"
+    tarball="$("$root/tools/fetch-src.sh" openssl "$U" "$SHA")"
+    rm -rf "$SRC"
+    tar -C "$root/tmp/src" -xzf "$tarball"
 }
+[ -f "$SRC/Configure" ] || { echo "openssl source layout unexpected" >&2; exit 1; }
 
 export LD_LIBRARY_PATH="${LD64_LIBS:-}:${LD_LIBRARY_PATH:-}"
 export IOS_SYSROOT="$root/tmp/sysroot"
