@@ -109,13 +109,15 @@ if [ ! -f "$NG2_SRC/lib/.libs/libnghttp2.a" ]; then
     read -r N2URL N2SHA _ <<<"$("$root/tools/fetch-src.sh" --lock nghttp2)"
     n2tar="$("$root/tools/fetch-src.sh" nghttp2 "$N2URL" "$N2SHA")"
     [ -d "$NG2_SRC" ] || tar -C "$root/tmp/src" -xzf "$n2tar"
-    ( cd "$NG2_SRC/lib" \
+    # configure lives at the tree root, not in lib/ (a fresh CI tree has no
+    # lib/ artifacts, so the cd-into-lib mistake only surfaces there)
+    ( cd "$NG2_SRC" \
       && CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
          PKG_CONFIG=: ./configure --host=armv7-apple-darwin \
              --enable-lib-only --disable-shared --enable-static \
              --without-openssl --without-libxml2 --without-libev \
              --without-systemd >/dev/null \
-      && make -j"$(nproc)" >/dev/null )
+      && make -j"$(nproc)" -C lib >/dev/null )
 fi
 [ -f "$NG2_SRC/lib/.libs/libnghttp2.a" ] || { echo "nghttp2 build failed" >&2; exit 1; }
 NG2ABI="$root/tmp/curl-nghttp2-abi"
