@@ -44,6 +44,7 @@ jobs:
       - name: build canary 1 -- whois (Makefile type, zero patches)
         run: |
           set -euo pipefail
+          mkdir -p tmp/src   # git checkout carries no tmp/ (gitignored)
           (cd whois && ./build.sh && ./make-deb.sh)
           tools/check-undefined.sh out/whois-*-armv7
       - name: build canary 2 -- rsync (configure + gnulib type)
