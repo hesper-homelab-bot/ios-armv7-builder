@@ -1,0 +1,13 @@
+--- !tapi-tbd-v3
+archs:           [ armv7, armv7s ]
+platform:        ios
+install-name:    '/usr/lib/libSystem.B.dylib'
+current-version: 1311.60.2
+exports:
+  - archs:           [ armv7, armv7s ]
+    symbols:         [ _abort, _accept, _access, _atoi, _basename, _bind, _bsearch, _calloc, _cfgetispeed, _cfgetospeed, _cfmakeraw, _cfsetispeed, _cfsetospeed, _chdir, _chmod, _clock_gettime, _close, _connect, _ctime_r, _dirname, ___divdi3, ___divsi3, _dup, _dup2, _environ, _err, ___error, _errx, _event_strlcpy_, _execl, _execvp, __exit, _fclose, _fcntl, _fdopen, _ferror, _fflush, _fgetln, ___fixdfdi, ___floatdidf, _flock, _fmod, _fnmatch, _fopen, _fork, _forkpty, _fprintf, _fputc, _fputs, _fread, _free, _freeaddrinfo, _fseeko, _fstat, _ftello, _fwrite, _gai_strerror, _getaddrinfo, _getc, _getcwd, _getdtablesize, _getenv, _gethostname, _getline, _getpagesize, _getpeereid, _getpeername, _getpid, _getppid, _getprogname, _getpwnam, _getpwuid, _getsockname, _getsockopt, _gettimeofday, _getuid, _glob, _globfree, _gmtime_r, _htonl, _htons, _if_nametoindex, _ioctl, _isalnum, _isatty, _iscntrl, _ispunct, _isxdigit, _kill, _killpg, _listen, _localtime, _localtime_r, _lseek, _lstat, _malloc, _mbtowc, _memchr, _memcmp, _memcpy, _memmem, _memmove, _memset, _mkdir, _mkstemp, ___modsi3, _nl_langinfo, _ntohl, _ntohs, _open, _poll, _posix_spawn, _posix_spawnp, _posix_spawn_file_actions_init, _posix_spawn_file_actions_destroy, _posix_spawn_file_actions_addopen, _posix_spawn_file_actions_addclose, _posix_spawn_file_actions_adddup2, _posix_spawnattr_init, _posix_spawnattr_destroy, _posix_spawnattr_setflags, _posix_spawnattr_getflags, _posix_spawnattr_setpgroup, _posix_spawnattr_setbinpref_np, _printf, _proc_pidinfo, _qsort, _read, _readv, _realloc, _realpath, _recvmsg, _regcomp, _regexec, _regfree, _round, _select, _sendmsg, _setenv, _setlocale, _setsid, _setsockopt, _setvbuf, _shutdown, _sigaction, _sigemptyset, _sigfillset, _signal, _sigprocmask, _snprintf, _socket, _socketpair, _sscanf, ___stack_chk_fail, ___stack_chk_guard, _stat, ___stderrp, ___stdinp, ___stdoutp, _strcasecmp, _strcasestr, _strchr, _strcmp, _strcspn, _strdup, _strerror, _strftime, _strlcat, _strlcpy, _strlen, _strncasecmp, _strncmp, _strndup, _strpbrk, _strrchr, _strsep, _strsignal, _strspn, _strstr, _strtod, _strtol, _strtoll, _strtoul, _sysconf, _sys_signame, _system, _tcflush, _tcgetattr, _tcgetpgrp, _tcsetattr, _time, _tolower, _toupper, _ttyname, _tzset, ___udivdi3, ___udivsi3, _umask, ___umodsi3, _uname, _ungetc, _unlink, _usleep, _vasprintf, _vsnprintf, _waitpid, _wctomb, _wcwidth, _write, _writev ]
+    objc-classes:    []
+    objc-ivars:      []
+    weak-def-symbols: []
+    thread-local-symbols: []
+...
