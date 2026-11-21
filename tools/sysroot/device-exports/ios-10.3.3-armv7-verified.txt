@@ -669,3 +669,8 @@ ___strcat_chk
 ___strncat_chk
 _mlock
 _setpgid
+_CC_MD4_Final
+_CC_MD4_Init
+_CC_MD4_Update
+___atomic_load
+___atomic_store
