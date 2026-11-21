@@ -1,1 +1,7 @@
-___tolower
+___crashreporter_info__
+_libSystem_atfork_child
+_libSystem_atfork_parent
+_libSystem_atfork_prepare
+_mach_init_routine
+___System_BVersionNumber
+___System_BVersionString

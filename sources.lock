@@ -107,3 +107,5 @@ brotli	1.2.1	https://github.com/google/brotli/archive/refs/tags/v1.2.1.tar.gz	98
 zstd	1.5.7	https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz	37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3
 # QuickJS engine (Fabrice Bellard upstream release; originally the node-port comparison engine)
 quickjs	2026-06-04	https://bellard.org/quickjs/quickjs-2026-06-04.tar.xz	b376e839b322978313d929fd20663b11ba58b75df5a46c126dd19ea2fa70ad2a
+# GNU make (device-side rebuilds rely on it)
+make	4.4.1	https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz	dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3

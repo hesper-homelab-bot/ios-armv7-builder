@@ -32,13 +32,19 @@ PREFIX="${PREFIX:-/var/mobile/openssl4}"    # isolated on purpose: never
 }
 [ -f "$SRC/Configure" ] || { echo "openssl source layout unexpected" >&2; exit 1; }
 
-export LD_LIBRARY_PATH="${LD64_LIBS:-}:${LD_LIBRARY_PATH:-}"
-export IOS_SYSROOT="$root/tmp/sysroot"
-[ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first (makes the sysroot)" >&2; exit 1; }
-export IOS_LD64="$LD64" IOS_STUBDIR="$root"
-export CROSS_TOP="$root/tmp" CROSS_SDK=sysroot
+export LD_LIBRARY_PATH="${LD64_LIBS:-$HOME/ios-tool/x-libdispatch/lib:$HOME/ios-tool/x-tapi/lib}:${LD_LIBRARY_PATH:-}"
+# SDK-mode contract (toolchain.md §1); the old musl sysroot remains the
+# explicit opt-in via IOS_SYSROOT for historical reproductions
+export IOS_SYSROOT="${IOS_SYSROOT:-$HOME/ios-tool/iPhoneOS10.3.sdk}"
+[ -d "$IOS_SYSROOT/usr/include" ] || { echo "missing $IOS_SYSROOT (bootstrap-toolchain.sh stage 3)" >&2; exit 1; }
+export IOS_LD64="${IOS_LD64:-${LD64:-$HOME/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld}}"
+export IOS_STUBDIR="${IOS_STUBDIR:-$HOME/ios-tool}"
+# 15-ios.conf assembles -isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK): present any
+# sysroot through that shape with a link
 mkdir -p "$root/tmp/SDKs"
-ln -sfn ../sysroot "$root/tmp/SDKs/sysroot"
+rm -f "$root/tmp/SDKs/sdk"
+ln -sfn "$IOS_SYSROOT" "$root/tmp/SDKs/sdk"
+export CROSS_TOP="$root/tmp" CROSS_SDK=sdk
 
 cd "$SRC"
 sed -i 's/-arch armv7 //' Configurations/15-ios.conf

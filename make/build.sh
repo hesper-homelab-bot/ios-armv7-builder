@@ -12,14 +12,15 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 MAKE_VERSION="${MAKE_VERSION:-4.4.1}"
-SRC="${MAKE_SRC:-$HOME/scratch/make/make-$MAKE_VERSION}"
+SRC="${MAKE_SRC:-$root/tmp/src/make-$MAKE_VERSION}"
 
 [ -f "$SRC/configure" ] || {
-    echo "missing $SRC -- download https://ftp.gnu.org/gnu/make/make-$MAKE_VERSION.tar.gz" >&2
-    echo "  sources.lock row 'make' -- verify/fetch with:" >&2
-    echo "    $root/tools/fetch-src.sh --lock make" >&2
-    exit 1
+    read -r U SHA _ <<<"$("$root/tools/fetch-src.sh" --lock make)"
+    tarball="$("$root/tools/fetch-src.sh" make "$U" "$SHA")"
+    rm -rf "$SRC"
+    tar -C "$root/tmp/src" -xzf "$tarball"
 }
+[ -f "$SRC/configure" ] || { echo "make source layout unexpected" >&2; exit 1; }
 
 export IOS_SYSROOT="${IOS_SYSROOT:-$root/tmp/sysroot}"
 [ -d "$IOS_SYSROOT/usr/include" ] || { echo "run tmux/build.sh first" >&2; exit 1; }

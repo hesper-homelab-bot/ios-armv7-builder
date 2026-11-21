@@ -88,6 +88,11 @@ CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
         --with-oniguruma="$JQROOT/onig-clean" \
         --disable-shared --enable-static >/dev/null
 
+# SDK mode: configure's HAVE_POW10 probe lied (dynamic_lookup -- toolchain.md
+# §8); musl has pow10, Darwin headers do not.  jq's own libm.h has the
+# fallback (LIBM_DD_NO) -- drop the bogus define so it engages.
+sed -i 's|^#define HAVE_POW10 1$|/* #undef HAVE_POW10 */|' config.h
+
 make -j"$(nproc)" >/dev/null
 
 ldid -S jq
