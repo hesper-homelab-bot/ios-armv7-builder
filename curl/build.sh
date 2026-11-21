@@ -92,8 +92,8 @@ if [ ! -f "$ZLIBABI/lib/libz.a" ]; then
           && CC="$CC" AR="$root/tools/darwin-ar" RANLIB="$root/tools/darwin-ranlib" \
              CHOST=armv7-apple-darwin ./configure --static >/dev/null \
           && make -j"$(nproc)" libz.a >/dev/null )
-        llvm-ar-21 --format=darwin rcs "$ZLIB_SRC/libz.a.new" "$ZLIB_SRC"/*.o
-        [ "$(llvm-ar-21 t "$ZLIB_SRC/libz.a.new" | wc -l)" -gt 0 ] \
+        "$root/tools/darwin-ar" rcs "$ZLIB_SRC/libz.a.new" "$ZLIB_SRC"/*.o
+        [ "$("$root/tools/darwin-ar" t "$ZLIB_SRC/libz.a.new" | wc -l)" -gt 0 ] \
             || { echo "libz.a conversion produced 0 members" >&2; exit 1; }
         mv "$ZLIB_SRC/libz.a.new" "$ZLIB_SRC/libz.a"
     fi
