@@ -122,7 +122,7 @@ if [ ! -f "$NG2_SRC/lib/.libs/libnghttp2.a" ]; then
       && cmake .. -DCMAKE_SYSTEM_NAME=Darwin -DCMAKE_SYSTEM_PROCESSOR=armv7 \
              -DCMAKE_C_COMPILER="$CC" -DCMAKE_AR="$root/tools/darwin-ar" \
              -DCMAKE_RANLIB="$root/tools/darwin-ranlib" \
-             -DENABLE_LIB_ONLY=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
+             -DENABLE_LIB_ONLY=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
              >/dev/null \
       && cmake --build . -j"$(nproc)" >/dev/null )
 fi
