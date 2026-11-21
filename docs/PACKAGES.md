@@ -4,7 +4,7 @@ Generated from the APT `Packages` index by
 `scripts/gen-package-table.sh` -- do not edit by hand; it regenerates
 on every repo rebuild.
 
-42 debs in `repo/pool`:
+43 debs in `repo/pool`:
 
 | package | version | build recipe | docs | device acceptance |
 |---|---|---|---|---|
@@ -36,6 +36,7 @@ on every repo rebuild.
 | ping4 | 1.0-1 | `ping/` | [docs/ping.md](docs/ping.md) | -- |
 | python3 | 3.13.18-2 | `python3/` | [docs/python3.md](docs/python3.md) | -- |
 | python314 | 3.14.10-1 | -- | [docs/python.md](docs/python.md) | -- |
+| quickjs4 | 2026-06-04-1 | `quickjs/` | [docs/quickjs.md](docs/quickjs.md) | [tests/quickjs.sh](tests/quickjs.sh), 5 cases |
 | rsync4 | 3.3.0-2 | `rsync/` | [docs/rsync.md](docs/rsync.md) | -- |
 | smalltools4 | 1.0-1 | `smalltools/` | [docs/smalltools.md](docs/smalltools.md) | -- |
 | socat4 | 1.8.0.3-1 | `socat/` | [docs/socat.md](docs/socat.md) | -- |
