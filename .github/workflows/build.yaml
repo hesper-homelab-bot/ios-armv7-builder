@@ -46,7 +46,7 @@ jobs:
             echo "unknown package: ${{ inputs.package }} (no build.sh)" >&2
             exit 2
           fi
-          (cd "${{ inputs.package }}" && ./build.sh)
+          (cd "${{ inputs.package }}" && bash ./build.sh)
 
       - name: gate -- check-undefined
         run: |
@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -f "${{ inputs.package }}/make-deb.sh" ]; then
-            (cd "${{ inputs.package }}" && ./make-deb.sh)
+            (cd "${{ inputs.package }}" && bash ./make-deb.sh)
           else
             echo "${{ inputs.package }} has no make-deb.sh (data package or build-tree artifact)"
           fi

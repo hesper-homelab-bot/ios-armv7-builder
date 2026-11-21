@@ -314,7 +314,7 @@ done
 # undefined symbol against a "known absent on iOS 10" list derived from
 # probing the device.  Anything in that list is a runtime dyld abort.
 python3 - <<'PY'
-import os, subprocess, sys
+import os, shutil, subprocess, sys
 # Verified ABSENT on the device by compiling a caller and running it.  These
 # are the ones that *were* wired into OpenSSH and had to be pinned in
 # ios-config.site so the project's own portable fallback would be built.
@@ -344,7 +344,8 @@ bad, warn = [], []
 for b in ("sshd", "sshd-session", "sshd-auth", "sftp-server", "ssh", "scp"):
     if not os.path.exists(b):
         continue
-    res = subprocess.run(["llvm-nm-21", "--undefined-only", b],
+    nm = shutil.which("llvm-nm-21") or shutil.which("llvm-nm") or "llvm-nm"
+    res = subprocess.run([nm, "--undefined-only", b],
                          capture_output=True)
     out = res.stdout.decode("utf-8", "replace")
     for line in out.splitlines():
