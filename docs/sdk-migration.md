@@ -22,7 +22,7 @@
 | libpcap | ⏳ net/bpf.h ABI 化中 | bpf.h 在 overlay 不在 SDK;SYSINC 段要 ABI 目录化 |
 | nmap | ⏳ build.sh 内嵌补丁断言失败 | 源树=~/scratch 旧树已打补丁;需干净树+补丁幂等化 |
 | less | ⏳ ncurses 检测失败 | "Cannot find terminal libraries";SDK 模式 ncurses 配置待做 |
-| dropbear | ⏳ 墙明确待修 | libcrux mlkem 的 htole64/le64toh/le32toh(musl endian.h 族)→ Darwin 映射 OSSwapHostToLittleInt64 等(-D 宏或头补丁);**生产 sshd,部署单独拍板** |
+| dropbear | ✅ 本机绿(107/131/69/76) | endian -D→OSSwap*+预包含;SVR_DROP_PRIVS=0+MULTIUSER=0(复刻生产形态:0 setres/getrandom 引用);getrandom/clearenv config.site fallback;**部署待大哥拍板** |
 | tor | ⏳ ~/scratch 旧树 make Error 2 | 同 nmap:干净树化(源在 lock,build.sh fetch 化) |
 | vim | ⏳ 未探 | ncurses 同 less |
 | git | ⏳ 未探 | 依赖 zlib(已 SDK 化)+ openssl + curl |
