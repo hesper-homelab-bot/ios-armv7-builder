@@ -31,6 +31,7 @@ SRC="$root/tmp/src/curl-$CURL_VERSION"
 OSSL="${OSSL:-$root/tmp/src/openssl-4.0.3}"
 PREFIX="${PREFIX:-/var/mobile/tools}"
 
+
 [ -d "$SRC" ] || {
     read -r U SHA _ <<<"$("$root/tools/fetch-src.sh" --lock curl)"
     tarball="$("$root/tools/fetch-src.sh" curl "$U" "$SHA")"
@@ -39,6 +40,37 @@ PREFIX="${PREFIX:-/var/mobile/tools}"
 }
 # Self-contained dependency: the matrix builds packages on independent
 # runners in no particular order, so curl brings its own OpenSSL.
+# OpenSSL 4 opaque'd ASN1_STRING (nmap hit the identical wall -- commit
+# ee784f0 patched its nse_ssl_cert.cc the same way): curl 8.16 predates it
+# and dereferences num->type/length/data in the serial-number printer.
+# Function-API rewrite, applied to the pristine tree right after unpack.
+# and, for the dereference sites a sed cannot enumerate exhaustively, a
+# compat header restores the (ABI-stable) ASN1_STRING layout under -include:
+# openssl 4 forward-declares it opaque, libcrypto's own layout is unchanged.
+mkdir -p "$root/tmp/curl-asn1-compat"
+cat > "$root/tmp/curl-asn1-compat/openssl-asn1-compat.h" <<'EOF'
+/* curl 8.16 vs openssl 4: ASN1_STRING went opaque (struct asn1_string_st is
+   forward-declared only) but curl dereferences .type/.length/.data.  The
+   layout is ABI-stable since 0.9.x. */
+#ifndef CURL_ASN1_COMPAT_H
+#define CURL_ASN1_COMPAT_H
+/* deliberately self-contained: no openssl include here -- this header is
+   force-included before configure's own conftests, which run before any
+   -I$OSSL is set up */
+struct asn1_string_st {
+    int length;
+    int type;
+    unsigned char *data;
+    long flags;
+};
+#endif /* CURL_ASN1_COMPAT_H */
+EOF
+sed -i \
+    -e 's|if(num->type == V_ASN1_NEG_INTEGER)|if(ASN1_STRING_type(num) == V_ASN1_NEG_INTEGER)|' \
+    -e 's|for(j = 0; j < num->length; j++)|for(j = 0; j < ASN1_STRING_length(num); j++)|' \
+    -e 's|BIO_printf(mem, "%02x", num->data\[j\]);|BIO_printf(mem, "%02x", ASN1_STRING_get0_data(num)[j]);|' \
+    "$SRC/lib/vtls/openssl.c" && echo "    asn1 opaque patch applied" || { echo "asn1 patch FAILED" >&2; exit 1; }
+
 [ -f "$OSSL/libssl.a" ] || {
     echo "==> building OpenSSL first (curl's static dependency)"
     (cd "$root/openssl" && ./build.sh)
@@ -182,6 +214,7 @@ cp -f "$ZSTD_SRC/lib/zstd.h" "$ZABI/include/"
 
 ./configure --host=armv7-apple-darwin --prefix="$PREFIX" \
     --disable-shared --enable-static \
+    CPPFLAGS="-include $root/tmp/curl-asn1-compat/openssl-asn1-compat.h" \
     --with-openssl="$OSSL" \
     --with-zlib="$ZLIBABI" \
     --with-nghttp2="$NG2ABI" \
