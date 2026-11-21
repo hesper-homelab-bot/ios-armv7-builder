@@ -51,7 +51,9 @@ jobs:
       - name: build canary 3a -- openssl (the curl dependency)
         run: |
           set -euo pipefail
-          (cd openssl && ./build.sh && ./make-deb.sh)
+          # openssl4's deb is produced by curl/make-deb.sh (one script,
+          # two packages) -- 3b below runs it
+          (cd openssl && ./build.sh)
       - name: build canary 3b -- curl (SDK + static deps + symbol audit type)
         run: |
           set -euo pipefail
