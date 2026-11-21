@@ -105,14 +105,17 @@ Priority: optional
 Architecture: iphoneos-arm
 Maintainer: $MAINTAINER
 Homepage: https://www.openssh.com/
-Description: OpenSSH $OSSH_VERSION for armv7 iOS, manual use only
- Installs as ossh-* under /var/mobile/tools so it never shadows the system
- ssh/scp. Deliberately registers no launchd daemon: run it yourself with
- .
-   ossh-sshd -D -e -f /var/mobile/tools-osshtest/sshd_config
- .
- on a port of your choosing.
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Depends: firmware (>= 10.3)
+Provides: ssh-server
+Conflicts: dropbear4
+Description: OpenSSH $OSSH_VERSION for armv7 iOS with the com.hesper.osshd daemon
+ Installs ossh-* under /var/mobile/tools so it never shadows the system
+ ssh/scp, plus the com.hesper.osshd LaunchDaemon: default port 22, conffile
+ sshd_config, and a wrapper that refuses a port already held instead of
+ looping under KeepAlive.
+ .
+ Clients ssh/scp/sftp and the server all work, sftp-server included.
 CTRL
 
 cat > "$w/DEBIAN/conffiles" <<CONF

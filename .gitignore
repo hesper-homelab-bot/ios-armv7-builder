@@ -1,6 +1,9 @@
 tmp/
 out/
 pkg/
+# APT repo tree: regenerable via scripts/make-repo.sh; binaries are published
+# to the gh-pages branch (scripts/publish-gh-pages.sh), never committed here.
+repo/
 
 # build byproducts from sftp-server/
 sftp-server/*.o

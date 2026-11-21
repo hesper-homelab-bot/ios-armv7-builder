@@ -38,7 +38,7 @@ PORT="${DROPBEAR_PORT:-22}"
 # package tuned for someone else's setup, so it goes to pkg/ instead.
 CUSTOM=0
 [ "$PORT" = "22" ]        || CUSTOM=1
-[ -n "$EXTRA_ARGS" ]      || CUSTOM=1
+[ -n "${EXTRA_ARGS-}" ]   && CUSTOM=1
 [ "${WITH_DB_SFTPSERVER:-0}" = "1" ] && CUSTOM=1
 if [ "$CUSTOM" = 1 ]; then OUTDIR="$root/pkg"; else OUTDIR="$root/out"; fi
 mkdir -p "$OUTDIR"
@@ -98,6 +98,8 @@ Maintainer: $MAINTAINER
 Homepage: https://matt.ucc.asn.au/dropbear/
 Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
 Depends: firmware (>= 10.3)
+Provides: ssh-server
+Conflicts: openssh4
 Description: Dropbear SSH server and client for armv7 iOS 10+ (port $PORT)
  Dropbear $DB_VERSION, cross-compiled for armv7 iOS 10.x with its bundled
  libtomcrypt (no OpenSSL dependency).

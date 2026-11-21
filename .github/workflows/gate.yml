@@ -1,0 +1,52 @@
+name: gate
+# Fast push/PR gate.  No cross-compilation happens here: the toolchain and the
+# build products live outside git (see docs/toolchain.md), so this job checks
+# everything that CAN be checked from the tree alone.  Full builds run from
+# full-build.yml (workflow_dispatch) once tools/bootstrap-toolchain.sh lands.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+      - name: bash -n every maintained script
+        run: |
+          set -euo pipefail
+          # src/ subtrees are upstream source we import verbatim; their own
+          # test scripts are not our contract.
+          fail=0
+          for f in $(git ls-files '*.sh' | grep -v '/src/'); do
+            bash -n "$f" || fail=1
+          done
+          exit $fail
+      - name: shellcheck (error level) maintained scripts
+        run: |
+          set -euo pipefail
+          files=$(git ls-files '*.sh' | grep -v '/src/')
+          # shellcheck disable=SC2086
+          shellcheck -S error $files
+
+  sources-lock:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: validate sources.lock
+        run: |
+          set -euo pipefail
+          if [ ! -f sources.lock ]; then
+            echo "sources.lock missing (see docs/sources-lock.md)"; exit 1
+          fi
+          # every sha256 column must be a full 64-hex digest; URLs must be https
+          awk -F'\t' 'NR>1 && $0 !~ /^#/ {
+            if ($4 !~ /^[0-9a-f]{64}$/) { print "bad sha256 on line " NR ": " $0; fail=1 }
+            if ($3 !~ /^https:\/\//)    { print "non-https URL on line " NR; fail=1 }
+          } END { exit fail }' sources.lock
+          echo "sources.lock: $(($(wc -l < sources.lock)-1)) pinned sources"

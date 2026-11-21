@@ -453,7 +453,7 @@ check_known_values() {
         # only lines that #define the name at all
         if grep -qE "^[[:space:]]*#[[:space:]]*define[[:space:]]+$name([[:space:]]|$)" "$file"; then
             got="$(grep -E "^[[:space:]]*#[[:space:]]*define[[:space:]]+$name([[:space:]]|$)" "$file" \
-                   | head -1 | sed -E "s/.*$name[[:space:]]+//; s/[[:space:]]*(\/\*|\/\/).*$//; s/[[:space:]]+$//")"
+                   | head -1 | sed -E "s/.*${name}[[:space:]]+//; s/[[:space:]]*(\/\*|\/\/).*$//; s/[[:space:]]+$//")"
             if [ "$got" != "$want" ]; then
                 lineno="$(grep -nE "^[[:space:]]*#[[:space:]]*define[[:space:]]+$name([[:space:]]|$)" "$file" | head -1 | cut -d: -f1)"
                 printf '  FAIL %s:%s  %s is %s, Darwin says %s\n' "$file" "$lineno" "$name" "$got" "$want" >&2
