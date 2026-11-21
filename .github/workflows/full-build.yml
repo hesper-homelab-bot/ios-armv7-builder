@@ -30,6 +30,15 @@ jobs:
     needs: bootstrap
     runs-on: ubuntu-24.04
     timeout-minutes: 360
+    env:
+      # the SDK-mode contract every build.sh expects (toolchain.md section 1),
+      # pointed at the bootstrap prefix; build.sh defaults to the musl sysroot
+      # otherwise, and the canaries are the SDK-mode reproduction
+      IOS_SYSROOT: /opt/ios-tool/iPhoneOS10.3.sdk
+      IOS_LD64: /opt/ios-tool/x-ld64/bin/x86_64-apple-darwin13.4.0-ld
+      IOS_STUBDIR: /opt/ios-tool
+      LD_LIBRARY_PATH: /opt/ios-tool/x-libdispatch/lib:/opt/ios-tool/x-tapi/lib
+      PATH: /opt/ios-tool/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     # Enable each stage as its dependency lands in the repo:
     #   build-all  -- per-package build.sh invoked in topological order
     #   gate       -- tools/audit-all.sh + tools/check-undefined.sh over out/
