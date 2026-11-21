@@ -1,0 +1,1053 @@
+Package: ca-certificates4
+Architecture: iphoneos-arm
+Version: 20261121-2
+Priority: optional
+Section: Utilities
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Provides: ca-certificates
+Depends: firmware (>= 10.3)
+Filename: pool/main/c/ca-certificates4/ca-certificates4_20261121-2_iphoneos-arm.deb
+Size: 117924
+MD5sum: 374e1640947b58c4a64d7a621d7b4513
+SHA1: 8a8de12ef3f07ce044674eda76f69a17cdf488b5
+SHA256: 8f50542f5f174520638d4cc775130d12157c4facacd301a0683347ad3c73f7c2
+SHA512: 983b44b4abca5906f6d538e5c1de50a7d7378b40d521b802d379f7a1901244c9895eb54ff15e71ba2bd2ff695de1fac466becde91e68dd4c142b83e8bd675408
+Description: Mozilla CA bundle and update script for the armv7 kit
+ A single managed trust store: /var/mobile/tools/etc/ca-certificates/
+ ca-bundle.crt (Mozilla bundle via curl.se, 118 certificates) plus
+ update-ca-certificates, which refreshes it atomically with sanity checks.
+ .
+ Entry points: SSL_CERT_FILE=.../ca-bundle.crt for curl, wget, python3,
+ node and go; git config http.sslCAInfo for git.  The system
+ /etc/ssl/cert.pem is left in place -- see docs/ca-certificates.md.
+Name: CA certificates (managed bundle)
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: class-dump4
+Architecture: iphoneos-arm
+Version: 3.5.2-1
+Priority: optional
+Section: sysutils
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/c/class-dump4/class-dump4_3.5.2-1_iphoneos-arm.deb
+Size: 143686
+MD5sum: 99c13edf5675ef8c990c0edb82fae683
+SHA1: c3bade4d0c906d312463ff592fe2504582793bb1
+SHA256: 2b48fdb0575ae771ede7b2341cb1fed7a316dba8e70a009e69748f67f7672709
+SHA512: 992701124d2f3f30702bb8baee8791d09bf229fd3d809d6e2ff261f323177397e9bbdea21aebde7c7e99f972f942e4b1f1cf9efab197c43195fcab79a7d05664
+Description: class-dump (nygard fork 2c82b4f) for iOS 10.3.3 armv7
+ Examines the Objective-C runtime segment of Mach-O files.  Built against
+ the real iPhoneOS10.3.sdk headers (xybp888/iOS-SDKs); links Foundation/
+ CoreFoundation via official tbd stubs.  MRC weak refs downgraded to
+ unsafe_unretained (CLI lifecycle -- see class-dump/build.sh).
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: curl4
+Architecture: iphoneos-arm
+Version: 8.16.0-6
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/c/curl4/curl4_8.16.0-6_iphoneos-arm.deb
+Size: 2666694
+MD5sum: 2925cc64c6f68b857f4004f0bb1068af
+SHA1: 1e50fa146e8c4a33109eff5d71573bed4300d347
+SHA256: 69f02bfd4e1aa11999331d66cc27fca2c6cd6523712e86715ac8b89827606956
+SHA512: 1a6b5ae27b96a19fe29d5f8450045a1ea8e971c18bc7e39ca0b557138e28ef106a00cc2e50d9d13b25307bec1f36bb328b1d1badc917072b995e1e3edc0736c4
+Homepage: https://curl.se
+Description: curl with HTTPS for armv7 iOS 10+ (static OpenSSL 4)
+ curl 8.16.0 for armv7 iOS 10.x, statically linked against OpenSSL 4.0.3.
+ Installs to /var/mobile/tools/curl, so it does not replace any system
+ binary.
+ .
+ Set SSL_CERT_FILE=/etc/ssl/cert.pem to verify HTTPS certificates, or put
+ it in /var/mobile/tools/env.sh.
+Name: curl 8
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: dns4
+Architecture: iphoneos-arm
+Version: 1.0-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/d/dns4/dns4_1.0-1_iphoneos-arm.deb
+Size: 6960
+MD5sum: 4ca7550903a6516d7a768e091358e009
+SHA1: ec19e23f3553678345b1fb758ce8b6b119525fb5
+SHA256: 97a77b6b5e9333255092d3dba5e03a18069a45603c64a4e2564be65aae619070
+SHA512: 89c2db4de4411b670426770bb67bbb13c4d31b186d6fd3f31c1f2bd25a0697874dea0a60f78c5092cda19f17aca234177134e9932b25c3561e45ed6ce9d93060
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: dig/nslookup/host for armv7 iOS 10+ (self-contained stub resolver)
+ The DNS clients the device ships zero of, one binary dispatched by argv[0]:
+ dig (@server, types, +short), nslookup and host, over UDP with retries and
+ TCP fallback on truncation.  Resolver comes from /etc/resolv.conf.
+Name: dig nslookup host
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: dropbear4
+Architecture: iphoneos-arm
+Version: 2026.94-2
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Provides: ssh-server
+Depends: firmware (>= 10.3)
+Conflicts: openssh4
+Filename: pool/main/d/dropbear4/dropbear4_2026.94-2_iphoneos-arm.deb
+Size: 391896
+MD5sum: 1eaad9f5e7098f598802d5eec74afd3b
+SHA1: 9d549a815ca5ee6e0a22c7adac93be2f17168dfe
+SHA256: ec382e82c98d17a93e067a4e84b9ffa63b4920dc2fdd2b7d1dced47037629c8e
+SHA512: 5d4a17c6b4ccdb7a2cbb703bc9c01d4d251e234f4e85cdf55c237cbd04784f94254f75f995029bad2a01bb269d489910abe5ef1f7cb48e28d8b35b52163c8611
+Homepage: https://matt.ucc.asn.au/dropbear/
+Description: Dropbear SSH server and client for armv7 iOS 10+ (port 22)
+ Dropbear 2026.94, cross-compiled for armv7 iOS 10.x with its bundled
+ libtomcrypt (no OpenSSL dependency).
+ .
+ Installs /var/mobile/tools/db-dropbear (server), db-dbclient, db-dropbearkey
+ and db-scp, plus a LaunchDaemon that runs the server on port 22.
+ .
+ This is the primary SSH server on port 22; the legacy /usr/sbin/sshd is
+ relocated to port 22222 by sshfix, not deleted, so the previous access
+ path is still recoverable if this package is removed.
+Name: Dropbear SSH 2026.94
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: ffmpeg
+Architecture: iphoneos-arm
+Version: 9.0.2-1
+Priority: optional
+Section: Multimedia
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/f/ffmpeg/ffmpeg_9.0.2-1_iphoneos-arm.deb
+Size: 19869858
+MD5sum: dcb251a73d7bc7df5cc48a2b0a34f3bb
+SHA1: ed09f3579234de17a0c1019566a177bd3700b5d3
+SHA256: 3c805a2f436739e1b86d6b39448fe93cc694e86c335839d8227f6f519190013c
+SHA512: 10487457994373ae451da0a59607cdc36ed12045ea81cbf7b767278791702358095fb44c300f503a6fa832e64c2a2a8d255f6a867b0d360f281018f71f1d017c
+Description: FFmpeg 9.0.2 (static, full built-in codecs) for iOS 10.3.3 armv7
+ ffmpeg + ffprobe with all built-in encoders/decoders/muxers/demuxers/
+ filters; network enabled (https via static OpenSSL 4.0.3, zlib via
+ static 1.3.1).  SDK sysroot mode (real iPhoneOS10.3.sdk); ARM NEON asm
+ via gas-preprocessor.  Successor of BigBoss com.nin9tyfour.ffmpeg 2.6.1.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: git
+Architecture: iphoneos-arm
+Version: 2.51.2-1
+Priority: optional
+Section: Development
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/g/git/git_2.51.2-1_iphoneos-arm.deb
+Size: 16819066
+MD5sum: c56af73ec64cc9593b0a23ab2243f135
+SHA1: eaa218132bf0ee151eb2806aaf389962e62c43a9
+SHA256: 7f97bf93860196a5b450c2275171fc8a0a2dff73be29ed01bc7a5f84b8142c11
+SHA512: ee45fc1f9dd6b6639b5ffe334aec3abdbd2e5692da3b12b7d8fa157623bd2e0eef68b5c72dc0d5a9cb2c3fff467015f9320ffd7ef2ac3cea442cf5d5bf053be8
+Homepage: https://git-scm.com/
+Description: Git 2.51.2 for armv7 iOS 10+ (fully static)
+ Git 2.51.2 for armv7 iOS 10.x.  Everything is statically linked
+ (zlib, libcurl, OpenSSL 4.0.3), so there are no runtime library
+ dependencies.  Installs under /var/mobile/tools; nothing in /usr is
+ touched.
+ .
+ Add /var/mobile/tools/bin to your PATH (or source
+ /var/mobile/tools/env.sh), then set your identity once:
+   git config --global user.name "you"
+   git config --global user.email "you@example.org"
+ .
+ Working: init/add/commit/log/diff/status/branch/merge/rebase, clone,
+ fetch and push over HTTPS (git-remote-http) and file://, git-shell.
+ Not built (no perl on the device): git-send-email, gitweb, cvsserver.
+ .
+ HTTPS certificate verification needs SSL_CERT_FILE=/etc/ssl/cert.pem
+ (see /var/mobile/tools/env.sh).
+Name: Git 2.51
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: go4
+Architecture: iphoneos-arm
+Version: 1.27.2-1
+Priority: optional
+Section: Development
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Filename: pool/main/g/go4/go4_1.27.2-1_iphoneos-arm.deb
+Size: 54781636
+MD5sum: 28e3041eab6de944bbd2efd0f1b21673
+SHA1: 37d1107857237a82da550d8a63ea350d685eb525
+SHA256: 6bbeca8c37ed987b4249903585814df388852acd21f33c2f3dda8319677d168f
+SHA512: e67a77294cf02380da32b88d0d46607d760810eae7bb705929b36763aaddcb08701de167b3fb489e55856cb2bb11ec3b813fe644e4796031a9cad7e836f36de4
+Homepage: https://go.dev/
+Description: Go 1.27.2 toolchain for armv7 iOS, revived port
+ Go compiler and toolchain running on the device itself (armv7 iOS 10).
+ The darwin/arm port was dropped upstream after Go 1.14; this revives it
+ inside the Go 1.27.2 tree (internal-linking Mach-O writer, pure-Go
+ runtime, per-thread g-slot table).  See the porting notes in the repo
+ docs for the runtime and linker bugs that had to be fixed first.
+ .
+ Usage:
+ .
+   export GOROOT=/var/mobile/tools/goroot
+   cd /var/mobile/gohello && go build -o hello .
+ .
+ First full build of a multi-package program takes minutes on an A6X.
+Name: Go 1.27.2 darwin/arm
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: ifconfig4
+Architecture: iphoneos-arm
+Version: 457-2
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/i/ifconfig4/ifconfig4_457-2_iphoneos-arm.deb
+Size: 63620
+MD5sum: 8727bad88730937f00fc2c46a484ffe8
+SHA1: 2444862e3d2f50385a285b1bad50039a3534e304
+SHA256: d6ffe0c113baef2339fdedbc4e363bf4e8b9cc895b65568df3936db91cc9e219
+SHA512: 8766e1c2ea84526fb8332b16d3e5754eb43d55dbd81f5936623930100c6891eae06d6876faa4ad44bf8e7bdf3e6260d4410369a24d9495867d2d3771d82133ea
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: BSD ifconfig/route/arp/ndp for armv7 iOS 10+ (network_cmds-457)
+ Real Apple network_cmds-457 (Darwin 16 / xnu-3789 era) ifconfig, route, arp and\n ndp,
+ cross-built with -DPRIVATE against xnu-3789.70.16 kernel headers.  ifconfig
+ does link/media/IPv4/IPv6 status and (as root) address alias add/delete;
+ route does get/add/delete/flush/monitor via the routing socket.  Read-only
+ status works as mobile; write ops need root.  No setuid on purpose.
+Name: ifconfig + route (network_cmds-457)
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: iperf34
+Architecture: iphoneos-arm
+Version: 3.22.1-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/i/iperf34/iperf34_3.22.1-1_iphoneos-arm.deb
+Size: 81010
+MD5sum: 9c259d5984ecf46da89d4364dc87ee73
+SHA1: badfa9adf32b3eeecbe6a60a88729c4861735a37
+SHA256: bfa1fce0830a6e48e74f9045b3c0f4719926a476a2bc127a2a1345991bc29604
+SHA512: 97f75b2e9ab22e88a166da0df2eefce8810a7b96a7509612fbee7669363e2c2f73b947c7c64ad6d94ab14cccb37fe427de3980dfe0c17e5078833ea72b0d5ff3
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: iperf3 3.22.1 for armv7 iOS 10+ (WiFi throughput testing)
+ Client/server bandwidth measurement.  Server runs fine as mobile (ordinary
+ TCP/UDP sockets); pair with a host-side iperf3 over WiFi.
+Name: iperf3 3.22.1
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: jq
+Architecture: iphoneos-arm
+Version: 1.7.1-2
+Priority: optional
+Section: Utilities
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/j/jq/jq_1.7.1-2_iphoneos-arm.deb
+Size: 396684
+MD5sum: adf5ce40437a39540587062efadc3f85
+SHA1: 767f7dfac0a6c8ae0c2d95c58c11d38145bef072
+SHA256: 3a56b8f8992ebf2e74eddcf1f7dab121c784ccb55ad7d32503d32eea78571f61
+SHA512: 9c95a74a6a8a46fa2ad9b32c9db6566cc576058b3cba42a037aaa823eb71de43044c30c113e81ae3089d4d253149dc7283d09d47f84dcd613d2517d2a9eb545b
+Homepage: https://jqlang.github.io/jq/
+Description: jq 1.7.1 for armv7 iOS 10+ (oniguruma regex, verified)
+ jq 1.7.1 command-line JSON processor for armv7 iOS 10.x, statically
+ linked with oniguruma 6.9.10 (the test() and match() builtins work).
+ Installs to /var/mobile/tools/jq; nothing in /usr is touched.
+ .
+ Verified on an iPad 4: filters, reduce over 100k elements, regex test(),
+ UTF-8 round-trip, sort.  Pairs well with curl4 and sqlite3.
+ .
+ Add /var/mobile/tools to your PATH, or call it by absolute path.
+Name: jq 1.7
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: less4
+Architecture: iphoneos-arm
+Version: 668-1
+Priority: optional
+Section: utils
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/l/less4/less4_668-1_iphoneos-arm.deb
+Size: 114974
+MD5sum: a5bbf21a9388d385085af89323f5fdab
+SHA1: acd27d1d72b04c71699c96bcc8c16a6abe2c569f
+SHA256: 00281599602a01eae8663097ee68c9ad4c2ae40e68cbf1325e422153c55ea044
+SHA512: 5fd558b23d0a5e24366dc6ec8b12834ab5cc22d377ce1dc6317730898b8b7552f74826b9fa16da24119771a1216dbba28b8c786b6732483a7acadeee47fcbb9a
+Description: less v668 for iOS 10.3.3 armv7
+ Terminal pager.  Links the device's own libncursesw.5.dylib; terminfo from
+ /usr/share/terminfo.  Built from the official less-668 release tarball
+ (greenwoodsoftware.com).
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: lsof
+Architecture: iphoneos-arm
+Version: 4.99.7-1
+Priority: optional
+Section: Utilities
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/l/lsof/lsof_4.99.7-1_iphoneos-arm.deb
+Size: 59376
+MD5sum: dec8eeacf94bc0a80446ff2a0c1997f8
+SHA1: 3c0cebac39d448f9e93baa41ec58927b7337a950
+SHA256: 5a419299cf4f530dbf7eadfbe3e9981d924e0ae069ff5b22cf5d1155f86b309a
+SHA512: f685cbbd0bf2be1bc2de0728e882d41ea209851811d78ae2efa3014b67263f93a309724b7763ec5bf39b69dd32fe5046b80df1ca87c0b53628d6c173f7c1ab2c
+Homepage: https://github.com/lsof-org/lsof
+Description: lsof (LiSt Open Files) for armv7 iOS 10+
+ lsof 4.99.7, cross-compiled for armv7 iOS 10.x.  The libproc-based
+ Darwin dialect: enumerates processes and their open files through
+ proc_listpids()/proc_pidinfo(), the same kernel interface ps uses.
+ .
+ Installs /var/mobile/tools/lsof.  Run it as root (sudo) to see other
+ users' processes; unprivileged runs only show your own -- the same
+ behaviour as on macOS, where lsof is also privileged.
+ .
+ Replaces the 2013 lsof 4.78 found in jailbreak images, which fails on
+ iOS 10 with "Cannot allocate memory" for every PID because its
+ hand-parsed struct kinfo_proc no longer matches the kernel.
+Name: lsof 4.99.7
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: make4
+Architecture: iphoneos-arm
+Version: 4.4.1-1
+Priority: optional
+Section: devel
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/m/make4/make4_4.4.1-1_iphoneos-arm.deb
+Size: 109722
+MD5sum: d405c069c1819cc32ba236d9bd661a94
+SHA1: 97d5ecffe706d3319fa154231e1103023ea080da
+SHA256: dcd413fb06cd0afa34221a7b61423d38f34bfe0c51c3e06835665fbfe9e7049f
+SHA512: d1993de0f5d7af80063407920af7ac0d594d4d62d5130a19c870569bba31529a10e586331c0916012a7ee3606713d1003af962a854062787c8d4c79d394de07f
+Description: GNU make 4.4.1 for iOS 10.3.3 armv7
+ On-device rebuilds of small projects.  NLS off; eaccess/memrchr gnulib
+ probes forced off (device lacks both -- gnulib supplies replacements);
+ libgnu.a archived with darwin-ar (ld64 ignores GNU archives).  See
+ make/build.sh for the full override list.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: mosh
+Architecture: iphoneos-arm
+Version: 1.4.0-4
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/m/mosh/mosh_1.4.0-4_iphoneos-arm.deb
+Size: 3487944
+MD5sum: cd165d6dd9e5f76ea200cb6c67174fbe
+SHA1: c10307a70e555ad41aa50341a3db524cb24505dd
+SHA256: 588db75114ac9ddd7ab4ec285e47bdec4de56f9b01164cc50d22f85bdcce918d
+SHA512: dad5c9eff29f586ee2ab5342f8926199642f88a3d9116d1c631bdb440d409d751f35b33ff0716ea58b77e229f09551e0c677fd68199f5ebb44254b84c0609c5c
+Homepage: https://mosh.org/
+Description: Mosh 1.4.0 for armv7 iOS 10+ (roaming SSH, UDP 60000-61000)
+ Mosh 1.4.0 for armv7 iOS 10.x: mosh-server + mosh-client, statically
+ linked against libprotobuf 3.20.3 and OpenSSL 4.  Installs under
+ /var/mobile/tools; nothing in /usr is touched.
+ .
+ mosh survives roaming, suspend and IP changes over UDP 60000-61000 --
+ the point of having it on a tablet that switches networks.  Run from a
+ client machine:
+   mosh --server="/var/mobile/tools/bin/mosh-server new" mobile@<device>
+ (the  launcher itself is a perl script; iOS has no perl, so the
+ --server= form or a /usr/local/bin symlink is required).
+ .
+ The device has no locale support; this build treats the missing locale
+ as UTF-8 (probe-verified; mosh never transcodes server-side).
+Name: Mosh 1.4
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: ncdu4
+Architecture: iphoneos-arm
+Version: 1.20-1
+Priority: optional
+Section: Utilities
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/n/ncdu4/ncdu4_1.20-1_iphoneos-arm.deb
+Size: 41792
+MD5sum: ce51ab31d9e345c605a7c7fd210be876
+SHA1: 7f7a0c151ad30a96483a6d18c07bb5a77991188d
+SHA256: 4d7f4de16ea3fecf6ffb68dea3967cc9dd67048f93ea99813ac93ff8709045df
+SHA512: 065bdbc7185c5f09dc8b4794ca20e22966873b2b3eb5bea4fc7f11128358f2f5034f5c44a1634e98962bb2db388435316b0f2de821d42e80811e678400555798
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: ncdu 1.20 ncurses disk usage analyzer for armv7 iOS 10+
+ TUI disk usage explorer (du with a curses interface).  Links against the
+ device's own libncursesw.5.dylib.  Also supports -o/-f JSON export/import
+ for non-interactive use.
+Name: ncdu
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: netstat4
+Architecture: iphoneos-arm
+Version: 1.0-1
+Priority: optional
+Section: net
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/n/netstat4/netstat4_1.0-1_iphoneos-arm.deb
+Size: 8230
+MD5sum: 58c012cd2a429c3fc660050cc9008d18
+SHA1: c9442a25372a1e9ecc1cd41967743311876cf05e
+SHA256: e0af80f91ac0d5cb8d9aeda3a295d393e2ce0eae34caca1724fd3d1b21845878
+SHA512: d874e70fb983ca868d77a03a07e67a502518583d94887e99299a4e96c86df8d6e809de863533073443e3a47c61d9b917a18c248face478c0d026fe39a7e24c0e
+Description: netstat for iOS 10.3.3 armv7
+ Shows active Internet connections, routing tables, and interface statistics.
+ Built from device-verified ABI (xinpgen/xinpcb/xtcpcb offsets measured on
+ xnu-3789.70.16). Supports -a -t -u -r -i flags, numeric output.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: nginx4
+Architecture: iphoneos-arm
+Version: 1.31.9-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/n/nginx4/nginx4_1.31.9-1_iphoneos-arm.deb
+Size: 2483050
+MD5sum: ff6fd59253c3306d93a06f326ac2b0b6
+SHA1: 78c016cf0c3f1509afbed8b006b63569ba4c1540
+SHA256: 71e276488d4c932768de97a8376c9c3f3e545429b2db826471d62c301c5a1c3b
+SHA512: 5440c25a404180f90f1a10a95476a076335d88ec5af3c480abb63e5a0fc8d1ca94616d63f49cddd713c8a7668af6bb95256918a296557a347adcf8850f8415bf
+Homepage: https://nginx.org/
+Description: nginx 1.31.9 for armv7 iOS 10+ (kqueue, static OpenSSL 4)
+ nginx 1.31.9 cross-compiled for armv7 iOS 10.x, using the iOS
+ kqueue event engine and statically linked against PCRE2, zlib and
+ OpenSSL 4.0.3.  Installs to /var/mobile/tools/nginx so it does not touch
+ any system path.
+ .
+ Working: static files, index, autoindex, gzip, rewrite/return, TLS, and
+ the HTTP proxy module.  Built without the FastCGI/uwsgi/SCGI/gRPC/mail
+ modules and without HTTP basic auth (iOS libSystem does not export
+ crypt(3)).
+ .
+ Ships a minimal nginx.conf listening on port 8080 with its document root
+ at /var/mobile/tools/nginx/share/nginx/html.  Start it as the mobile user:
+   /var/mobile/tools/nginx/bin/nginx
+ and check it with
+   curl http://127.0.0.1:8080/
+Name: nginx 1.31.9
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: nmap
+Architecture: iphoneos-arm
+Version: 7.95-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/n/nmap/nmap_7.95-1_iphoneos-arm.deb
+Size: 9599526
+MD5sum: 9d5f00e131e19fd1a8acd81057fdd80e
+SHA1: dd4326155f75051e752f5e1d9e29f157737464e0
+SHA256: 959a42bfdea40c8f222d5707177633a7863bc1efb9e521d3f7039967572059e2
+SHA512: e6c1e1f8b3e39360549829e806b7e761643cac40210b73e982d0b9422873f7f19b66aed8707191808df525be8e3e1b5921ec6bc1de4d0523586539cfda325857
+Homepage: https://nmap.org/
+Description: Nmap 7.95 for armv7 iOS 10+ (connect scan verified)
+ Nmap 7.95 for armv7 iOS 10.x with ncat.  Everything is
+ statically linked (libpcap, OpenSSL 4, zlib, pcre2, lua, libdnet,
+ liblinear); installs under /var/mobile/tools, nothing in /usr is
+ touched.
+ .
+ Verified on an iPad 4: --iflist enumerates interfaces, TCP connect scan
+ (-sT) reports open ports correctly.  Wi-Fi interfaces refuse
+ promiscuous mode, so raw-packet scans (-sS/-sU) may need USB/ethernet
+ or simply may not work; -sT works.
+ .
+ Data files ship in /var/mobile/tools/share/nmap.  Run as root for
+ anything beyond unprivileged connect scans.  Add /var/mobile/tools to
+ your PATH, or call it by absolute path.
+Name: Nmap 7.95
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: node4
+Architecture: iphoneos-arm
+Version: 22.23.4-1
+Priority: optional
+Section: Development
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/n/node4/node4_22.23.4-1_iphoneos-arm.deb
+Size: 18414130
+MD5sum: b6f15735f74ef99c463c3a428e677ea2
+SHA1: 75f9afeab9916e5f7335a0d822bdc2b0942bd2f6
+SHA256: d497afcab465617fb3545dfe1e07f4cd2b4c3b73812ee6a97f2c3e3836ec71f3
+SHA512: 9a188b3a38a859f4786bd11cfeee4b49ae8171ad5b40f45718d8777d17d4d759df28cf9dc7e640773276d8d9cced13e717562383ce1dff7393fff0fe118b7313
+Homepage: https://nodejs.org
+Description: Node.js 22.23.4 for armv7 iOS 10+ (jitless)
+ Node.js 22.23.4, cross-compiled for armv7 iOS 10.x with an embedded
+ V8, libuv, OpenSSL, c-ares, zlib and llhttp, all statically linked.
+ .
+ Installs to /var/mobile/tools/node.  Nothing under /usr is touched and no system
+ binary is replaced; removing the package leaves the device as it was.
+ .
+ IMPORTANT: this device cannot execute JIT-generated code -- the kernel
+ kills the process.  The `node` installed here is therefore a wrapper
+ that sets NODE_OPTIONS=--jitless before exec'ing the engine, so jitless
+ is the default and the user does not have to remember it.  The engine
+ itself is /var/mobile/tools/node/bin/node.real.
+ .
+ Because JIT is off, long-running compute is dramatically slower than on
+ a desktop.  Short scripts, file manipulation and npm are the intended
+ uses.  There is no Intl (built --with-intl=none) and no startup snapshot
+ (built --without-node-snapshot), so `node -e` has a noticeable fixed
+ startup cost.
+Name: Node.js 22
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: openssh4
+Architecture: iphoneos-arm
+Version: 10.6p2-3
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Provides: ssh-server
+Depends: firmware (>= 10.3)
+Conflicts: dropbear4
+Filename: pool/main/o/openssh4/openssh4_10.6p2-3_iphoneos-arm.deb
+Size: 13641470
+MD5sum: d384d7c8e9ca339a171e819421ab6ae4
+SHA1: f901100f53f6c18a6827dd890a153a185b00cf49
+SHA256: 84d0bdafb4670c2e03b231ce6d25ee5743fa85f5abf78288b2d75cbe654b51c4
+SHA512: 517d61e60d201b4f7c80e808cef6efca41fd55534da104a21d55d6de83ddfc2c5650eb4952cd5d5090da280da4bcadabe8be070fd4da052b3133e522523c5a60
+Homepage: https://www.openssh.com/
+Description: OpenSSH 10.6p2 for armv7 iOS with the com.hesper.osshd daemon
+ Installs ossh-* under /var/mobile/tools so it never shadows the system
+ ssh/scp, plus the com.hesper.osshd LaunchDaemon: default port 22, conffile
+ sshd_config, and a wrapper that refuses a port already held instead of
+ looping under KeepAlive.
+ .
+ Clients ssh/scp/sftp and the server all work, sftp-server included.
+Name: OpenSSH 10.6p2
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: openssl4
+Architecture: iphoneos-arm
+Version: 4.0.3-6
+Priority: optional
+Section: Security
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/o/openssl4/openssl4_4.0.3-6_iphoneos-arm.deb
+Size: 2280886
+MD5sum: fe086ccdade5f189f68dacd21f3927e5
+SHA1: cf2ee6bbe8c74e9e28779d6e588114dfb0c2469b
+SHA256: e530cb09a1a61e56e36b04a907cd8feee26cea10cfe2ac9132768d29e7bfa2c8
+SHA512: b5a5bf7647515aa45b1665e3ab2df01b106b046be8c14d532741a8da582e15daf1612ec6b2b1afdb16570f0807fe2b786741609959685ea54af2ad06ff4f4a10
+Homepage: https://www.openssl.org
+Description: OpenSSL 4 command line tool (armv7 iOS 10+)
+ OpenSSL 4.0.3 built for armv7 iOS 10.x.  Installs an isolated copy under
+ /var/mobile/openssl4 so it never shadows the system libraries that sshd
+ and the rest of iOS depend on.
+ .
+ Provides: openssl
+ Replaces: openssl
+ Conflicts: openssl
+Name: OpenSSL 4
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: p7zip17
+Architecture: iphoneos-arm
+Version: 17.05-1
+Priority: optional
+Section: utils
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/p/p7zip17/p7zip17_17.05-1_iphoneos-arm.deb
+Size: 1642524
+MD5sum: 16dcda15f7e0296dcdeacf5d0fc664c3
+SHA1: cc59491886538daf16c939f527db769b292b8596
+SHA256: d410749941eb58c78c6d50bf3ffa6efdbc6f562ec9e72195beb4dacd42ced1a0
+SHA512: fcdc97ac6ccead5b6fb0712a94f9c42f04d6bba324826b068a464e768db345d4ba06a9a1002b1429ae65959192f74eeeeb4ac7dda08a54f8304fa50d76f958b2
+Description: p7zip 17.05 (7z/7za) for iOS 10.3.3 armv7
+ Standalone 7za, all codecs built in: 7z (LZMA/LZMA2), xz, AES-256,
+ gzip, bzip2, zip, tar.  Supersedes the 2007-era p7zip 4.57 in interactive
+ PATHs via /var/mobile/tools/bin symlinks; the old package's dpkg-owned
+ /usr/bin/7z and /usr/bin/7za are left untouched.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: patch4
+Architecture: iphoneos-arm
+Version: 2.7.1-1
+Priority: optional
+Section: Utilities
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/p/patch4/patch4_2.7.1-1_iphoneos-arm.deb
+Size: 98546
+MD5sum: bb1dd26d9544a1cb2d125cbc1fa84509
+SHA1: a06055f6ff4652cc4639dfed153addf7568d3a53
+SHA256: 07333bca712ed1267acb0c05504cdd7712b8f5c55351ee5bfe81dfceb0ce299f
+SHA512: e8906557a91bcce1ba1a9c626c1bd8e6f94afa832dc76670830d358e8e41e8887829d90388358367f5dff2f04ed903f670e6a075a864f1721cdebd927d1140f3
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: GNU patch 2.7.1 for armv7 iOS 10+ (apply unified diffs on device)
+ The standard patch(1): applies unified/context diffs, with gnulib probes
+ suppressed for iOS 10 (futimens/utimensat/nanotime fall back to utimes).
+Name: GNU patch
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: pgrep4
+Architecture: iphoneos-arm
+Version: 1.1-1
+Priority: optional
+Section: Utils
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/p/pgrep4/pgrep4_1.1-1_iphoneos-arm.deb
+Size: 12650
+MD5sum: e889207743bfae8ec4df0a20b66a1cda
+SHA1: 6b31c1e164eb95d3174503e8bd7a21c45c182db7
+SHA256: 45efe18279f6a87804125efa29eba87bc73a57361ffd0acdc5c489fb64c239fc
+SHA512: 309be8514162b209119613af2fd5a359db87e0ccd1a83e8f247a4513458a3b64a1e6090f2db5bf75fdf8277c66a04ba0d1beed80640038a7c598ad5265c918d5
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: pgrep/pkill for armv7 iOS 10+ (sysctl, no /proc)
+ OpenBSD-pkill-lineage process finder/killer adapted to Darwin: the
+ process table comes from sysctl(KERN_PROC_ALL) -- iOS has no /proc.
+ -f full-cmdline matching needs root (KERN_PROCARGS2 is root-only on
+ iOS 10; non-root silently matches p_comm).  One binary, installed as
+ both pgrep and pkill (argv[0] dispatch).
+Name: pgrep/pkill 1.1
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: ping4
+Architecture: iphoneos-arm
+Version: 1.0-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/p/ping4/ping4_1.0-1_iphoneos-arm.deb
+Size: 5822
+MD5sum: 00bcfd0e3c525609905857686a1bb9b5
+SHA1: 919c8e741e892b7a66a062ff514facb7ccbb7044
+SHA256: 7185db9b4eb6333d04d3bf334d729cff5b9be81e084b084c859f336d68f2248b
+SHA512: 15b293b09f1b23e85092b24236a72fe5042dace4da3959344e4e0efad2321f8425a5dfd3d35e36be6beea542f3deca9680ecb1c91e7c2e215631975b65725c1d
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: minimal ICMP ping for armv7 iOS 10+ (setuid, SOCK_RAW)
+ Self-contained ICMP echo ping.  Installs setuid root (4755) because iOS
+ 10 delivers ICMP echo replies only to sockets opened with SOCK_RAW,
+ which needs root; the unprivileged SOCK_DGRAM form sends but receives
+ nothing (device-probed).  Supports -c count -i interval -s size -W ms.
+Name: ping 1.0
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: python3
+Architecture: iphoneos-arm
+Version: 3.13.18-2
+Priority: optional
+Section: Development
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/p/python3/python3_3.13.18-2_iphoneos-arm.deb
+Size: 19072418
+MD5sum: ab1b34e71db0457a5ea09ef89de6d8f0
+SHA1: bc59d78476639a52abbe96f7ce1616c1cdfdc804
+SHA256: 61e3d7b5f1951595c21270a0ebe1a8f71de144fe694a164d286734cb91574a74
+SHA512: 16d007858644ef9f2b5efe8a6a1e97cfb8679e1e9fff017fdcbfa53aba75b1a1fb553c215f74c949c0908282f260a5a8fa084c37b51a2598fc81b69edde91547
+Description: CPython 3.13.18 for iOS 10.3.3 armv7
+ Full CPython built against the real iPhoneOS10.3.sdk, cross-compiled on
+ Linux with cctools ld64.  Includes the standard library and 53 C extension
+ modules (math, zlib, hashlib, sqlite3, _socket, ssl/OpenSSL 4.0.3, ...).
+ TLS 1.3 verified on device with a real HTTPS request.
+ Installs to /var/mobile/tools/python3; no PYTHONHOME needed.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: python314
+Architecture: iphoneos-arm
+Version: 3.14.10-1
+Priority: optional
+Section: Development
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/p/python314/python314_3.14.10-1_iphoneos-arm.deb
+Size: 19765466
+MD5sum: 578e2d4ff983e5eb2443e2d5aa1c9a94
+SHA1: 29ed94dbdb1365bfcadad1ed898348dd202512a3
+SHA256: 04f54f52ced039a8b752949fe502a7f8f37e48bf1a4a5689319fb46cc1770fd5
+SHA512: b96753f034b83247450c59d455bb54de28732e647a4027af62392081ef4dc62ed01a0503034a9e2529ce4ad70dea4dd5e799b0e013dc9732896eb1353401e405
+Description: CPython 3.14.10 for iOS 10.3.3 armv7
+ Full CPython with the standard library and 53 C extension modules
+ (math, zlib, hashlib, sqlite3, ssl/OpenSSL 4.0.3, _socket, ...).
+ TLS 1.3 verified on device.  Installs to /var/mobile/tools/python314 and
+ coexists with python3 (3.13).  Needs PYTHONHOME=/var/mobile/tools/python314 unless the prefix
+ matches the build-time value.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: quickjs4
+Architecture: iphoneos-arm
+Version: 2026-06-04-1
+Priority: optional
+Section: Development
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/q/quickjs4/quickjs4_2026-06-04-1_iphoneos-arm.deb
+Size: 503502
+MD5sum: c51e056003750a380cb3a83ca802f7f4
+SHA1: 3757c57dea014aea671d182cf1cde3f56c57f4d4
+SHA256: acf0b602d2161a1d493bdb701adc59d26215c6a78b222d41987dbd1148f021ba
+SHA512: bc756b099909e6cb63fb600e43943c4319f400c0931503e9c3294752c6b600ab5f40edbd08aa8c034726a5f61acc6d8f04f9aea12f7c1e2d71638849ddefb362
+Homepage: https://bellard.org/quickjs/
+Description: QuickJS 2026-06-04 JavaScript engine for armv7 iOS 10+
+ Fabrice Bellard's QuickJS (ES2023), cross-compiled for armv7 iOS 10.x.
+ Installs /var/mobile/tools/bin/qjs.
+ .
+ Originally the comparison engine for the node.js port (docs/quickjs.md);
+ productized 2026-11-21 with pinned sources, clean-tree rebuilds and the
+ standard check-undefined gate.  test262 baseline: 58 known failures
+ (host-run, recorded in the upstream tree and docs/quickjs.md).
+Name: QuickJS JavaScript engine
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: rsync4
+Architecture: iphoneos-arm
+Version: 3.3.0-2
+Priority: optional
+Section: net
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/r/rsync4/rsync4_3.3.0-2_iphoneos-arm.deb
+Size: 258952
+MD5sum: 898dc15dc0866f7a0b63463de8a2af87
+SHA1: 8a5c71bc06e4a1f82e5284085446e639a028e93b
+SHA256: 98d54072153c1a25d5c8fdcd394f6810eecb1e68c74edb6bcdc2dd40e458dbfa
+SHA512: c4a0d0e32f9cad557f10bb4eeb96eca5c9ecb4afad4308ca56575e926b4a8b477f1f11f868f874fa3521c958c38f725cff846ae31c38bcc86fb44fc944ae43f1
+Description: rsync 3.3.0 for iOS 10.3.3 armv7
+ Fast incremental file transfer.  popt/zlib bundled in-tree; built without
+ iconv/acl/xattr/xxhash/openssl extras (see rsync/build.sh for the probe
+ overrides).  3.3.0-2: /usr/bin/rsync symlink added -- rsync-over-ssh works without --rsync-path.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: smalltools4
+Architecture: iphoneos-arm
+Version: 1.0-1
+Priority: optional
+Section: Utilities
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/s/smalltools4/smalltools4_1.0-1_iphoneos-arm.deb
+Size: 6054
+MD5sum: 80caf2ac8ff0b16298fa7f20d6cb9ab1
+SHA1: 53a14f907f6b60c982d8401272faa0e71d1eb498
+SHA256: 023dbbf25ca4256e9e961b245d01e28aac0ff99a8d3e18330265525049248ab2
+SHA512: 7b0a55b38777842f399c97171d20e60661ee682ce8e14631dfda4ce39abb3f38d0498d29c5b86ab7209a5a53de69d18719aeaf3855083f1e825471647313ce39
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: tree/watch/realpath/hexdump for armv7 iOS 10+ (one binary)
+ Four small file utilities the device lacks, one binary dispatched by
+ argv[0]: tree (directory glyphs, -a -d -L), watch (periodic re-run,
+ -n seconds), realpath (SDK realpath(3)), hexdump (16-byte hex+ASCII).
+ Installed under /var/mobile/tools/smalltools with /usr/bin links.
+Name: tree watch realpath hexdump
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: socat4
+Architecture: iphoneos-arm
+Version: 1.8.0.3-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/s/socat4/socat4_1.8.0.3-1_iphoneos-arm.deb
+Size: 127816
+MD5sum: b2d9664970840d09e01c1755901a8690
+SHA1: 2361826d05713fc46120c5606cb9fbaec2edba33
+SHA256: 8e3e3d8abf63e1ef656cc6b6102808d52286b09b9fbb78183bd3e1fa5893e589
+SHA512: 745f4442f1322a48c1e12f8973be9b43991d5e613af3cb689a506b986e122566047a9617439621e14428a41ea8f62f58847816486839ed0771cca5bc5480fc6a
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: socat 1.8.0.3 multipurpose relay for armv7 iOS 10+
+ TCP/UDP/UNIX/EXEC bidirectional relay — the network Swiss army knife
+ (port forwarding, pipes, testing).  Runs as mobile; privileged
+ operations (low ports) need root.
+Name: socat
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: sqlite3
+Architecture: iphoneos-arm
+Version: 3.54.1-1
+Priority: optional
+Section: Development
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/s/sqlite3/sqlite3_3.54.1-1_iphoneos-arm.deb
+Size: 1505644
+MD5sum: a060938bd3e66628d9074ce29472eb53
+SHA1: c2095fe2df3e839ea09259d0a7d7c8aec69220df
+SHA256: de344bee9e533654bb34145b9ccee872003a7e7e90d290f2433e6ed5ae9d4d3e
+SHA512: db521c0d26079d368dcf40d7d7526f237d6cdd17cf438fc374f17a2d9e9eb6ba1c0ba1e7bf28645cf75d8c917bf536374d48d11198304698d0a62f8fface9ba3
+Homepage: https://sqlite.org/
+Description: SQLite 3.54.1 command-line shell for armv7 iOS 10+
+ SQLite 3.54.1 for armv7 iOS 10.x, built from the upstream
+ amalgamation (sqlite3.c + shell.c) and fully static -- there are no
+ runtime library dependencies at all, not even zlib.
+ .
+ Installs the shell as /var/mobile/tools/bin/sqlite3 plus the static
+ library (libsqlite3.a) and headers (sqlite3.h, sqlite3ext.h) under
+ /var/mobile/tools.  Nothing in /usr is touched, so the system's own
+ libsqlite3.dylib that iOS components link against is left alone.
+ .
+ Built with FTS5, R-tree, JSON, math functions, dbstat and column
+ metadata enabled.  Extension loading (dlopen) is compiled out: iOS will
+ not load unsigned code anyway.
+ .
+ Add /var/mobile/tools/bin to your PATH (or source
+ /var/mobile/tools/env.sh).
+Name: SQLite 3.54
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: tailcat4
+Architecture: iphoneos-arm
+Version: 0.7.0-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Filename: pool/main/t/tailcat4/tailcat4_0.7.0-1_iphoneos-arm.deb
+Size: 8279620
+MD5sum: ac154d943e1010a19ce88fb87547f1cc
+SHA1: bc1f78c65c4f1a0f8967cfa2a9906514f887ab6c
+SHA256: 157f324204eddd796b280b09c75260c26bd2cb1ed0aa52f32c49e883cb916d5e
+SHA512: 109cae8d5105a35cc7c3a7d36ab60b4e2607849c9146ab3534c5b02fcd23eb4c9268d799eeeffcdd7384099bf8dca5e5e8ecd3dc3b16205f1c847466437b6841
+Homepage: https://github.com/tailscale/tailcat
+Description: tailcat for armv7 iOS, Go 1.27.2 darwin/arm revived port
+ Securely pipe or serve network connections over Tailscale's data plane
+ (WireGuard, NAT traversal) without Tailscale's control plane.  Built with
+ the revived Go 1.27.2 darwin/arm toolchain; see the porting notes in the
+ repo docs for the runtime bugs that had to be fixed first.
+ .
+ No launchd daemon: run it yourself, e.g.
+ .
+   /var/mobile/tools/tailcat serve
+ .
+ or pipe through it:
+ .
+   /var/mobile/tools/tailcat <address>
+Name: tailcat 0.7.0
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: tailscale4
+Architecture: iphoneos-arm
+Version: 1.104.7-3
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/t/tailscale4/tailscale4_1.104.7-3_iphoneos-arm.deb
+Size: 16208888
+MD5sum: 27f2664e19a614e73bc0392a606cb330
+SHA1: d3b432ed356d15f67c075585e26413212f952c34
+SHA256: 42fc79f69dae46cf41911b709fd9c1dca4e7052dce7ea00f390154f127d1ee06
+SHA512: 9d7f2d1a0611ef54ce18f485e36f06659301cf09dda3789cc1f52f8247ce8ebe5014192264240a4690c9ae1710fa8711eee981c810e651664d35d0fb420d031c
+Homepage: https://tailscale.com/
+Description: tailscale 1.104.7 for armv7 iOS 10+ (Go 1.27.2 darwin/arm port)
+ tailscale CLI + daemon cross-compiled with the revived Go 1.27.2
+ darwin/arm toolchain.  iOS 10 has no /dev/tun, so the daemon runs with
+ --tun=userspace-networking (gvisor netstack; SOCKS5/HTTP loopback
+ proxies on :1055/:1056).
+ .
+ The LaunchDaemon ships DISABLED (device keeps services off to save
+ power).  Start it explicitly:
+   launchctl load -w /Library/LaunchDaemons/com.hesper.tailscale.plist
+ Then log in (prints an auth URL):
+   /var/mobile/tools/tailscale/bin/tailscale \
+     --socket=/var/mobile/tools/tailscale/tailscaled.sock login
+Name: tailscale 1.104.7
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: tcpdump
+Architecture: iphoneos-arm
+Version: 4.99.5-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/t/tcpdump/tcpdump_4.99.5-1_iphoneos-arm.deb
+Size: 568416
+MD5sum: f5a8c1859a967952753057c21c69897d
+SHA1: 3680d6f9a7b64d694b5762c191de1cc389342894
+SHA256: 9c548d75a44847d16ccb9970ac723db3e620e13474ba90f3acee8768efbd8768
+SHA512: ab7093b59ec9619d074a6f77901cb0992cc21ee3646ccb08642db5aa389c665eb9b4d21d29e65de7be2722c13df47e450ea7d6e364737ed484f69ced1d628110
+Homepage: https://www.tcpdump.org/
+Description: tcpdump 4.99.5 for armv7 iOS 10+ (BPF capture verified)
+ tcpdump 4.99.5 for armv7 iOS 10.x with live packet capture working
+ over the device's /dev/bpf* devices.  Installs to /var/mobile/tools/tcpdump;
+ nothing in /usr is touched.
+ .
+ Run as root to capture: /var/mobile/tools/tcpdump -i en0 -c 10 -n port 443.
+ Wi-Fi interfaces refuse promiscuous mode (BIOCPROMISC is unsupported);
+ tcpdump prints a warning and captures normally.
+ .
+ Add /var/mobile/tools to your PATH, or call it by absolute path.
+Name: tcpdump 4.99
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: tmux
+Architecture: iphoneos-arm
+Version: 3.8-1
+Priority: optional
+Section: Terminal Utilities
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/t/tmux/tmux_3.8-1_iphoneos-arm.deb
+Size: 639590
+MD5sum: d9adc0c22eb5cfd43cd4617a41d3f92c
+SHA1: 931c01bea4a218a0dbbcae17d207047a80093a6c
+SHA256: efebf9acb1c50ec2dbf2f622ae7cebc8ee5d6c1347df0830ae9c78af698f5db3
+SHA512: 84c22b8d28fb9d0f8e0926efb50678be53323380ec68eeb62f3858c85c5c6059f41b525ec34de09d7598aa2634e11885fcde4071b7349e8cf02c7def8250b0de
+Homepage: https://github.com/tmux/tmux
+Description: Terminal multiplexer - windows, panes, detachable sessions
+ tmux is a terminal multiplexer: switch between several programs in one
+ terminal, detach sessions (they keep running in the background) and
+ reattach later, share sessions across SSH logins, and split windows into
+ panes.
+ .
+ Cross-compiled from upstream source for armv7 iOS 10.x (no Xcode, no iOS
+ SDK). Requires iOS 10.3 or later on an armv7 (32-bit) device.
+Name: tmux
+Author: Nicholas Marriott <nicholas.marriott@gmail.com>
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: tor4
+Architecture: iphoneos-arm
+Version: 0.4.8.14-1
+Priority: optional
+Section: net
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/t/tor4/tor4_0.4.8.14-1_iphoneos-arm.deb
+Size: 3131782
+MD5sum: 208c2aac3e4980d88ce64669144a7fcf
+SHA1: 211b435ce5bdfdcddb85cf0aaf38b22b532af759
+SHA256: fb1b7b7120bf76ca40c6865e6f34b66bf710a62fbde0ca408807f5a527c47464
+SHA512: 8e3bc49b844494bc89fecf55190b8b54913e8546e538dd1a27ea59fb300e5dfaf0f41f2fc75b04559533fb5cf72b0f7a786c8684c6038af15723a3eba516cb6d
+Description: tor 0.4.8.14 for iOS 10.3.3 armv7
+ Onion router daemon.  Statically linked libevent 2.1.12 + OpenSSL 4.0.3 +
+ zlib 1.3.1; no LZMA/ZSTD; dirauth module off.  DataDir defaults to
+ /var/mobile/tools/tor/data -- set DataDir/SocksPort in your torrc.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: traceroute4
+Architecture: iphoneos-arm
+Version: 1.0-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/t/traceroute4/traceroute4_1.0-1_iphoneos-arm.deb
+Size: 15570
+MD5sum: 24b0d916296341d85055b08fe2592c07
+SHA1: 12fc9caebc262c4ca0ffde8800fbd5935b1da717
+SHA256: 326a3b4599fa976131ffebbb2bd639cf978de71cd637c6afe0dba0515cb1bd46
+SHA512: 492e8c646704bf31f48663d6b69209d369267aed0ec89a00e5a6922eeeb0e5079d30791ad988fedc2ab9363b0921ee4abcf320a7801888a55d0fbeea604e9abf
+Homepage: https://github.com/hesper-homelab-bot/ios-armv7-builder
+Description: traceroute for armv7 iOS 10+ (network_cmds-457, setuid, SOCK_RAW)
+ Real Apple network_cmds-457 (Darwin 16 / xnu-3789 era) traceroute,
+ cross-built with -DPRIVATE against xnu-3789.70.16 kernel headers.
+ Installs setuid root (4755) because probing needs SOCK_RAW, which on
+ iOS 10 requires root (the setuid root install shape is also Apple's own:
+ pbxproj target "traceroute", mode 04555, root:wheel).  UDP/TCP/ICMP/GRE
+ probe protocols, -n numeric, -q/-w/-m/-p knobs, AS lookup via -a.
+Name: traceroute 1.0
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: uuidgen
+Architecture: iphoneos-arm
+Version: 1.47.2-1
+Priority: optional
+Section: sysutils
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/u/uuidgen/uuidgen_1.47.2-1_iphoneos-arm.deb
+Size: 2944
+MD5sum: 14761ecb867e343a35bc1d82f8485816
+SHA1: 301251e7cbc567beed9c9fc2c03e8c0171f72e24
+SHA256: 3dc035346b968d6d9a5c8fa843eb262404ee3f60a0e5f3d33b413011a8254eb1
+SHA512: 0ecbe23c7f459f0fd3f18d0f4b65d90992d373b693e689b038db27989116f3f49b6cf46cf5a068188118684320618547a2bf69bd29235639012dfde2cc8d3bfb
+Description: uuidgen (e2fsprogs 1.47.2) for iOS 10.3.3 armv7
+ Generates RFC 4122 UUIDs: default and -r random (v4), -t time-based (v1).
+ Replacement for the BigBoss 'uuid' CLI, whose dyld loading is broken on
+ iOS 10.3.3 (libgcc_s re-export failure, Abort trap 6).  Built against the
+ real iPhoneOS10.3.sdk headers; uuid_* calls bind to the device's libSystem
+ at runtime.
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: vim
+Architecture: iphoneos-arm
+Version: 9.1.0000-1
+Priority: optional
+Section: Editors
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/v/vim/vim_9.1.0000-1_iphoneos-arm.deb
+Size: 7556962
+MD5sum: 764b35227236e75b1e6b28926a785b97
+SHA1: f32e7cc724f4cad7909af5924d505b7113c1d7c3
+SHA256: 6382b8b88f401efc64a53da43aaed9114db62b96058e06b1e5b7f407a37700db
+SHA512: b97f387b9da6765ef390a5ea4a55b428979fe52a5d42d1f64103256569267b386307333729ed1bf8ceb0c460f459433a21c84017f61a92a098a1fbd49c78a0ea
+Homepage: https://www.vim.org/
+Description: Vim 9.1 terminal editor for armv7 iOS 10+ (huge, +multi_byte)
+ Terminal Vim 9.1.0000 for armv7 iOS 10.x, built with --with-features=huge
+ and +multi_byte, no GUI and no X11.  Links the device's own libSystem and
+ /usr/lib/libncursesw.5.dylib, so no shared libraries are bundled.
+ .
+ Installs to /var/mobile/tools: bin/{vim,vi,ex,view,vimdiff,rview,rvim,vimtutor,xxd}
+ and the complete runtime under share/vim/vim91.  Because vim is
+ built with prefix=/var/mobile/tools, it finds that runtime automatically -- no $VIM,
+ no $VIMRUNTIME and no --cmd are needed.  Add /var/mobile/tools/bin to your PATH.
+ .
+ syntax/, indent/ and ftplugin/ are complete (697/161/307 files).  doc/ is
+ trimmed to keep the package small, so :help has only a partial offline
+ manual; the tags file is regenerated for whatever is retained.
+ .
+ Working: terminal editing, multibyte/UTF-8, syntax highlighting, filetype
+ detection, indenting, folding, spell checking, ctags/tags, vim9script, netrw,
+ diff mode, persistent undo, terminfo-based termcap.  Not built: GUI, X11,
+ clipboard providers, netbeans, cscope, channel/job (no +channel/+terminal),
+ and all embedded interpreters (perl/python/ruby/lua/tcl) -- the device has
+ none of them.  :terminal and :job are therefore unavailable; use tmux for
+ multiple panes instead.
+Name: Vim 9.1 (terminal)
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: wget4
+Architecture: iphoneos-arm
+Version: 1.25.0-1
+Priority: optional
+Section: Networking
+Maintainer: Hesper <hesperup@users.noreply.github.com>
+Depends: firmware (>= 10.3)
+Filename: pool/main/w/wget4/wget4_1.25.0-1_iphoneos-arm.deb
+Size: 2023232
+MD5sum: e40a1494034aabe6f926d36c422823a3
+SHA1: fc60c7b7d8fd288cac0ad2e18eb72ad2b34d4784
+SHA256: b0dbafcc36bcb9b4eb8935a028dded4717aab432e26d2a70a061e060f919116b
+SHA512: e742d4e953866380b1323ce8b7a19069fd0209321c849a52c40c73ad37ce970ea90f76522f66f42e16f5b0025f9e3641c3c3a7443802a4a08fbe7f827d84475a
+Homepage: https://www.gnu.org/software/wget/
+Description: GNU wget for armv7 iOS 10+ (static OpenSSL 4)
+ GNU wget 1.25.0 for armv7 iOS 10.x, statically linked against
+ OpenSSL 4.0.3.  Installs to /var/mobile/tools/wget, so it does not
+ replace the system binary that sshd and the rest of iOS may expect.
+ .
+ Working: HTTP, HTTPS, FTP (anonymous), cookies, redirects, POST,
+ --spider, --limit-rate, recursive retrieval.  Add /var/mobile/tools to
+ your PATH, or call it by absolute path.
+ .
+ Set SSL_CERT_FILE=/etc/ssl/cert.pem to verify HTTPS certificates; see
+ /var/mobile/tools/env.sh.
+Name: GNU Wget 1.25
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder
+
+Package: whois4
+Architecture: iphoneos-arm
+Version: 5.6.6-1
+Priority: optional
+Section: net
+Maintainer: hesper <hesper-homelab-bot@users.noreply.github.com>
+Filename: pool/main/w/whois4/whois4_5.6.6-1_iphoneos-arm.deb
+Size: 28670
+MD5sum: 07f7315082974f615c4ff9df2d13acbf
+SHA1: d9a2ed3f6b6ce7f1064c5e1ca75b8de32199f20a
+SHA256: 70580c794e528ccf889f09e69faf3815c0fd79d1001e2de2d3b487c2886631bb
+SHA512: 58ce788e7d17d7552eb9c492b4325558f31671f3206cc3fdb7135ce2e3bf1bf1d79c7732a6bd96af8f110830ceeedddb03c598259e519bd1f0260e4fd0e51b3d
+Description: whois 5.6.6 (rfc1036) for iOS 10.3.3 armv7
+ RIPE-style whois client; server list compiled in.  Built without
+ iconv/libidn/NLS (see whois/build.sh).
+Depiction: https://github.com/hesper-homelab-bot/ios-armv7-builder

@@ -1,0 +1,43 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Architectures: iphoneos-arm
+Codename: stable
+Components: main
+Date: Sat, 21 Nov 2026 08:09:04 +0000
+Description: Cross-compiled tools for armv7 iOS 10.x - built on Linux, no Xcode
+Label: hesper-homelab-bot iOS Tools
+Origin: hesper-homelab-bot
+Suite: stable
+Version: 1.0
+MD5Sum:
+ 6a72df4a7fb7a739d5f6b128b33b957d              270 Release
+ aa18be9231d9701c1b631b398e339de7            48520 main/binary-iphoneos-arm/Packages
+ d6a91cbd66737dbf11d4c3d55d69bb3d            16412 main/binary-iphoneos-arm/Packages.bz2
+ 3980751a6d080978459a01dd76447c55            18459 main/binary-iphoneos-arm/Packages.gz
+SHA1:
+ e655ca01814796cb5b59b3e764bd6e38e2a82405              270 Release
+ 6c4d56077465fd917ac0c7142b684e040dcde0ed            48520 main/binary-iphoneos-arm/Packages
+ e43f4f94b0eccb329a2afc528391801294dc0c54            16412 main/binary-iphoneos-arm/Packages.bz2
+ e2365a65deef52ffb7bde9096579b7951975e9af            18459 main/binary-iphoneos-arm/Packages.gz
+SHA256:
+ 0e4fcc271b82597db4a19b8de7a122356c329dac956218a58333b72922da62e9              270 Release
+ be6ff7e78bd63b6ac930634963b06f3b8e889437b53f17b1cebe0aca00424336            48520 main/binary-iphoneos-arm/Packages
+ 874e3343fd7be626f2e1865d58181d4350fbf3fb289b4ae0d800580ca4eb308d            16412 main/binary-iphoneos-arm/Packages.bz2
+ c6504e2424c94c1f8940d5b70b0c0283f9c7177fdf8a7207a5273b4bc9d8d716            18459 main/binary-iphoneos-arm/Packages.gz
+SHA512:
+ 1ab3bbfa1ceb79f1d23917c90446fe52c6618c7484be1e64bd17d50aaf48a33c60028b36b1e0a98957f1b39c4fad112d7560d84ecfe0c0d2e012b12cddabba0c              270 Release
+ 5a6f4ea664f8d246c145eb04fffc2f51e130d3514b7a3a605a44c343bdab35dd0f53df001ae82cc5370295c1b6d81e24b32adbfc9a8103d72bbcdbcaf9332793            48520 main/binary-iphoneos-arm/Packages
+ 9d6348869e2245c37d8b8f52a7620eb5f2a67d33259bf36559c6c9ce36ebf4417dba743608ffc4e3afa7bdf4ffd0e041496d5896652a3107548a20e53830d3ee            16412 main/binary-iphoneos-arm/Packages.bz2
+ d1acf9d8f94aff70245ea636a7f5fad8e6dcfe7d696c991915d936ac5cce94b453fb10e5ee034488591e64451f1f730c98688c7259239fdb3899976a284389a9            18459 main/binary-iphoneos-arm/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCgAdFiEEKjJMRXerAZSb6ka8im38YPf55ZYFAmsBUaAACgkQim38YPf5
+5ZaF2AgAx83N++sdyUMXddNuc3FZBTgcr+s1hDHdlWh0HqZ0+y5uod9gAd96g7wM
+5Ieuv4zMFBlbGuBlFbuotwtkWxVOzOaqikIHHHIvX5T2zHcqA4Owstxus+PD88TZ
+OEoLugslniSI/BZKmZWiWti1+Mm3oqK5/nL7pD+2v7Iy9vc9RVGbef2MgPXYVb2d
+VbHutvgQf7hJCyPNC7eAqHDPudhkvOIu3D1ZQv5U6Y+ucXnciuAbSCT23E7gfAeY
+NUhtQQdOnNsc8BSuz4WHVKY0bxmYv+XkzKnHMODGEKzBR59sYFG194R96IQM4Ziy
+cUKgOuRoPqhjnj0Pv2CuaYYdzIplKA==
+=0nYe
+-----END PGP SIGNATURE-----
