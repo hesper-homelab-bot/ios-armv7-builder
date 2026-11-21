@@ -41,10 +41,29 @@ jobs:
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-      - name: build all packages (wired in stages; see tools/bootstrap-toolchain.sh progress)
-        run: echo "placeholder -- build-all recipe lands with the bootstrap script"
+      - name: build canary 1 -- whois (Makefile type, zero patches)
+        run: |
+          set -euo pipefail
+          (cd whois && ./build.sh && ./make-deb.sh)
+          tools/check-undefined.sh out/whois-*-armv7
+      - name: build canary 2 -- rsync (configure + gnulib type)
+        run: |
+          set -euo pipefail
+          (cd rsync && ./build.sh && ./make-deb.sh)
+          tools/check-undefined.sh out/rsync-*-armv7
+      - name: build canary 3a -- openssl (the curl dependency)
+        run: |
+          set -euo pipefail
+          (cd openssl && ./build.sh && ./make-deb.sh)
+      - name: build canary 3b -- curl (SDK + static deps + symbol audit type)
+        run: |
+          set -euo pipefail
+          (cd curl && ./build.sh && ./make-deb.sh)
+          tools/check-undefined.sh out/curl-*-armv7
       - name: audit gate
-        run: echo "placeholder -- tools/audit-all.sh over out/"
+        run: |
+          set -euo pipefail
+          tools/audit-all.sh 2>&1 | tail -5
       - name: regenerate, sign, publish
         # DANGER if run today: out/ is empty on a CI runner (no debs are built
         # yet), and make-repo.sh would happily publish an EMPTY repo over the
