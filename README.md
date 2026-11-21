@@ -1,8 +1,10 @@
 # ios-armv7-builder
 
 A cross-build kit for **jailbroken 32-bit iOS** (`armv7`, iOS 10.x) that works
-entirely **on a Linux host** — no Xcode, no macOS, no Apple SDK, no Apple
-signing.
+entirely **on a Linux host** — no Xcode, no macOS, no Apple signing.  Since the
+2026-11-15 SDK-mode ruling, builds use the real Apple headers from the public
+`xybp888/iOS-SDKs` mirror (`docs/toolchain.md` §16); the shipped package set is
+generated from the repo index in [docs/PACKAGES.md](docs/PACKAGES.md).
 
 ```
 Linux host ──(clang+ld64)──▶ Mach-O armv7 ──(ldid)──▶ .deb ──▶ APT repo ──▶ OTA to the device

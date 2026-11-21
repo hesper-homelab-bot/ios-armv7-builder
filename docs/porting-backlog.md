@@ -16,8 +16,9 @@
 
 ## 已上线（全部有专项文档）
 
-设备 kit 现有 **28 个包**（30 个 deb 文件，python3 有两个版本号，
-含一个被取代的旧版）。
+设备 kit 的**实时包清单**由仓库索引生成:见 [PACKAGES.md](PACKAGES.md)
+（`scripts/gen-package-table.sh` 从 APT Packages 索引生成，勿手改）。
+下表保留移植史的叙述价值，但版本/数量以 PACKAGES.md 为准。
 
 | 包 | 版本 | 专项文档 | 备注 |
 |---|---|---|---|

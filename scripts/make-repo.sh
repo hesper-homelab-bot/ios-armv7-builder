@@ -34,12 +34,17 @@ mkdir -p repo/dists/stable/main/binary-iphoneos-arm
 # here (and gets fixed in the index) instead of a hard failure.
 REPO_URL="https://github.com/hesper-homelab-bot/ios-armv7-builder"
 fail=0
+# Only the newest revision of each package reaches the pool: out/ keeps
+# superseded revisions around, and shipping both in the pool makes the
+# package table (and Sileo) show history nobody asked for.
+declare -A BEST_VER BEST_FILE
 for f in out/*_iphoneos-arm.deb; do
     [ -e "$f" ] || continue
     pkg="$(dpkg-deb -f "$f" Package)"
+    v="$(dpkg-deb -f "$f" Version)"
     for field in Section Description; do
-        v="$(dpkg-deb -f "$f" "$field" 2>/dev/null || true)"
-        if [ -z "${v// /}" ]; then
+        val="$(dpkg-deb -f "$f" "$field" 2>/dev/null || true)"
+        if [ -z "${val// /}" ]; then
             echo "METADATA-GATE FAIL: $pkg: missing $field" >&2; fail=1
         fi
     done
@@ -47,11 +52,16 @@ for f in out/*_iphoneos-arm.deb; do
     if [ "$dep" != "$REPO_URL" ]; then
         echo "METADATA-GATE note: $pkg: deb Depiction '${dep:-<none>}' (normalized to $REPO_URL in the index)" >&2
     fi
-    v="$(dpkg-deb -f "$f" Version)"
+    if [ -z "${BEST_VER[$pkg]:-}" ] || dpkg --compare-versions "$v" gt "${BEST_VER[$pkg]}"; then
+        BEST_VER[$pkg]="$v"; BEST_FILE[$pkg]="$f"
+    fi
+done
+[ "$fail" = 0 ] || { echo "==> metadata gate failed, repo not rebuilt" >&2; exit 1; }
+for pkg in "${!BEST_FILE[@]}"; do
+    f="${BEST_FILE[$pkg]}"
     mkdir -p "repo/pool/main/${pkg:0:1}/$pkg"
     cp "$f" "repo/pool/main/${pkg:0:1}/$pkg/"
 done
-[ "$fail" = 0 ] || { echo "==> metadata gate failed, repo not rebuilt" >&2; exit 1; }
 
 # ------------------------------------------------------------ indexes ----
 (cd repo && apt-ftparchive --arch iphoneos-arm packages pool \
