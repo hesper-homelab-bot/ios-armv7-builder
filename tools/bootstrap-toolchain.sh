@@ -122,12 +122,15 @@ stage1_cctools() {
 stage2_ldid() {
     log 2 "ldid (ad-hoc pseudo-signer)"
     [ -x "$PREFIX/bin/ldid" ] && [ "$FORCE" = 0 ] && { skip; return; }
-    fetch "https://github.com/ProcursusTeam/ldid/archive/refs/heads/master.tar.gz" \
-          "a56feb1dfeada538be055eaccd306963683fb5eecdb45d48e5b04b39b3b5ac11" \
-          "$CACHE/ldid.tar.gz"
-    [ -d "$PREFIX/ldid-src/ldid-master" ] || mkdir -p "$PREFIX/ldid-src"
-    tar -xzf "$CACHE/ldid.tar.gz" -C "$PREFIX/ldid-src"
-    ( cd "$PREFIX/ldid-src/ldid-master"
+    # pinned to the tag the working toolchain was built from -- never a
+    # branch archive: master.tar.gz bytes drift, and a sha256 pin against a
+    # moving target fails exactly like it did in CI run 44872564758.
+    fetch "https://github.com/ProcursusTeam/ldid/archive/refs/tags/v2.1.5-procursus7.tar.gz" \
+          "04e461c6f02765e48fc9cc0b68d4dc353a9c46bc1c4d8bac0695509d1af1ff5e" \
+          "$CACHE/ldid-2.1.5-procursus7.tar.gz"
+    mkdir -p "$PREFIX/ldid-src"
+    tar -xzf "$CACHE/ldid-2.1.5-procursus7.tar.gz" -C "$PREFIX/ldid-src"
+    ( cd "$PREFIX"/ldid-src/ldid-2.1.5-procursus7
       make -j"$(nproc)" ldid >/dev/null
       mkdir -p "$PREFIX/bin" && cp -a ./ldid "$PREFIX/bin/ldid" )
     "$PREFIX/bin/ldid" -V >/dev/null && echo "    ldid $(ls "$PREFIX/bin/ldid") ok"
