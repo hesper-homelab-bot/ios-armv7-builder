@@ -60,14 +60,16 @@ export CC="$here/../tools/cc-wrapper.sh"
 export AR="$here/../tools/darwin-ar"
 export RANLIB="$here/../tools/darwin-ranlib"
 
-ACOBJ="$root/tmp/openssl-atomic-alias.o"
+# The alias-stub variant (atomic_alias.s, ARM long-branch .word jumps) is
+# rejected by modern ld64: "illegal text-relocation" under PIE.  Instead the
+# implementation file compiles with its functions renamed straight to the
+# triple-underscore symbols -- no stub, one object, plain cross-object branch.
 CCOBJ="$root/tmp/openssl-atomic-compat.o"
-"$here/../tools/cc-wrapper.sh" -c "$here/atomic_alias.s" -o "$ACOBJ"
 "$here/../tools/cc-wrapper.sh" -c "$here/atomic_compat.c" -o "$CCOBJ"
 
 ./Configure ios-cross no-asm no-shared no-tests no-docs \
     --prefix="$PREFIX" --openssldir="$PREFIX/etc/ssl" \
-    LDFLAGS="$ACOBJ $CCOBJ" \
+    LDFLAGS="$CCOBJ" \
     > /dev/null
 make -j"$(nproc)" > /dev/null
 
